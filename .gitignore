@@ -1,0 +1,6 @@
+# Docker 관련 파일들
+docker-compose.yml
+docker-compose_*.txt
+certbot-etc/
+cookies.txt
+.env

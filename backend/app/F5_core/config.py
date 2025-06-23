@@ -60,7 +60,7 @@ class Settings(BaseSettings):
 
     model_config = {
         "extra": "allow",  # 앱 전체 환경 변수는 자유롭게 허용
-        "env_file": ".env",
+        "env_file": "../.env",
         "env_file_encoding": "utf-8",
     }
 

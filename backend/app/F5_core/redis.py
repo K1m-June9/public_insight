@@ -3,54 +3,55 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from datetime import timedelta
 import logging
 from typing import Optional, Dict, Any, Callable, Awaitable
 
 from app.F7_models.users import User
-
-
-
 from app.F5_core.config import settings
+
 logger = logging.getLogger(__name__)
 
-# Redis 접속 URL을 환경변수로 관리하는 설정 클래스
 class RedisSettings(BaseSettings):
-    ENVIRONMENT: str = "development"    # 기본값 dev
-    IS_LOCAL: bool = True               # 로컬 실행 여부 플래그
+    ENVIRONMENT: str = "development"
+    IS_LOCAL: bool = True
+
+    REDIS_HOST: Optional[str] = None
+    REDIS_PORT: Optional[int] = None
 
     CLIENT_REDIS_URL: Optional[str] = None
     EMAIL_REDIS_URL: Optional[str] = None
     TOKEN_REDIS_URL: Optional[str] = None
 
-    def __init__(self, **values):
-        super().__init__(**values)
+    model_config = ConfigDict(
+        env_file = ".env",
+        env_file_encoding = "utf-8",
+        extra = "ignore",
+    )
 
-        # 프로덕션 환경이라면 로컬이 아닐 경우 Redis 서버 주소 다르게 설정
-        if self.ENVIRONMENT == "production" and not self.IS_LOCAL:
-            base = "redis://redis_server:6379"
-        else:  # dev or local test
-            base = "redis://localhost:6379"
+    def _default_base_url(self) -> str:
+        host = self.REDIS_HOST or ("redis_server" if self.ENVIRONMENT == "production" and not self.IS_LOCAL else "localhost")
+        port = self.REDIS_PORT or 6379
+        return f"redis://{host}:{port}"
 
-        # 각 Redis 용도별 URL을 기본값으로 세팅 (설정값이 있으면 덮어씀)
-        self.CLIENT_REDIS_URL = self.CLIENT_REDIS_URL or f"{base}/0"
-        self.EMAIL_REDIS_URL = self.EMAIL_REDIS_URL or f"{base}/1"
-        self.TOKEN_REDIS_URL = self.TOKEN_REDIS_URL or f"{base}/13"
+    def get_client_url(self) -> str:
+        return self.CLIENT_REDIS_URL or f"{self._default_base_url()}/0"
 
-    model_config = {
-        "env_file": ".env",                 # 환경변수 파일 경로
-        "env_file_encoding": "utf-8",       # 인코딩
-        "extra": "ignore",                  # 추가 환경변수 무시
-    }
+    def get_email_url(self) -> str:
+        return self.EMAIL_REDIS_URL or f"{self._default_base_url()}/1"
 
-# 환경변수 기반 Redis 설정 인스턴스 생성
+    def get_token_url(self) -> str:
+        return self.TOKEN_REDIS_URL or f"{self._default_base_url()}/13"
+
+
+# 인스턴스 생성
 redis_settings = RedisSettings()
 
-# Redis 클라이언트 인스턴스 생성
-# 각기 다른 DB 번호 또는 Redis 서버로 분리 운영 가능
-client_redis = Redis.from_url(redis_settings.CLIENT_REDIS_URL)  # 일반 캐시용
-email_redis = Redis.from_url(redis_settings.EMAIL_REDIS_URL)    # 이메일 처리용
-token_redis = Redis.from_url(redis_settings.TOKEN_REDIS_URL)    # 토큰 관리용
+# Redis 클라이언트 생성
+client_redis = Redis.from_url(redis_settings.get_client_url())
+email_redis = Redis.from_url(redis_settings.get_email_url())
+token_redis = Redis.from_url(redis_settings.get_token_url())
 
 class RedisManager:
     """

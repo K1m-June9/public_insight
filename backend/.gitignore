@@ -1,5 +1,18 @@
+# Python
+__pycache__/
+
+# 가상환경
+venv/
 .env
+
+# Docker
 Dockerfile.txt
 Dockerfile
-venv/
-__pycache__/
+
+# Pytest
+.pytest_cache/
+F11_tests/
+pytest.ini
+
+# Logs
+security.log

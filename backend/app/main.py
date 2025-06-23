@@ -1,39 +1,68 @@
-###___main.py___###
-
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-# 커스텀 모듈
-from app.database.init_db import engine, Base 
-from app.routers import api_router
-from app.routers.api_router import api_router
-
-# 애플리케이션 시작 시 테이블을 자동으로 생성하는 로직
-@asynccontextmanager
-async def app_lifespan(app: FastAPI):
-    # 애플리케이션 시작 시 실행될 로직
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield 
-    # 애플리케이션 종료 시 실행될 로직
+from app.F1_routers.v1.api import router as api_v1_router
+from app.F7_models.users import UserRole
+from app.F8_database.connection import engine, Base 
+from app.F9_middlewares.jwt_bearer_middleware import JWTBearerMiddleware
+from app.F9_middlewares.admin_paths import admin_paths
+from app.F9_middlewares.exempt_paths import exempt_paths
+from app.F5_core.config import settings 
 
 # 환경 변수 로드
 load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY 환경 변수가 설정되지 않았습니다.")
+if not settings.JWT_SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY 환경 변수가 설정되지 않았습니다.")
 
+# 앱 라이프사이클 컨텍스트 매니저: 시작 시 DB 테이블 생성
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # 종료 시 추가 로직 필요하면 작성
 
-# FastAPI 애플리케이션 초기화
-app = FastAPI(lifespan=app_lifespan)
-# docs_url=None, redoc_url=None
-# Swagger UI와 Redoc를 배포시에는 ***비활성화***
+# FastAPI 앱 초기화
+app = FastAPI(
+    lifespan=app_lifespan,
+    docs_url="/docs",
+    redoc_url=None,
+    title="MyProject API",
+    version="1.0.0"
+)
 
-# 세션 미들웨어 추가
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY) #secret_key는 암호화 키로 임의로 설정
+# CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 운영 시 도메인 제한 권장
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# API 라우터 등록
-app.include_router(api_router)      
+# 세션 미들웨어
+app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
+
+# JWT 인증 미들웨어
+app.add_middleware(
+    JWTBearerMiddleware,
+    exempt_paths=exempt_paths,
+    admin_paths=admin_paths
+)
+
+# 라우터 등록
+app.include_router(api_v1_router, prefix="/api/v1")
+
+"""
+앱 종료시 같이 redis 닫아주기
+@app.on_event("shutdown")
+async def shutdown_event():
+    await client_redis.close()
+    await email_redis.close()
+    await token_redis.close()
+
+"""

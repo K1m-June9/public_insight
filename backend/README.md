@@ -189,3 +189,6 @@ docker-compose down --volumes
 
 ▶️ Swagger UI 주소 (로컬 기준)
 http://localhost:{port변경}/docs
+
+su: http://localhost:8000
+ha: http://localhost:8001

@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import uuid
 
 from app.F5_core.config import settings
-
 from app.F8_database.connection import Base
 # revoked = False : 유효한 토큰
 # revoked = True : 사용불가 토큰(무효화된 토큰)

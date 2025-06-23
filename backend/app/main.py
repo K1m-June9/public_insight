@@ -6,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.F1_routers.v1.api import router as api_v1_router
-from app.F7_models.users import UserRole
+from app.F7_models import (
+    bookmarks, categories, feeds, keywords, notices, organizations, rating_history, ratings, refresh_token, search_logs, sliders, static_page_versions, static_pages, token_security_event_logs, user_activities, user_interests, users, word_clouds
+    )
 from app.F8_database.connection import engine, Base 
 from app.F9_middlewares.jwt_bearer_middleware import JWTBearerMiddleware
 from app.F9_middlewares.admin_paths import admin_paths

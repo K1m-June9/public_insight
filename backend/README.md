@@ -133,6 +133,7 @@ Ctrl+Shift+P → “Reload Window”
 
 {5} Pytest 명령어(FastAPI 테스트용)
 ▶️ 가상환경 실행 후 가능
+- 폴더 위치 backend/app 
 
 ▶️ Fixture 목록 확인
 - 특정 테스트파일에서 사용 가능한 fixture들을 확인가능

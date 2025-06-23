@@ -66,11 +66,13 @@ class User(Base):
     updated_at = Column(DateTime, onupdate=func.current_timestamp())
 
     # 관계 설정
-    # bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")  # 사용자의 북마크 목록
-    # ratings = relationship("Rating", back_populates="user", cascade="all, delete-orphan")      # 사용자의 평점 목록
-    # search_logs = relationship("SearchLog", back_populates="user", cascade="all, delete-orphan")  # 사용자의 검색 기록
-    # user_activities = relationship("UserActivity", back_populates="user", cascade="all, delete-orphan")  # 사용자의 활동 기록
+    bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")  # 사용자의 북마크 목록
+    ratings = relationship("Rating", back_populates="user", cascade="all, delete-orphan")      # 사용자의 평점 목록
+    search_logs = relationship("SearchLog", back_populates="user", cascade="all, delete-orphan")  # 사용자의 검색 기록
+    user_activities = relationship("UserActivity", back_populates="user", cascade="all, delete-orphan")  # 사용자의 활동 기록
+
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan", passive_deletes=True) # 사용자의 refresh token
+    
     # 인덱스 설정
     __table_args__ = (
         Index('idx_user_role', 'role'),              # 역할별 검색을 위한 인덱스

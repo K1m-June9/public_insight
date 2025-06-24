@@ -16,3 +16,7 @@ pytest.ini
 
 # Logs
 security.log
+
+#alembic
+alembic/
+alembic.ini

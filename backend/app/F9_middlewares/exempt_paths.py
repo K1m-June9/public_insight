@@ -1,3 +1,4 @@
+# 정적 경로 처리용
 exempt_paths = {
     "/health",
     "/docs",
@@ -5,7 +6,14 @@ exempt_paths = {
     "/api/v1/auth/login",
     "/api/v1/auth/refresh",
     "/api/v1/auth/logout",
+    "/api/v1/auth/register",
 }
+
+# 동적 경로 처리용
+exempt_regex_paths = [
+]
+
+
 
 
 """

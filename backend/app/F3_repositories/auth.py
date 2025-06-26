@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import Optional
@@ -138,3 +138,30 @@ class AuthRepository:
         except Exception:
             await self.db.rollback()
             raise
+    
+
+    
+    # user_id 중복 여부 확인
+    async def is_user_id_exists(self, user_id: str) -> bool:
+        """user_id 중복 여부 확인"""
+        stmt = select(exists().where(User.user_id == user_id))
+        return await self.db.scalar(stmt)
+
+    # email 중복 여부 확인
+    async def is_email_exists(self, email: str) -> bool:
+        """email 중복 여부 확인"""
+        stmt = select(exists().where(User.email == email))
+        return await self.db.scalar(stmt)
+
+    
+    # nickname 중복 여부 확인
+    async def is_nickname_exists(self, nickname: str) -> bool:
+        stmt = select(exists().where(User.nickname == nickname))
+        return await self.db.scalar(stmt)
+    
+
+    # 새로운 사용자 등록
+    async def save_user(self, user: User):
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)

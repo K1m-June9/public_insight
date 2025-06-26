@@ -7,7 +7,10 @@ exempt_paths = {
     "/api/v1/auth/refresh",
     "/api/v1/auth/logout",
     "/api/v1/auth/register",
-    "/api/v1/sliders"
+    "/api/v1/auth/check-id",
+    "/api/v1/auth/check-email/send",
+    "/api/v1/auth/check-email/verify",
+    "/api/v1/sliders",
 }
 
 # 동적 경로 처리용

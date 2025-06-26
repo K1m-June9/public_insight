@@ -7,6 +7,7 @@ from app.F2_services.slider import SliderService
 from app.F2_services.static_page import StaticPageService
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
+from app.F4_utils.email import EmailVerificationService
 from app.F3_repositories.static_page import StaticPageRepository
 from app.F5_core.redis import RedisCacheService
 from app.F8_database.session import get_db
@@ -22,9 +23,14 @@ async def get_slider_service(db: AsyncSession = Depends(get_db)) -> SliderServic
     """슬라이더 서비스 의존성 주입용 함수"""
     return SliderService(SliderRepository(db))
 
+async def get_email_verification_services() -> EmailVerificationService:
+    """이메일 인증 의존성 주입용 함수"""
+    return EmailVerificationService()
+
 async def get_static_page_service(db: AsyncSession = Depends(get_db)) -> StaticPageService:
     """정적 페이지 서비스 의존성 주입용 함수"""
     return StaticPageService(StaticPageRepository(db))
+
 
 async def verify_active_user(
     request: Request,

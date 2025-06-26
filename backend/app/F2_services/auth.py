@@ -1,14 +1,17 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Union
 import uuid
+import random
 from fastapi import HTTPException, status, Depends
 
 from app.F3_repositories.auth import AuthRepository
+from app.F4_utils.validators import validate_user_id, validate_password, validate_email
 from app.F5_core.config import settings
 from app.F5_core.security import auth_handler
 from app.F5_core.redis import RedisManager
 from app.F5_core.logger import logger
 from app.F6_schemas import base
+from app.F6_schemas import auth
 from app.F7_models.users import User, UserStatus
 from app.F7_models.refresh_token import RefreshToken
 
@@ -304,3 +307,67 @@ class AuthService:
             detail="Security alert: Token reuse detected. All sessions terminated."
         )
 
+
+    async def is_user_id_available(self, user_id: str) -> bool:
+        """user_id 중복 및 유효성 검사"""
+        # 유효성 검사
+        if not validate_user_id(user_id):
+            logger.info(f"User ID validation failed: {user_id}")
+            return False
+
+        # 중복 검사
+        exists = await self.repo.is_user_id_exists(user_id)
+        logger.info(f"User ID exists check: {user_id} => {exists}")
+        return not exists
+    
+    async def is_email_available(self, email: str) -> bool:
+        """email 중복 여부 검사"""
+        # 이메일 형식 검사
+        if not validate_email(email):
+            logger.info(f"이메일 형식 오류: {email}")
+            return False 
+
+        # 이메일 DB 중복 검사
+        exists = await self.repo.is_email_exists(email)
+        return not exists
+    
+    async def validate_password_rule(self, password: str) -> bool:
+        """password 규칙 검사"""
+        if not validate_password(password):
+            return False
+        return True 
+    
+    async def assign_initial_nickname(self, user_id: str) -> str:
+        """초기 닉네음은 user_id로 설정, 중복 시 난수를 붙여서 닉네임 생성"""
+        base_nickname = user_id
+        if not await self.repo.is_nickname_exists(base_nickname):
+            return base_nickname 
+        
+        for _ in range(5):
+            candidate = f"{base_nickname}{random.randint(100, 9999)}"
+            if not await self.repo.is_nickname_exists(candidate):
+                return candidate
+            
+        logger.error(f"닉네임 중복으로 인해 자동 생성 실패")
+        raise ValueError("닉네임 자동 생성 실패: 중복된 값이 너무 많습니다.")
+            
+    
+    async def create_user(self, credentials: auth.UserCreate) -> User:
+        hashed_pw = auth_handler.get_password_hash(credentials.password)
+
+        logger.info(f"생성하기 중")
+        new_user = User(
+            user_id=credentials.user_id,
+            password_hash=hashed_pw,
+            email=credentials.email,
+            nickname=credentials.nickname,
+            terms_agreed=credentials.terms_agreed,
+            privacy_agreed=credentials.privacy_agreed,
+            notification_agreed=credentials.notification_agreed,
+            terms_agreed_at=datetime.utcnow() if credentials.terms_agreed else None,
+            privacy_agreed_at=datetime.utcnow() if credentials.privacy_agreed else None,
+            marketing_agreed_at=datetime.utcnow() if credentials.notification_agreed else None,
+        )
+
+        await self.repo.save_user(new_user)
+        return new_user

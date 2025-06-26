@@ -12,7 +12,6 @@ exempt_paths = {
 
 # 동적 경로 처리용
 exempt_regex_paths = [
-    r"^/api/v1/auth/\d+$", 
     r"^/api/v1/sliders/[1-9]\d*$"
 ]
 

@@ -7,8 +7,10 @@ from app.F5_core.security import JWTBearer
 from app.F5_core.config import settings
 from app.F5_core.dependencies import get_auth_service 
 from app.F6_schemas import base
-from app.F6_schemas.auth import TokenResponse, TokenData, LoginRequest, LogoutRequest
-
+from app.F6_schemas.auth import (
+    TokenResponse, TokenData, LoginRequest, LogoutRequest,
+    UserCreate, RegisterSuccessResponse
+)
 router = APIRouter()
 
 # 로그인 엔드포인트
@@ -180,3 +182,79 @@ async def logout(
     # 6. 성공 시 쿠키 제거 및 응답 반환
     response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
     return base.SuccessResponse()
+
+
+
+
+# 회원가입 완료 버튼
+@router.post("/register",response_model=RegisterSuccessResponse)
+async def register(
+    request: Request,
+    credentials: UserCreate,
+    response: Response,
+    auth_service: AuthService = Depends(get_auth_service)
+):  
+    try:
+        # 1. 필수 이용약관 동의 확인
+        if not (credentials.terms_agreed and credentials.privacy_agreed):
+            error = base.ErrorResponse(
+                error = base.ErrorDetail(
+                    code="AGREEMENT_REQUIRED",
+                    message="이용약관 및 개인정보 처리방침 동의는 필수입니다",
+                    details=None
+                )
+            )
+            return JSONResponse(status_code=400, content=error.model_dump())
+
+
+        # 2. user_id 중복 및 규칙 검사
+        if not await auth_service.is_user_id_available(credentials.user_id):
+            error = base.ErrorResponse(
+                error = base.ErrorDetail(
+                    code="USER_ID_INVALID_OR_DUPLICATE",
+                    message="사용자 ID가 중복되었거나 규칙에 맞지 않습니다",
+                    details=None
+                )
+            )
+            return JSONResponse(status_code=400, content=error.model_dump())
+
+        # 3. 이메일 중복 검사
+        if not await auth_service.is_email_available(credentials.email):
+            error = base.ErrorResponse(
+                error = base.ErrorDetail(
+                    code="EMAIL_INVALID_OR_DUPLICATE",
+                    message="이메일이 중복되었거나 형식이 올바르지 않습니다",
+                    details=None
+                )
+            )
+            return JSONResponse(status_code=400, content=error.model_dump())
+
+
+        # 4. 비밀번호 규칙 검사
+        if not await auth_service.validate_password_rule(credentials.password):
+            error = base.ErrorResponse(
+                error = base.ErrorDetail(
+                    code="PASSWORD_RULE_VIOLATION",
+                    message="비밀번호가 규칙에 맞지 않습니다",
+                    details=None
+                )
+            )
+            return JSONResponse(status_code=400, content=error.model_dump())
+
+
+        # 5. 초기 닉네임은 user_id로 설정
+        credentials.nickname = await auth_service.assign_initial_nickname(credentials.user_id)
+
+
+        # 6. 유저 생성
+        user = await auth_service.create_user(credentials)
+
+        # 7. 결과 반환 (UserResponse 스키마로 직렬화)
+        return RegisterSuccessResponse(
+            message="회원가입이 완료되었습니다" # 로그인 페이지로 이동
+        )
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # 콘솔에 전체 예외 출력
+        return JSONResponse(status_code=500, content={"detail": str(e)})

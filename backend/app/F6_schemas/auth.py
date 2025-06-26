@@ -13,6 +13,7 @@ class LoginRequest(BaseModel):
     user_id: str
     password: str
 
+
 # =================================
 # 2. 로그아웃 스키마
 # =================================
@@ -33,6 +34,7 @@ class TokenPayload(BaseModel):
     iat: Optional[datetime]
     tpe: Optional[str]
 
+
 class TokenData(BaseModel):
     """Access Token 정보"""
     access_token: str #인코딩된 JWT 문자열
@@ -44,6 +46,7 @@ class TokenData(BaseModel):
 class TokenResponse(base.SuccessResponse):
     message: str
     data: TokenData
+
 
 # =================================
 # 4. 회원가입 관련 스키마
@@ -76,25 +79,31 @@ class UserResponse(base.BaseSchema):
 
 
 class RegisterSuccessResponse(base.SuccessResponse):
-    message: str = "회원가입이 완료되었습니다."
+    message: str = "회원가입이 완료되었습니다"
 
 
 
 # =================================
 # 5. 중복 및 규칙 검사 관련 스키마
 # =================================
-
 class UserCheckID(BaseModel):
     user_id: str
+
 
 class UserCheckEmail(BaseModel):
     email: EmailStr
 
-class UserCheckNickname(BaseModel):
-    nickname: str
-
-
 # =================================
-# 5. 
+# 6. 이메일 인증 관련 스키마
 # =================================
 
+class EmailVerifyCode(BaseModel):
+    email: str
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class EmailSendSuccessResponse(base.SuccessResponse):
+    message: str = "인증코드가 전송되었습니다"
+
+class EmailVerifySuccessResponse(base.SuccessResponse):
+    message: str = "인증이 완료되었습니다"

@@ -3,13 +3,15 @@ from fastapi.responses import JSONResponse
 
 from app.F2_services.auth import AuthService, auth_handler
 from app.F4_utils import device, cookie, client
+from app.F4_utils.email import EmailVerificationService
 from app.F5_core.security import JWTBearer
 from app.F5_core.config import settings
-from app.F5_core.dependencies import get_auth_service 
+from app.F5_core.dependencies import get_auth_service, get_email_verification_services
 from app.F6_schemas import base
 from app.F6_schemas.auth import (
     TokenResponse, TokenData, LoginRequest, LogoutRequest,
-    UserCreate, RegisterSuccessResponse
+    UserCreate, RegisterSuccessResponse, UserCheckID, UserCheckEmail,
+    EmailSendSuccessResponse, EmailVerifyCode, EmailVerifySuccessResponse
 )
 router = APIRouter()
 
@@ -258,3 +260,53 @@ async def register(
         import traceback
         traceback.print_exc()  # 콘솔에 전체 예외 출력
         return JSONResponse(status_code=500, content={"detail": str(e)})
+    
+
+# check-id 버튼
+@router.post("/check-id", response_model=base.BaseResponse)
+async def check_user_id_availability(
+    request: UserCheckID,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    # user_id 중복 및 규칙 검사
+    if not await auth_service.is_user_id_available(request.user_id):
+        return base.BaseResponse(success=False)
+    
+    return base.BaseResponse(success=True)
+
+
+# 이메일 인증코드 [발송] 버튼
+@router.post("/check-email/send", response_model=EmailSendSuccessResponse)
+async def send_verification_code(
+    request: UserCheckEmail,
+    auth_service: AuthService = Depends(get_auth_service),
+    email_service: EmailVerificationService = Depends(get_email_verification_services)
+):
+    # 1. user_id 중복 및 규칙 검사
+    if not await auth_service.is_email_available(request.email):
+        error = base.ErrorResponse(
+            error = base.ErrorDetail(
+                code="EMAIL_INVALID_OR_DUPLICATE",
+                message="이메일이 중복되었거나 형식이 올바르지 않습니다",
+                details=None
+            )
+        )
+        return JSONResponse(status_code=400, content=error.model_dump())
+    
+    # 2. 인증코드 발송
+    await email_service.send_code(request.email)
+    return EmailSendSuccessResponse()
+
+
+# 이메일 인증 코드 검증 [확인] 버튼
+@router.post("/check-email/verify")
+async def email_verify(
+    valid: EmailVerifyCode,
+    email_service: EmailVerificationService = Depends(get_email_verification_services)
+    
+    ):
+    is_valid = await email_service.verify_code(valid.email, valid.code)
+
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="인증 코드가 올바르지 않습니다")
+    return EmailVerifySuccessResponse()

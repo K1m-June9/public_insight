@@ -156,9 +156,6 @@ pytest F11_tests/auth/logout_test.py -v --html=F11_tests/reports/auth/logout_tes
 pytest F11_tests/auth/middleware_test.py -v --html=F11_tests/reports/auth/middleware_test.html
 
 
-pytest F11_tests/auth/register_test.py -v --html=F11_tests/reports/auth/register_letest.html
-
-
 ▶️ 꿀팁: ChatGPT로 테스트 환경 빠르게 구성하기
 step1: 기본 코드 준비
 - conftest.py (공통 fixture)

@@ -3,7 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.F2_services.auth import AuthService
+from app.F2_services.slider import SliderService
 from app.F3_repositories.auth import AuthRepository
+from app.F3_repositories.slider import SliderRepository
 from app.F5_core.redis import RedisCacheService
 from app.F8_database.session import get_db
 from app.F7_models.users import User, UserStatus
@@ -14,6 +16,9 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     """의존성 주입용 함수"""
     return AuthService(AuthRepository(db))
 
+async def get_slider_service(db: AsyncSession = Depends(get_db)) -> SliderService:
+    """슬라이더 서비스 의존성 주입용 함수"""
+    return SliderService(SliderRepository(db))
 
 async def verify_active_user(
     request: Request,

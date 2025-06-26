@@ -12,7 +12,7 @@ from app.F7_models import (
 from app.F8_database.connection import engine, Base 
 from app.F9_middlewares.jwt_bearer_middleware import JWTBearerMiddleware
 from app.F9_middlewares.admin_paths import admin_paths
-from app.F9_middlewares.exempt_paths import exempt_paths
+from app.F9_middlewares.exempt_paths import exempt_paths, exempt_regex_paths
 from app.F5_core.config import settings 
 
 # 환경 변수 로드
@@ -53,6 +53,7 @@ app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
 app.add_middleware(
     JWTBearerMiddleware,
     exempt_paths=exempt_paths,
+    exempt_regex_paths=exempt_regex_paths,
     admin_paths=admin_paths
 )
 

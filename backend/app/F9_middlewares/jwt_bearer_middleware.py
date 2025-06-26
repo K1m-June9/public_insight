@@ -1,8 +1,9 @@
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from typing import Set, Optional, Dict, Any
+from typing import Set, Optional, Dict, Any, List
 import logging 
+import re
 
 from app.F5_core.security import auth_handler
 from app.F5_core.redis import RedisManager
@@ -26,16 +27,23 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
         self, app,
         *,
         exempt_paths: Optional[Set[str]] = None,
+        exempt_regex_paths: Optional[List[str]] = None,
         admin_paths: Optional[Dict[str, Set[UserRole]]] = None,
     ):
         super().__init__(app)
         self.exempt_paths = exempt_paths or set()   # 인증 예외 경로들
+        self.exempt_regex_paths = [re.compile(p) for p in (exempt_regex_paths or [])]
         self.admin_paths = admin_paths or {}        # 관리자 전용 경로와 권한 매핑
 
     async def dispatch(self, request: Request, call_next):
-        # 인증 예외 경로는 미들웨어 통과
+        # 1) 정적 경로 예외
         if request.url.path in self.exempt_paths:
             return await call_next(request)
+        
+        # 2) 동적 경로 예외(정규식 매칭)
+        for pattern in self.exempt_regex_paths:
+            if pattern.match(request.url.path):
+                return await call_next(request)
 
         try:
             # 1. Authorization 헤더에서 토큰 추출

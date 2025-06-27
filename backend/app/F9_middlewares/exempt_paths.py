@@ -11,12 +11,16 @@ exempt_paths = {
     "/api/v1/auth/check-email/send",
     "/api/v1/auth/check-email/verify",
     "/api/v1/sliders",
+    "/api/v1/organizations/"
 }
 
 # 동적 경로 처리용
 exempt_regex_paths = [
     r"^/api/v1/sliders/[1-9]\d*$",
-    r"^/api/v1/static-pages/[a-z-]+$"
+    r"^/api/v1/static-pages/[a-z-]+$",
+    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/categories$",
+    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/icon$",
+    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/wordcloud$"
 ]
 
 

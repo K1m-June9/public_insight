@@ -65,7 +65,7 @@ class OrganizationRepository:
             logger.error(f"기관별 피드 개수 조회 중 오류 발생: {str(e)}")
             raise
 
-    # 기관명으로 해당 기관의 카테고리 목록과 각 카테고리별 피드 개수 조회 메서드
+    # 기관명으로 해당 기관의 카테고리 목록과 각 카테고리별 피드 개수 조회 메서드 ('보도자료' 제외)
     # 입력: 
     #   org_name - 조회할 기관의 이름 (str)
     # 반환: 
@@ -73,13 +73,14 @@ class OrganizationRepository:
     #   {"organization": {"id": int, "name": str}, "categories": [{"category_id": int, "category_name": str, "feed_count": int}, ...]}
     # 설명: 
     #   주어진 기관명으로 기관을 조회하고, 해당 기관의 활성화된 카테고리와 각 카테고리별 활성화된 피드 개수를 집계
+    #   '보도자료' 카테고리는 원형 그래프 구성에서 제외하므로 조회 대상에서 제외
     #   LEFT JOIN을 사용하여 피드가 없는 카테고리도 포함 (feed_count=0으로 표시)
     #   카테고리 ID 오름차순으로 정렬하여 일관된 순서 보장
     #   존재하지 않는 기관이거나 활성화된 카테고리가 없는 경우 None 반환
     async def get_categories_with_feed_counts_by_org_name(self, org_name: str) -> Optional[Dict[str, Any]]:
         # 기관, 카테고리, 피드를 JOIN하여 카테고리별 피드 개수 집계
         # 기관명으로 조회하되 기관 활성화 상태는 확인하지 않음
-        # 활성화된 카테고리와 활성화된 피드만 대상으로 함
+        # 활성화된 카테고리 중 '보도자료'를 제외하고 활성화된 피드만 대상으로 함
         query = (
             select(
                 Organization.id.label('organization_id'),
@@ -96,7 +97,8 @@ class OrganizationRepository:
             )
             .where(
                 Organization.name == org_name,
-                Category.is_active == True
+                Category.is_active == True,
+                Category.name != '보도자료'  # '보도자료' 카테고리 제외
             )
             .group_by(
                 Organization.id,
@@ -113,7 +115,7 @@ class OrganizationRepository:
             
             # 결과가 없는 경우 None 반환
             if not rows:
-                logger.warning(f"기관 '{org_name}'에 대한 활성화된 카테고리를 찾을 수 없습니다")
+                logger.warning(f"기관 '{org_name}'에 대한 활성화된 카테고리를 찾을 수 없습니다 ('보도자료' 제외)")
                 return None
             
             # 첫 번째 행에서 기관 정보 추출
@@ -139,7 +141,7 @@ class OrganizationRepository:
             
             # 모든 카테고리의 피드 개수가 0인 경우 None 반환
             if total_feed_count == 0:
-                logger.warning(f"기관 '{org_name}'의 모든 카테고리에 활성화된 피드가 없습니다")
+                logger.warning(f"기관 '{org_name}'의 모든 카테고리에 활성화된 피드가 없습니다 ('보도자료' 제외)")
                 return None
             
             result_data = {
@@ -147,7 +149,7 @@ class OrganizationRepository:
                 "categories": categories_data
             }
             
-            logger.info(f"기관 '{org_name}'의 카테고리 {len(categories_data)}개와 피드 개수 조회 완료 (총 피드: {total_feed_count}개)")
+            logger.info(f"기관 '{org_name}'의 카테고리 {len(categories_data)}개와 피드 개수 조회 완료 ('보도자료' 제외, 총 피드: {total_feed_count}개)")
             return result_data
             
         except Exception as e:

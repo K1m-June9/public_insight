@@ -6,9 +6,11 @@ from app.F2_services.auth import AuthService
 from app.F2_services.slider import SliderService
 from app.F2_services.session import SessionService
 from app.F2_services.static_page import StaticPageService
+from app.F2_services.organization import OrganizationService
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
 from app.F3_repositories.session import SessionRepository
+from app.F3_repositories.organization import OrganizationRepository
 from app.F4_utils.email import EmailVerificationService
 from app.F3_repositories.static_page import StaticPageRepository
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
@@ -40,6 +42,11 @@ def get_password_reset_redis_service() -> PasswordResetRedisService:
 async def get_email_verification_services() -> EmailVerificationService:
     """이메일 인증 의존성 주입용 함수"""
     return EmailVerificationService()
+  
+async def get_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationService:
+    """기관/카테고리 관련 서비스 의존성 주입용 함수"""
+    return OrganizationService(OrganizationRepository(db))
+
 
 
 async def verify_active_user(

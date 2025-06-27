@@ -2,9 +2,11 @@ from fastapi import HTTPException
 from smtplib import SMTP, SMTPException
 from email.mime.text import MIMEText
 import random
+import logging
+import secrets
 
 from app.F5_core.config import settings
-from app.F5_core.redis import email_redis
+from app.F5_core.redis import email_redis, password_reset_redis
 
 
 class EmailVerificationService:
@@ -37,7 +39,7 @@ class EmailVerificationService:
         """사용자가 입력한 인증 코드가 Redis에 저장된 코드와 일치하는지 확인"""
         stored_code = await self.redis.get(email)
         return stored_code is not None and stored_code.decode() == code
-
+    
     #==============================
     # 내부 유틸 메서드
     #==============================
@@ -95,3 +97,55 @@ class EmailVerificationService:
 
 
 
+
+class SendPasswordResetEmail:
+    def __init__(self):
+        self.redis = password_reset_redis 
+        self.expire_seconds = 600 # 10분
+
+    async def send_password_reset_email(self, to_email: str, reset_link: str):
+        """HTML 콘텐츠 생성 및 이메일 전송 시도"""
+        html_content = self._build_html(reset_link)
+
+        try: 
+            self._send_email(to_email, html_content)
+        except SMTPException:
+            raise HTTPException(status_code=500, detail="이메일 전송 실패")
+        except Exception as e:
+            logging.exception("예상치 못한 오류 발생")
+            raise HTTPException(status_code=500, detail=f"예상치 못한 오류: {str(e)}")
+
+    #==============================
+    # 내부 유틸 메서드
+    #==============================    
+    def _build_html(self, reset_link: str) -> str:
+        """이메일 삽입할 HTML 콘텐츠 생성"""
+        return f"""
+        <html>
+            <body style="font-family: sans-serif; background-color: #f9f9f9; padding: 20px;">
+                <div style="max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="color: #333;">비밀번호 재설정 안내</h2>
+                    <p>비밀번호 재설정을 원하시면 아래 버튼을 클릭하세요.</p>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <a href="{reset_link}" style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">비밀번호 재설정하기</a>
+                    </div>
+                    <p>이 링크는 <strong>10분간 유효</strong>하며, 1회만 사용할 수 있습니다.</p>
+                    <p style="margin-top: 30px;">감사합니다.<br>Public Insight 팀</p>
+                </div>
+            </body>
+        </html>
+        """
+
+
+    def _send_email(self, to_email: str, html_content: str):
+        """SMTP 서버를 통한 이메일 전송"""
+        msg = MIMEText(html_content, "html")
+        msg["Subject"] = "[Public Insight] 비밀번호 재설정 안내"
+        msg["From"] = settings.EMAIL
+        msg["To"] = to_email
+
+        with SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+            server.starttls()
+            server.login(settings.EMAIL, settings.EMAIL_PASSWORD)
+            server.send_message(msg)
+            logging.info(f"비밀번호 재설정 메일 전송 완료: {to_email}")

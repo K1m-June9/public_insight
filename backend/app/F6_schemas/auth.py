@@ -90,8 +90,10 @@ class UserCheckID(BaseModel):
     user_id: str
 
 
+# find-id에도 사용
 class UserCheckEmail(BaseModel):
     email: EmailStr
+
 
 # =================================
 # 6. 이메일 인증 관련 스키마
@@ -105,5 +107,42 @@ class EmailVerifyCode(BaseModel):
 class EmailSendSuccessResponse(base.SuccessResponse):
     message: str = "인증코드가 전송되었습니다"
 
+
 class EmailVerifySuccessResponse(base.SuccessResponse):
     message: str = "인증이 완료되었습니다"
+
+
+# =================================
+# 7. 아이디 찾기 및 비밀번호 찾기 관련 스키마
+# =================================
+
+class FindIdResponse(base.SuccessResponse):
+    masked_user_id: str
+
+
+class ResetPasswordRequest(BaseModel):
+    user_id: str = Field(min_length=1)  
+    email: EmailStr
+
+
+class ResetPasswordConfirm(BaseModel):
+    token: str
+    new_password: str
+
+
+class PasswordResetEmailSentResponse(base.SuccessResponse):
+    message: str
+
+
+class TokenVerificationResponse(BaseModel):
+    valid: bool
+    email: EmailStr
+    user_id: str
+    message: str
+
+class PasswordResetCompleteResponse(base.BaseResponse):
+    message: str 
+
+class PasswordResetSubmitRequest(base.SuccessResponse):
+    token: str = Field
+    new_password: str = Field(min_length=10, max_length=25)

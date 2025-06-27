@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
 from datetime import timedelta
 import logging
+import secrets
+import json
 from typing import Optional, Dict, Any, Callable, Awaitable
 
 from app.F7_models.users import User
@@ -23,6 +25,7 @@ class RedisSettings(BaseSettings):
     CLIENT_REDIS_URL: Optional[str] = None
     EMAIL_REDIS_URL: Optional[str] = None
     TOKEN_REDIS_URL: Optional[str] = None
+    PASSWORD_RESET_REDIS_URL: Optional[str] = None
 
     model_config = ConfigDict(
         env_file = ".env",
@@ -43,6 +46,9 @@ class RedisSettings(BaseSettings):
 
     def get_token_url(self) -> str:
         return self.TOKEN_REDIS_URL or f"{self._default_base_url()}/13"
+    
+    def get_password_reset_url(self) -> str:
+        return self.PASSWORD_RESET_REDIS_URL or f"{self._default_base_url()}/14"
 
 
 # 인스턴스 생성
@@ -52,6 +58,7 @@ redis_settings = RedisSettings()
 client_redis = Redis.from_url(redis_settings.get_client_url())
 email_redis = Redis.from_url(redis_settings.get_email_url())
 token_redis = Redis.from_url(redis_settings.get_token_url())
+password_reset_redis = Redis.from_url(redis_settings.get_password_reset_url())
 
 class RedisManager:
     """
@@ -181,6 +188,9 @@ class RedisManager:
             logger.warning(f"Redis 장애 발생 ({e}). DB 폴백 실행")
             return await db_fallback(key)
 
+
+
+
 class RedisCacheService:
     @staticmethod
     async def cache_user_info(user: User):
@@ -216,6 +226,44 @@ class RedisCacheService:
     3. 사용자 정보가 민감하게 바뀌었을 떄
     """
         
+
+
+class PasswordResetRedisService:
+    def __init__(self):
+        self.redis = password_reset_redis
+        self.expire_seconds = 600
+        self.key_prefix = "password_reset:"
+
+    async def generate_token(self):
+        """중복되지 않는 고유한 토큰 생성"""
+
+        # 최대 5회 중복 체크 후 생성 실패 시 예외 발생
+        for _ in range(5):
+            token = secrets.token_urlsafe(32)
+            key = self.key_prefix + token 
+            if not await self.redis.exists(key):
+                return token 
+        raise RuntimeError("토큰 생성 실패")
+
+    async def save_token(self, token: str, email: str, user_id: str):
+        """Redis에 토큰과 관련 정보를 JSON 형태로 저장"""
+        value = json.dumps({"email": email.lower(), "user_id": user_id})
+        # 저장시 지정된 expire_seconds 동안만 유효
+        await self.redis.setex(self.key_prefix + token, self.expire_seconds, value)
+    
+    async def get_token_data(self, token: str):
+        """Redis에서 토큰에 해당하는 데이터를 조회"""
+        data = await self.redis.get(self.key_prefix + token)
+        if data:
+            return json.loads(data)
+        return None 
+    
+    async def delete_token(self, token: str):
+        """토큰이 사용 완료되었거나 만료 시, Redis에서 해당 키를 삭제하여 무효화"""
+        await self.redis.delete(self.key_prefix + token)
+
+
+
 
 """
 async def get_user_from_db(user_id: str) -> Optional[str]:

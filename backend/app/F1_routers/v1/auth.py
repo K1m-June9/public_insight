@@ -1,17 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, Body
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Body, BackgroundTasks, status
 from fastapi.responses import JSONResponse
 
+from app.F2_services.session import SessionService
 from app.F2_services.auth import AuthService, auth_handler
 from app.F4_utils import device, cookie, client
-from app.F4_utils.email import EmailVerificationService
+from app.F4_utils.email import EmailVerificationService, SendPasswordResetEmail
+from app.F5_core.redis import PasswordResetRedisService
 from app.F5_core.security import JWTBearer
 from app.F5_core.config import settings
-from app.F5_core.dependencies import get_auth_service, get_email_verification_services
+from app.F5_core.dependencies import (
+    get_auth_service, get_email_verification_services,
+    get_password_reset_redis_service, get_session_service
+)
 from app.F6_schemas import base
 from app.F6_schemas.auth import (
     TokenResponse, TokenData, LoginRequest, LogoutRequest,
     UserCreate, RegisterSuccessResponse, UserCheckID, UserCheckEmail,
-    EmailSendSuccessResponse, EmailVerifyCode, EmailVerifySuccessResponse
+    EmailSendSuccessResponse, EmailVerifyCode, EmailVerifySuccessResponse,
+    FindIdResponse, ResetPasswordRequest, PasswordResetEmailSentResponse,
+    TokenVerificationResponse, PasswordResetCompleteResponse, PasswordResetSubmitRequest,
 )
 router = APIRouter()
 
@@ -303,10 +310,122 @@ async def send_verification_code(
 async def email_verify(
     valid: EmailVerifyCode,
     email_service: EmailVerificationService = Depends(get_email_verification_services)
-    
-    ):
+):
     is_valid = await email_service.verify_code(valid.email, valid.code)
 
     if not is_valid:
         raise HTTPException(status_code=400, detail="인증 코드가 올바르지 않습니다")
     return EmailVerifySuccessResponse()
+
+
+# 아이디 찾기 버튼
+@router.post("/find-id", response_model=FindIdResponse)
+async def find_user_id(
+    payload: UserCheckEmail,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    masked_user_id = await auth_service.find_user_id_by_email(payload.email)
+
+    if masked_user_id:
+        return FindIdResponse(
+            message = "success",
+            masked_user_id=masked_user_id
+        )
+    
+    # 실패 시 : 보안 강화를 위해 동일 응답을 반환
+    return FindIdResponse(
+        message = "success",
+        masked_user_id=""
+    )
+
+
+# 비밀번호 재설정 요청(이메일 + user_id 검증 후 토큰 생성 및 이메일 발송)
+@router.post("/reset-password-reset", response_model=PasswordResetEmailSentResponse)
+async def request_reset_password(
+    payload: ResetPasswordRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+    ):
+    """이메일과 user_id 일치 여부 확인 후 토큰 생성 및 이메일 발송"""
+    success = await auth_service.handle_password_reset_request(payload.email, payload.user_id)
+
+    if success:
+        return PasswordResetEmailSentResponse(
+            success=True, 
+            message="비밀번호 재설정 메일이 전송되었습니다"
+        )
+    
+    # 실패 시 : 보안 강화를 위해 동일 응답을 반환
+    return PasswordResetEmailSentResponse(
+        success=True,
+        message = "입력하신 정보와 일치하는 계정을 찾을 수 없습니다"
+    )
+
+
+# 비밀번호 재설정 토큰 검사
+@router.get("/verify-reset-token", response_model=TokenVerificationResponse)
+async def verify_reset_token(
+    token: str,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    비밀번호 재설정 토큰 유효성 검사 API
+    - 사용자가 이메일로 받은 비밀번호 재설정 링크를 클릭하면, 해당 링크에 포함된 토큰의 유효성을 검증
+    - 유효한 경우: 토큰에 연결된 사용자 정보(email, user_id)와 함께 valid=True 반환
+    - 유효하지 않거나 만료된 경우: 400 Bad Request 예외 발생
+    """
+    # Redis에 저장된 토큰 정보 조회 및 유효성 검사
+    token_data = await auth_service.verify_password_reset_token(token)
+
+    if token_data:
+        # 토큰이 유효할 경우: 연결된 이메일 및 user_id 반환
+        return TokenVerificationResponse(
+            valid=True, 
+            email=token_data["email"],
+            user_id=token_data["user_id"],
+            message="유효한 토큰"
+        )
+    
+    # 토큰이 존재하지 않거나 만료된 경우 예외 처리
+
+    error = base.ErrorResponse(
+        error = base.ErrorDetail(
+            code="TOKEN_INVALID_OR_EXPIRED",
+            message="토큰이 유효하지 않거나 만료되었습니다",
+            details=None
+            )
+        )
+    return JSONResponse(status_code=400, content=error.model_dump())
+
+
+
+# 실제 비밀번호 재설정 수행
+@router.post("/reset-password", response_model=PasswordResetCompleteResponse)
+async def reset_password(
+    payload: PasswordResetSubmitRequest, # 요청 본문: 토큰과 새 비밀번호를 포함
+    auth_service: AuthService = Depends(get_auth_service),
+    redis_service: PasswordResetRedisService = Depends(get_password_reset_redis_service),  # 의존성 추가
+    session_service: SessionService = Depends(get_session_service)
+):  
+    # 비밀번호 재설정 수행 (토큰 유효성 검증 및 비밀번호 변경)
+    result = await auth_service.reset_user_password(
+        token=payload.token,
+        new_password=payload.new_password,
+        password_reset_redis_service=redis_service,  # Redis에서 토큰 조회 및 삭제
+        session_service=session_service
+    )
+
+    # 토큰이 유효하지 않거나 만료될 경우 에러 응답 반환
+    if not result:
+        error = base.ErrorResponse(
+            error=base.ErrorDetail(
+                code="TOKEN_INVALID_OR_EXPIRED",
+                message="유효하지 않거나 만료된 토큰입니다."
+            )
+        )
+        return JSONResponse(status_code=400, content=error.model_dump())
+
+    # 비밀번호 변경 성공 응답 반환
+    return PasswordResetCompleteResponse(
+        success=True,
+        message="비밀번호가 성공적으로 재설정되었으며, 모든 기기에서 로그아웃 되었습니다"
+    )

@@ -5,8 +5,10 @@ from sqlalchemy import select
 from app.F2_services.auth import AuthService
 from app.F2_services.slider import SliderService
 from app.F2_services.static_page import StaticPageService
+from app.F2_services.organization import OrganizationService
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
+from app.F3_repositories.organization import OrganizationRepository
 from app.F4_utils.email import EmailVerificationService
 from app.F3_repositories.static_page import StaticPageRepository
 from app.F5_core.redis import RedisCacheService
@@ -30,6 +32,10 @@ async def get_email_verification_services() -> EmailVerificationService:
 async def get_static_page_service(db: AsyncSession = Depends(get_db)) -> StaticPageService:
     """정적 페이지 서비스 의존성 주입용 함수"""
     return StaticPageService(StaticPageRepository(db))
+
+async def get_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationService:
+    """기관/카테고리 관련 서비스 의존성 주입용 함수"""
+    return OrganizationService(OrganizationRepository(db))
 
 
 async def verify_active_user(

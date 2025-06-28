@@ -15,7 +15,8 @@ exempt_paths = {
     "/api/v1/auth/verify-reset-token",
     "/api/v1/auth/reset-password",
     "/api/v1/sliders",
-    "/api/v1/organizations/"
+    "/api/v1/organizations/",
+    "/api/v1/feeds/"
 }
 
 # 동적 경로 처리용
@@ -24,7 +25,8 @@ exempt_regex_paths = [
     r"^/api/v1/static-pages/[a-z-]+$",
     r"^/api/v1/organizations/[\uAC00-\uD7A3]+/categories$",
     r"^/api/v1/organizations/[\uAC00-\uD7A3]+/icon$",
-    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/wordcloud$"
+    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/wordcloud$",
+    r"^/api/v1/feeds/[\uAC00-\uD7A3]+"
 ]
 
 

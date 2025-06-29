@@ -168,3 +168,171 @@ class FeedRepository:
             feeds_data.append(feed_dict)
         
         return feeds_data
+    
+    # 기관별 최신 피드 목록 조회 메서드
+    # 입력: 
+    #   limit - 최대 기관 수 제한 (int)
+    # 반환: 
+    #   기관별 최신 피드 정보가 포함된 Dict 객체들의 리스트 또는 None
+    #   각 Dict는 피드 기본 정보와 기관 정보를 포함
+    # 설명: 
+    #   각 활성화된 기관의 가장 최신 피드를 기관당 1개씩 조회
+    #   ROW_NUMBER()를 사용하여 기관별로 최신 피드만 선택
+    #   published_date 기준 내림차순, 동일 시 created_at 기준 내림차순 정렬
+    #   활성화된 피드(is_active=True)와 기관(is_active=True)만 대상
+    #   결과가 없는 경우 None 반환
+    async def get_latest_feeds_by_organization(self, limit: int) -> Optional[List[Dict[str, Any]]]:
+        # ROW_NUMBER()를 사용한 서브쿼리 구성
+        # 각 기관별로 최신 피드 순위 매기기
+        subquery = select(
+            Feed.id,
+            Feed.title,
+            Feed.organization_id,
+            Feed.published_date,
+            Feed.created_at,
+            func.row_number().over(
+                partition_by=Feed.organization_id,
+                order_by=[Feed.published_date.desc(), Feed.created_at.desc()]
+            ).label('rn')
+        ).where(
+            # 활성화된 피드만 대상
+            Feed.is_active == True
+        ).subquery()
+        
+        # 메인 쿼리: 각 기관의 최신 피드(rn=1)와 기관 정보 JOIN
+        query = select(
+            subquery.c.id,
+            subquery.c.title,
+            subquery.c.organization_id,
+            Organization.name.label('organization_name')
+        ).select_from(
+            # 서브쿼리와 기관 테이블 JOIN
+            subquery.join(
+                Organization.__table__,
+                subquery.c.organization_id == Organization.id
+            )
+        ).where(
+            # 각 기관의 최신 피드만 선택 (순위 1번)
+            subquery.c.rn == 1,
+            # 활성화된 기관만 대상
+            Organization.is_active == True
+        ).limit(limit)
+        
+        result = await self.db.execute(query)
+        rows = result.fetchall()
+        
+        # 결과가 없는 경우 None 반환
+        if not rows:
+            return None
+        
+        # 쿼리 결과를 Dict 형태로 변환하여 반환
+        feeds_data = []
+        for row in rows:
+            feed_dict = {
+                'id': row.id,
+                'title': row.title,
+                'organization_id': row.organization_id,
+                'organization_name': row.organization_name
+            }
+            feeds_data.append(feed_dict)
+        
+        return feeds_data
+    
+    # 기관별 카테고리별 최신 피드 목록 조회 메서드
+    # 입력: 
+    #   organization_name - 기관명 (str)
+    #   limit - 최대 카테고리 수 제한 (int)
+    # 반환: 
+    #   기관 정보와 카테고리별 최신 피드 정보가 포함된 Dict 객체 또는 None
+    #   기관 정보와 피드 리스트를 분리한 구조로 반환
+    # 설명: 
+    #   특정 기관의 각 카테고리별 가장 최신 피드를 카테고리당 1개씩 조회
+    #   '보도자료' 카테고리는 제외하고 조회
+    #   ROW_NUMBER()를 사용하여 카테고리별로 최신 피드만 선택
+    #   published_date 기준 내림차순, 동일 시 created_at 기준 내림차순 정렬
+    #   활성화된 피드(is_active=True)만 대상
+    #   결과가 없는 경우 None 반환
+    async def get_organization_latest_feeds_by_category(
+        self, organization_name: str, limit: int
+    ) -> Optional[Dict[str, Any]]:
+        # ROW_NUMBER()를 사용한 서브쿼리 구성
+        # 각 카테고리별로 최신 피드 순위 매기기
+        subquery = select(
+            Feed.id,
+            Feed.title,
+            Feed.category_id,
+            Feed.organization_id,
+            Feed.published_date,
+            Feed.created_at,
+            func.row_number().over(
+                partition_by=Feed.category_id,
+                order_by=[Feed.published_date.desc(), Feed.created_at.desc()]
+            ).label('rn')
+        ).select_from(
+            Feed.__table__.join(
+                Organization.__table__,
+                Feed.organization_id == Organization.id
+            ).join(
+                Category.__table__,
+                Feed.category_id == Category.id
+            )
+        ).where(
+            # 특정 기관명으로 필터링
+            Organization.name == organization_name,
+            # 활성화된 피드만 대상
+            Feed.is_active == True,
+            # '보도자료' 카테고리 제외
+            Category.name != '보도자료'
+        ).subquery()
+        
+        # 메인 쿼리: 각 카테고리의 최신 피드(rn=1)와 기관, 카테고리 정보 JOIN
+        query = select(
+            subquery.c.id,
+            subquery.c.title,
+            subquery.c.category_id,
+            subquery.c.organization_id,
+            Organization.name.label('organization_name'),
+            Category.name.label('category_name')
+        ).select_from(
+            subquery.join(
+                Organization.__table__,
+                subquery.c.organization_id == Organization.id
+            ).join(
+                Category.__table__,
+                subquery.c.category_id == Category.id
+            )
+        ).where(
+            # 각 카테고리의 최신 피드만 선택 (순위 1번)
+            subquery.c.rn == 1
+        ).limit(limit)
+        
+        result = await self.db.execute(query)
+        rows = result.fetchall()
+        
+        # 결과가 없는 경우 None 반환
+        if not rows:
+            return None
+        
+        # 첫 번째 행에서 기관 정보 추출
+        first_row = rows[0]
+        organization_info = {
+            'id': first_row.organization_id,
+            'name': first_row.organization_name
+        }
+        
+        # 피드 리스트 구성
+        feeds_data = []
+        for row in rows:
+            feed_dict = {
+                'id': row.id,
+                'title': row.title,
+                'category_id': row.category_id,
+                'category_name': row.category_name
+            }
+            feeds_data.append(feed_dict)
+        
+        # 기관 정보와 피드 리스트를 분리한 구조로 반환
+        return {
+            'organization': organization_info,
+            'feeds': feeds_data
+        }

@@ -3,7 +3,15 @@ from fastapi.responses import JSONResponse
 import logging
 from app.F2_services.feed import FeedService
 from app.F5_core.dependencies import get_feed_service
-from app.F6_schemas.feed import MainFeedListResponse, FeedListQuery, OrganizationFeedListResponse, OrganizationFeedQuery
+from app.F6_schemas.feed import (
+    MainFeedListResponse, 
+    FeedListQuery, 
+    OrganizationFeedListResponse, 
+    OrganizationFeedQuery, 
+    LatestFeedQuery, 
+    LatestFeedResponse,
+    OrganizationLatestFeedResponse
+    )
 from app.F6_schemas.base import PaginationQuery, ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -118,4 +126,57 @@ async def get_organization_feeds(
     
     # 성공 시 Service에서 반환된 OrganizationFeedListResponse를 그대로 반환
     # FastAPI가 자동으로 JSON 직렬화 및 응답 스키마 검증 수행
+    return result
+
+@router.get("/latest", response_model=LatestFeedResponse)
+async def get_latest_feeds(
+    query: LatestFeedQuery = Depends(),
+    feed_service: FeedService = Depends(get_feed_service)
+) -> LatestFeedResponse:
+    """
+    메인 페이지 최신 피드 슬라이드 조회
+    
+    각 기관의 가장 최신 피드를 기관당 1개씩 제공합니다.
+    메인 페이지 원형 그래프 아래 피드 슬라이드에서 사용됩니다.
+    """
+    # Service를 통해 최신 피드 데이터 조회
+    result = await feed_service.get_latest_feeds_for_main(query.limit)
+    
+    # Service에서 에러 응답이 반환된 경우 처리
+    if isinstance(result, ErrorResponse):
+        if result.error.code == "NOT_FOUND":
+            status_code = 404
+        elif result.error.code == "INTERNAL_SERVER_ERROR":
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+@router.get("/{name}/latest", response_model=OrganizationLatestFeedResponse)
+async def get_organization_feeds_latest(
+    name: str,
+    query: LatestFeedQuery = Depends(),
+    feed_service: FeedService = Depends(get_feed_service)
+) -> OrganizationLatestFeedResponse:
+    """
+    기관 페이지 최신 피드 슬라이드 조회
+    
+    해당 기관의 각 카테고리별 최신 피드를 카테고리당 1개씩 제공합니다.
+    기관 페이지 원형 그래프 아래 피드 슬라이드에서 사용됩니다.
+    """
+    # Service를 통해 기관별 카테고리별 최신 피드 데이터 조회
+    result = await feed_service.get_organization_latest_feeds(name, query.limit)
+    
+    # Service에서 에러 응답이 반환된 경우 처리
+    if isinstance(result, ErrorResponse):
+        if result.error.code == "NOT_FOUND":
+            status_code = 404
+        elif result.error.code == "INTERNAL_SERVER_ERROR":
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
     return result

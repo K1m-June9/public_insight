@@ -14,7 +14,13 @@ from app.F6_schemas.feed import (
     OrganizationFeedListResponse,
     OrganizationFeedQuery,
     CategoryInfo,
-    FeedFilter
+    FeedFilter,
+    LatestFeedData,
+    LatestFeedItem,
+    LatestFeedResponse,
+    OrganizationLatestFeedData,
+    OrganizationLatestFeedItem,
+    OrganizationLatestFeedResponse
 )
 from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail
 
@@ -248,6 +254,144 @@ class FeedService:
         except Exception as e:
             # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
             logger.error(f"Error in get_organization_feed_list: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code="INTERNAL_SERVER_ERROR",
+                    message="서버 내부 오류가 발생했습니다."
+                )
+            )
+        
+    # 메인 페이지용 최신 피드 슬라이드 조회 서비스
+    # 입력: 
+    #   limit - 최대 피드 수 제한 (int)
+    # 반환: 
+    #   LatestFeedResponse - 성공 시 최신 피드 데이터
+    #   ErrorResponse - 실패 시 에러 정보
+    # 설명: 
+    #   각 기관별 최신 피드를 조회하여 메인 페이지 슬라이드용 데이터로 변환
+    #   Repository에서 None 반환 시 적절한 에러 메시지 제공
+    #   예외 발생 시 로깅 후 표준화된 에러 응답 반환
+    async def get_latest_feeds_for_main(self, limit: int) -> LatestFeedResponse:
+        try:
+            # Repository를 통해 기관별 최신 피드 데이터 조회
+            feeds_data = await self.feed_repository.get_latest_feeds_by_organization(limit)
+            
+            # Repository에서 None 반환 시 (데이터 없음) 에러 응답
+            if feeds_data is None:
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code="NOT_FOUND",
+                        message="최신 피드 데이터를 찾을 수 없습니다"
+                    )
+                )
+            
+            # Repository 데이터를 스키마에 맞게 변환
+            latest_feed_items = []
+            for feed in feeds_data:
+                # 기관 정보 객체 생성
+                organization_info = OrganizationInfo(
+                    id=feed['organization_id'],
+                    name=feed['organization_name']
+                )
+                
+                # 최신 피드 항목 객체 생성
+                feed_item = LatestFeedItem(
+                    id=feed['id'],
+                    title=feed['title'],
+                    organization=organization_info
+                )
+                latest_feed_items.append(feed_item)
+            
+            # 최신 피드 데이터 객체 생성
+            latest_feed_data = LatestFeedData(
+                feeds=latest_feed_items,
+                count=len(latest_feed_items)
+            )
+            
+            # 성공 응답 반환
+            return LatestFeedResponse(
+                success=True,
+                message="최신 피드 조회가 완료되었습니다",
+                data=latest_feed_data
+            )
+            
+        except Exception as e:
+            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
+            logger.error(f"Error in get_latest_feeds_for_main: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code="INTERNAL_SERVER_ERROR",
+                    message="서버 내부 오류가 발생했습니다."
+                )
+            )
+        
+    # 기관 페이지용 최신 피드 슬라이드 조회 서비스
+    # 입력: 
+    #   organization_name - 기관명 (str)
+    #   limit - 최대 카테고리 수 제한 (int)
+    # 반환: 
+    #   OrganizationLatestFeedResponse - 성공 시 기관별 최신 피드 데이터
+    #   ErrorResponse - 실패 시 에러 정보
+    # 설명: 
+    #   특정 기관의 카테고리별 최신 피드를 조회하여 기관 페이지 슬라이드용 데이터로 변환
+    #   Repository에서 None 반환 시 적절한 에러 메시지 제공
+    #   예외 발생 시 로깅 후 표준화된 에러 응답 반환
+    async def get_organization_latest_feeds(self, organization_name: str, limit: int) -> OrganizationLatestFeedResponse:
+        try:
+            # Repository를 통해 기관별 카테고리별 최신 피드 데이터 조회
+            feeds_data = await self.feed_repository.get_organization_latest_feeds_by_category(
+                organization_name, limit
+            )
+            
+            # Repository에서 None 반환 시 (데이터 없음) 에러 응답
+            if feeds_data is None:
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code="NOT_FOUND",
+                        message="표시할 피드가 없습니다"
+                    )
+                )
+            
+            # 기관 정보 객체 생성
+            organization_info = OrganizationInfo(
+                id=feeds_data['organization']['id'],
+                name=feeds_data['organization']['name']
+            )
+            
+            # Repository 피드 데이터를 스키마에 맞게 변환
+            organization_latest_feed_items = []
+            for feed in feeds_data['feeds']:
+                # 카테고리 정보 객체 생성
+                category_info = CategoryInfo(
+                    id=feed['category_id'],
+                    name=feed['category_name']
+                )
+                
+                # 기관 최신 피드 항목 객체 생성
+                feed_item = OrganizationLatestFeedItem(
+                    id=feed['id'],
+                    title=feed['title'],
+                    category=category_info
+                )
+                organization_latest_feed_items.append(feed_item)
+            
+            # 기관 최신 피드 데이터 객체 생성
+            organization_latest_feed_data = OrganizationLatestFeedData(
+                organization=organization_info,
+                feeds=organization_latest_feed_items,
+                count=len(organization_latest_feed_items)
+            )
+            
+            # 성공 응답 반환
+            return OrganizationLatestFeedResponse(
+                success=True,
+                message="기관별 최신 피드 조회가 완료되었습니다",
+                data=organization_latest_feed_data
+            )
+            
+        except Exception as e:
+            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
+            logger.error(f"Error in get_organization_latest_feeds: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code="INTERNAL_SERVER_ERROR",

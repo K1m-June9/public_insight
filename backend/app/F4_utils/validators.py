@@ -1,6 +1,9 @@
 import re
-from fastapi import HTTPException, status
+import unicodedata
 import logging
+
+from fastapi import HTTPException, status
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +12,7 @@ EMAIL_REGEX = re.compile(
 )
 
 def validate_user_id(user_id: str):
-    """user_id 유효성 검사: 공백, 길이, 문자 종류, 시작문자, 연속문자 등"""
+    """user_id 유효성 검사"""
 
     # 1. 공백 포함 금지
     if " " in user_id:
@@ -35,6 +38,7 @@ def validate_user_id(user_id: str):
 
 
 def validate_password(password: str):
+    """password 유효성 검사"""
     # 1. 공백 금지
     if " " in password:
         logger.warning("[password] 공백 포함")
@@ -75,3 +79,73 @@ def validate_email(email: str) -> bool:
     if not email:
         return False
     return bool(EMAIL_REGEX.match(email))
+
+
+
+def validate_nickname(nickname: str) -> bool:
+    """
+    닉네임 유효성 검사
+    
+    규칙:
+    - 공백 불가
+    - 허용 문자: 한글, 영어(대소문자), 숫자
+    - 길이: 한글 기준 2글자 이상 12글자 이하
+    - 이모지 금지
+    - 특수문자 금지 (유니코드 범위 내 특수기호)
+    - 금지 단어 포함 불가 (운영자, admin, 중재자, moderator)
+    """
+    # 1) 공백 검사
+    if " " in nickname:
+        return False
+
+    # 2) 금지 단어 검사 (소문자 변환 후 검사)
+    forbidden_words = ["운영자", "admin", "중재자", "moderator"]
+    lowered = nickname.lower()
+    if any(word in lowered for word in forbidden_words):
+        return False
+
+    # 3) 이모지 및 특수문자 검사
+    # 이모지 범위: 유니코드에서 이모지는 여러 블록에 분산되어 있어,
+    # 아래 패턴으로 대략 검사함
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # Emoticons
+        "\U0001F300-\U0001F5FF"  # Symbols & Pictographs
+        "\U0001F680-\U0001F6FF"  # Transport & Map Symbols
+        "\U0001F700-\U0001F77F"  # Alchemical Symbols
+        "\U0001F780-\U0001F7FF"  # Geometric Shapes Extended
+        "\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
+        "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
+        "\U0001FA00-\U0001FA6F"  # Chess Symbols
+        "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
+        "\U00002702-\U000027B0"  # Dingbats
+        "\U000024C2-\U0001F251"
+        "]+",
+        flags=re.UNICODE,
+    )
+    if emoji_pattern.search(nickname):
+        return False
+
+    # 4) 허용 문자 검사: 한글, 영어, 숫자만 허용
+    # 유니코드 한글 영역: 가(0xAC00) ~ 힣(0xD7A3)
+    for char in nickname:
+        code = ord(char)
+        if char.isdigit():
+            continue
+        if 'a' <= char <= 'z' or 'A' <= char <= 'Z':
+            continue
+        if 0xAC00 <= code <= 0xD7A3:
+            continue
+        # 위 외 문자 있으면 불가
+        return False
+
+    # 5) 길이 체크 (한글 기준 2~12자)
+    # 한글 1자 == 2 bytes가 아니라, 여기선 "글자수" 기준임.
+    length = 0
+    for ch in nickname:
+        # 한글 1글자 = 1, 영문/숫자도 1로 카운트
+        length += 1
+    if length < 2 or length > 12:
+        return False
+
+    return True

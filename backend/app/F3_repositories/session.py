@@ -8,14 +8,16 @@ from app.F7_models.refresh_token import RefreshToken
 class SessionRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
-
+    
+    # 임시
     async def get_by_user_id(self, user_id: int) -> List[RefreshToken]:
         """user_id로 모든 리프레시 토큰(세션) 조회"""
         result = await self.db.execute(
             select(RefreshToken).where(RefreshToken.user_id == user_id)
         )
         return result.scalars().all()
-
+    
+    # 임시
     async def get_sessions(
         self,
         user_id: Optional[int] = None,
@@ -51,4 +53,22 @@ class SessionRepository:
             .where(RefreshToken.user_id == user_id)
             .values(revoked=True)
         )
+        await self.db.commit()
+    
+
+    async def revoke_all_for_user_except(self, user_id: str, current_refresh_token: str):
+        """
+        주어진 사용자 ID에 대해 현재 refresh token을 제외함
+        모든 유효한 토큰을 무효화 처리
+        """
+        stmt = (
+            update(RefreshToken)
+            .where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.token != current_refresh_token,
+                RefreshToken.revoked == False
+            )
+            .values(revoked=True)
+        )
+        await self.db.execute(stmt)
         await self.db.commit()

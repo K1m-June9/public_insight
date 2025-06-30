@@ -155,28 +155,6 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
                 detail="Token revoked or invalid"
             )
 
-
-    async def _verify_user_status(self, payload: Dict[str, Any]) -> None:
-        """
-        사용자 계정 상태 확인
-        - 탈퇴, 비활성, 차단된 계정일 경우 접근 차단
-        """
-        user_id = payload['sub']
-        user = await self.auth_repo.get_user_by_user_id(user_id)
-        if not user:
-            # 사용자가 존재하지 않을 경우 예외 발생
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # 사용자 상태가 "ACTIVE"가 아니면 인증 거부
-        if user.status != UserStatus.ACTIVE:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Account is {user.status.value}"
-            )
-
     def _check_role_access(self, request: Request, payload: Dict[str, Any]) -> None:
         """
         특정 경로에 Role 제한이 있는 경우 확인
@@ -255,4 +233,24 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
     - request.state에 사용자 정보 저장
 
 3. 이후 라우터나 서비스는 request.state.user_id 등으로 사용자 식별 가능
+"""
+
+
+"""
+    async def _verify_user_status(self, payload: Dict[str, Any]) -> None:
+        user_id = payload['sub']
+        user = await self.auth_repo.get_user_by_user_id(user_id)
+        if not user:
+            # 사용자가 존재하지 않을 경우 예외 발생
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # 사용자 상태가 "ACTIVE"가 아니면 인증 거부
+        if user.status != UserStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Account is {user.status.value}"
+            )
 """

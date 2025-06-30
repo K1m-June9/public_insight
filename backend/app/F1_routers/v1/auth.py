@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Body, BackgroundTasks, status
 from fastapi.responses import JSONResponse
+import logging 
 
 from app.F2_services.session import SessionService
 from app.F2_services.auth import AuthService, auth_handler
@@ -21,6 +22,8 @@ from app.F6_schemas.auth import (
     TokenVerificationResponse, PasswordResetCompleteResponse, PasswordResetSubmitRequest,
 )
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 # 로그인 엔드포인트
 @router.post("/login", response_model=TokenResponse)
@@ -423,7 +426,6 @@ async def reset_password(
             )
         )
         return JSONResponse(status_code=400, content=error.model_dump())
-
     # 비밀번호 변경 성공 응답 반환
     return PasswordResetCompleteResponse(
         success=True,

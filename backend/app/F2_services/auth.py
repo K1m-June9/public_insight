@@ -11,14 +11,13 @@ from app.F4_utils.validators import validate_user_id, validate_password, validat
 from app.F4_utils.email import SendPasswordResetEmail
 from app.F5_core.config import settings
 from app.F5_core.security import auth_handler
-from app.F5_core.redis import RedisManager, PasswordResetRedisService
-from app.F5_core.logger import logger
+from app.F5_core.redis import RedisManager, PasswordResetRedisService, RedisCacheService
 from app.F6_schemas import base
 from app.F6_schemas import auth
 from app.F7_models.users import User, UserStatus
 from app.F7_models.refresh_token import RefreshToken
 
-
+logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self, repo: AuthRepository):
@@ -366,6 +365,9 @@ class AuthService:
 
             # 사용된 토큰은 Redis에서 즉시 삭제 (재사용 방지)
             await password_reset_redis_service.delete_token(token)
+            
+            # 비밀번호 변경 성공 : 사용자 캐시 무효화 (보안 목적)
+            await RedisCacheService.invalidate_user_cache(user_id)
 
             # 모든 디바이스에서의 로그인 세션 무효화(RefreshToken 전부 폐기)
             await session_service.revoke_all_sessions(user_id)

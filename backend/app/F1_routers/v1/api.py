@@ -5,7 +5,7 @@ from .slider import router as slider_router
 from .static_page import router as static_page_router
 from .organization import router as organization_router
 from .feed import router as feed_router
-
+from .users import router as users_router
 # 메인 API 라우터 설정
 router = APIRouter()
 
@@ -23,6 +23,9 @@ router.include_router(organization_router, prefix="/organizations")
 
 # /feeds 엔드포인트 하위에 정적 페이지 라우터 연결
 router.include_router(feed_router, prefix="/feeds")
+
+# /users 엔드포인트 하위에 연결
+router.include_router(users_router, prefix="/users")
 
 # 미들웨어와 verify_active_user 동작 테스트
 router.include_router(test_router, prefix="/test")

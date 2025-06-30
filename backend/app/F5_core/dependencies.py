@@ -8,17 +8,18 @@ from app.F2_services.session import SessionService
 from app.F2_services.static_page import StaticPageService
 from app.F2_services.organization import OrganizationService
 from app.F2_services.feed import FeedService
+from app.F2_services.users import UserService
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
 from app.F3_repositories.session import SessionRepository
 from app.F3_repositories.organization import OrganizationRepository
 from app.F3_repositories.feed import FeedRepository
+from app.F3_repositories.users import UserRepository
 from app.F4_utils.email import EmailVerificationService
 from app.F3_repositories.static_page import StaticPageRepository
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
+from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
-from app.F7_models.users import User, UserStatus
-
 
 
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
@@ -44,7 +45,7 @@ def get_password_reset_redis_service() -> PasswordResetRedisService:
 async def get_email_verification_services() -> EmailVerificationService:
     """이메일 인증 의존성 주입용 함수"""
     return EmailVerificationService()
-  
+
 async def get_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationService:
     """기관/카테고리 관련 서비스 의존성 주입용 함수"""
     return OrganizationService(OrganizationRepository(db))
@@ -53,13 +54,16 @@ async def get_feed_service(db: AsyncSession = Depends(get_db)) -> FeedService:
     """피드 관련 서비스 의존성 주입용 함수"""
     return FeedService(FeedRepository(db))
 
-
+async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+    """사용자 관련 서비스 의존성 주입용 함수"""
+    return UserService(UserRepository(db))
 
 async def verify_active_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> User:
     """요청에 인증된 사용자가 활성 상태인지 검증하는 함수(Redis 캐시 사용)"""
+    
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
         # user_id가 없으면 안 된 상태
@@ -69,11 +73,15 @@ async def verify_active_user(
     cached = await RedisCacheService.get_cached_user_info(user_id)
 
     if cached:
+        required_fields = ("user_id", "nickname", "email", "status", "role")
+        if not all(field in cached and cached[field] is not None for field in required_fields):
+            cached = None
+
+    if cached:
         # 캐시가 존재하면 상태만 검사
         if cached.get("status") != UserStatus.ACTIVE.value:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
-        
-        return cached
+    
     
     # 2. 캐시가 없으면 DB 조회
     auth_repo = AuthRepository(db)

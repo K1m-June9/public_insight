@@ -9,14 +9,18 @@ from app.F2_services.static_page import StaticPageService
 from app.F2_services.organization import OrganizationService
 from app.F2_services.feed import FeedService
 from app.F2_services.users import UserService
+from app.F2_services.notice import NoticeService
+
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
 from app.F3_repositories.session import SessionRepository
 from app.F3_repositories.organization import OrganizationRepository
 from app.F3_repositories.feed import FeedRepository
 from app.F3_repositories.users import UserRepository
-from app.F4_utils.email import EmailVerificationService
 from app.F3_repositories.static_page import StaticPageRepository
+from app.F3_repositories.notice import NoticeRepository
+
+from app.F4_utils.email import EmailVerificationService
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
 from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
@@ -57,6 +61,9 @@ async def get_feed_service(db: AsyncSession = Depends(get_db)) -> FeedService:
 async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
     """사용자 관련 서비스 의존성 주입용 함수"""
     return UserService(UserRepository(db))
+
+async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeService:
+    return NoticeService(NoticeRepository(db))
 
 async def verify_active_user(
     request: Request,

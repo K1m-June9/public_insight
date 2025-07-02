@@ -20,9 +20,19 @@ from app.F6_schemas.feed import (
     LatestFeedResponse,
     OrganizationLatestFeedData,
     OrganizationLatestFeedItem,
-    OrganizationLatestFeedResponse
+    OrganizationLatestFeedResponse,
+    Top5FeedData,
+    Top5FeedItem,
+    Top5FeedResponse,
+    PressReleaseData,
+    PressReleaseItem,
+    PressReleaseQuery,
+    PressReleaseResponse,
+    FeedDetail,
+    FeedDetailData,
+    FeedDetailResponse
 )
-from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail
+from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail, ErrorCode, Message
 
 logger = logging.getLogger(__name__)
 
@@ -116,8 +126,8 @@ class FeedService:
             logger.error(f"Error in get_main_feed_list: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
-                    code="INTERNAL_SERVER_ERROR",
-                    message="서버 내부 오류가 발생했습니다."
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
                 )
             )
     
@@ -153,8 +163,8 @@ class FeedService:
                 if not check_data:
                     return ErrorResponse(
                         error=ErrorDetail(
-                            code="ORGANIZATION_NOT_FOUND",
-                            message="존재하지 않는 기관입니다."
+                            code=ErrorCode.NOT_FOUND,
+                            message=Message.NOT_FOUND
                         )
                     )
             
@@ -256,8 +266,8 @@ class FeedService:
             logger.error(f"Error in get_organization_feed_list: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
-                    code="INTERNAL_SERVER_ERROR",
-                    message="서버 내부 오류가 발생했습니다."
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
                 )
             )
         
@@ -280,8 +290,8 @@ class FeedService:
             if feeds_data is None:
                 return ErrorResponse(
                     error=ErrorDetail(
-                        code="NOT_FOUND",
-                        message="최신 피드 데이터를 찾을 수 없습니다"
+                        code=ErrorCode.NOT_FOUND,
+                        message=Message.NOT_FOUND
                     )
                 )
             
@@ -320,8 +330,8 @@ class FeedService:
             logger.error(f"Error in get_latest_feeds_for_main: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
-                    code="INTERNAL_SERVER_ERROR",
-                    message="서버 내부 오류가 발생했습니다."
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
                 )
             )
         
@@ -347,8 +357,8 @@ class FeedService:
             if feeds_data is None:
                 return ErrorResponse(
                     error=ErrorDetail(
-                        code="NOT_FOUND",
-                        message="표시할 피드가 없습니다"
+                        code=ErrorCode.NOT_FOUND,
+                        message=Message.NOT_FOUND
                     )
                 )
             
@@ -394,7 +404,257 @@ class FeedService:
             logger.error(f"Error in get_organization_latest_feeds: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
-                    code="INTERNAL_SERVER_ERROR",
-                    message="서버 내부 오류가 발생했습니다."
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                )
+            )
+        
+    # TOP5 피드 조회 서비스
+    # 입력: 
+    #   limit - 각 기준별 피드 수 제한 (int)
+    # 반환: 
+    #   Top5FeedResponse - 성공 시 TOP5 피드 데이터
+    #   ErrorResponse - 실패 시 에러 정보
+    # 설명: 
+    #   조회수, 평균 별점, 북마크 수 기준으로 각각 상위 피드를 조회
+    #   Repository에서 None 반환 시 빈 리스트로 처리
+    #   예외 발생 시 로깅 후 표준화된 에러 응답 반환
+    async def get_top5_feeds(self, limit: int) -> Top5FeedResponse:
+        try:
+            # Repository를 통해 3가지 기준별 상위 피드 데이터 조회
+            top_viewed_data = await self.feed_repository.get_top5_viewed(limit)
+            top_rated_data = await self.feed_repository.get_top5_rated(limit)
+            top_bookmarked_data = await self.feed_repository.get_top5_bookmarked(limit)
+            
+            # None인 경우 빈 리스트로 처리
+            top_viewed_data = top_viewed_data or []
+            top_rated_data = top_rated_data or []
+            top_bookmarked_data = top_bookmarked_data or []
+            
+            # 조회수 기준 피드 데이터를 스키마에 맞게 변환
+            most_viewed_items = []
+            for feed in top_viewed_data:
+                feed_item = Top5FeedItem(
+                    id=feed['id'],
+                    title=feed['title'],
+                    average_rating=feed['average_rating'] if feed['average_rating'] is not None else 0.0,
+                    view_count=feed['view_count'],
+                    bookmark_count=feed['bookmark_count']
+                )
+                most_viewed_items.append(feed_item)
+            
+            # 평균 별점 기준 피드 데이터를 스키마에 맞게 변환
+            top_rated_items = []
+            for feed in top_rated_data:
+                feed_item = Top5FeedItem(
+                    id=feed['id'],
+                    title=feed['title'],
+                    average_rating=feed['average_rating'],  # 별점 기준이므로 항상 값 존재
+                    view_count=feed['view_count'],
+                    bookmark_count=feed['bookmark_count']
+                )
+                top_rated_items.append(feed_item)
+            
+            # 북마크 수 기준 피드 데이터를 스키마에 맞게 변환
+            most_bookmarked_items = []
+            for feed in top_bookmarked_data:
+                feed_item = Top5FeedItem(
+                    id=feed['id'],
+                    title=feed['title'],
+                    average_rating=feed['average_rating'] if feed['average_rating'] is not None else 0.0,
+                    view_count=feed['view_count'],
+                    bookmark_count=feed['bookmark_count']
+                )
+                most_bookmarked_items.append(feed_item)
+            
+            # TOP5 피드 데이터 객체 생성
+            top5_feed_data = Top5FeedData(
+                top_rated=top_rated_items,
+                most_viewed=most_viewed_items,
+                most_bookmarked=most_bookmarked_items
+            )
+            
+            # 성공 응답 반환
+            return Top5FeedResponse(
+                success=True,
+                message="TOP5 피드 조회가 완료되었습니다",
+                data=top5_feed_data
+            )
+            
+        except Exception as e:
+            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
+            logger.error(f"Error in get_top5_feeds: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                )
+            )
+    
+    # 기관별 보도자료 목록 조회 서비스
+    # 입력: 
+    #   organization_name - 기관명 (str)
+    #   query - 페이지네이션 쿼리 파라미터 (PressReleaseQuery)
+    # 반환: 
+    #   PressReleaseResponse - 성공 시 보도자료 데이터
+    #   ErrorResponse - 실패 시 에러 정보
+    # 설명: 
+    #   특정 기관의 보도자료 목록을 페이지네이션과 함께 조회
+    #   Repository에서 None 반환 시 적절한 에러 메시지 제공
+    #   더보기 방식을 고려한 페이지네이션 정보 생성
+    #   예외 발생 시 로깅 후 표준화된 에러 응답 반환
+    async def get_organization_press_releases(self, organization_name: str, query: PressReleaseQuery) -> PressReleaseResponse:
+        try:
+            # offset 계산 (페이지네이션용)
+            offset = (query.page - 1) * query.limit
+            
+            # Repository를 통해 기관별 보도자료 데이터 조회
+            press_data = await self.feed_repository.get_organization_press(
+                organization_name, offset, query.limit
+            )
+            
+            # Repository에서 None 반환 시 (데이터 없음) 에러 응답
+            if press_data is None:
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.NOT_FOUND,
+                        message=Message.NOT_FOUND
+                    )
+                )
+            
+            # 기관 정보 객체 생성
+            organization_info = OrganizationInfo(
+                id=press_data['organization']['id'],
+                name=press_data['organization']['name']
+            )
+            
+            # Repository 보도자료 데이터를 스키마에 맞게 변환
+            press_release_items = []
+            for press_release in press_data['press_releases']:
+                # 카테고리 정보 객체 생성
+                category_info = CategoryInfo(
+                    id=press_release['category_id'],
+                    name=press_release['category_name']
+                )
+                
+                # 보도자료 항목 객체 생성
+                press_item = PressReleaseItem(
+                    id=press_release['id'],
+                    title=press_release['title'],
+                    category=category_info,
+                    summary=press_release['summary'],
+                    view_count=press_release['view_count'],
+                    average_rating=press_release['average_rating']  # Repository에서 0.0 처리됨
+                )
+                press_release_items.append(press_item)
+            
+            # 페이지네이션 정보 생성 (더보기 방식 고려)
+            pagination_info = PaginationInfo(
+                current_page=query.page,
+                total_pages=0,  # 더보기 방식이므로 의미 없음
+                total_count=0,  # 더보기 방식이므로 의미 없음
+                limit=query.limit,
+                has_next=press_data['has_more'],  # Repository의 has_more 사용
+                has_previous=query.page > 1
+            )
+            
+            # 보도자료 데이터 객체 생성
+            press_release_data = PressReleaseData(
+                organization=organization_info,
+                press_releases=press_release_items,
+                pagination=pagination_info
+            )
+            
+            # 성공 응답 반환
+            return PressReleaseResponse(
+                success=True,
+                message="보도자료 조회가 완료되었습니다",
+                data=press_release_data
+            )
+            
+        except Exception as e:
+            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
+            logger.error(f"Error in get_organization_press_releases: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                )
+            )
+        
+    # 피드 상세 페이지용 피드 정보 조회 서비스
+    # 입력: 
+    #   feed_id - 조회할 피드 ID (int)
+    # 반환: 
+    #   FeedDetailResponse - 성공 시 피드 상세 데이터
+    #   ErrorResponse - 실패 시 에러 정보
+    # 설명: 
+    #   특정 피드의 상세 정보를 조회하여 피드 상세 페이지용 데이터로 변환
+    #   조회 성공 시 해당 피드의 조회수를 1 증가시킴
+    #   Repository에서 None 반환 시 적절한 에러 메시지 제공
+    #   예외 발생 시 로깅 후 표준화된 에러 응답 반환
+    async def get_feed_detail_for_page(self, feed_id: int) -> FeedDetailResponse:
+        try:
+            # Repository를 통해 피드 상세 정보 조회
+            feed_data = await self.feed_repository.get_feed_detail(feed_id)
+            
+            # Repository에서 None 반환 시 (데이터 없음) 에러 응답
+            if feed_data is None:
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.NOT_FOUND,
+                        message=Message.NOT_FOUND
+                    )
+                )
+            
+            # 피드 조회 성공 시 조회수 증가 시도
+            view_increment_success = await self.feed_repository.increment_feed_view_count(feed_id)
+            if not view_increment_success:
+                logger.warning(f"조회수 증가 실패 - feed_id: {feed_id}")
+            
+            # 기관 정보 객체 생성
+            organization_info = OrganizationInfo(
+                id=feed_data['organization_id'],
+                name=feed_data['organization_name']
+            )
+            
+            # 카테고리 정보 객체 생성
+            category_info = CategoryInfo(
+                id=feed_data['category_id'],
+                name=feed_data['category_name']
+            )
+            
+            # 피드 상세 정보 객체 생성
+            feed_detail = FeedDetail(
+                id=feed_data['id'],
+                title=feed_data['title'],
+                organization=organization_info,
+                category=category_info,
+                average_rating=feed_data['average_rating'],
+                view_count=feed_data['view_count'],
+                published_date=feed_data['published_date'],
+                content=feed_data['content'],
+                source_url=feed_data['source_url']
+            )
+            
+            # 피드 상세 데이터 객체 생성
+            feed_detail_data = FeedDetailData(
+                feed=feed_detail
+            )
+            
+            # 성공 응답 반환
+            return FeedDetailResponse(
+                success=True,
+                message=Message.SUCCESS,
+                data=feed_detail_data
+            )
+            
+        except Exception as e:
+            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
+            logger.error(f"Error in get_feed_detail_for_page: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
                 )
             )

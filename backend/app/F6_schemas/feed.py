@@ -246,4 +246,4 @@ class FeedPathParams(BaseModel):
 
 class OrganizationPathParams(BaseModel):
     """기관명 경로 파라미터"""
-    organization_name: str = Field(..., min_length=1, description="기관명 (URL 디코딩 필요)")
+    organization_name: str = Field(..., min_length=1, description="기관명")

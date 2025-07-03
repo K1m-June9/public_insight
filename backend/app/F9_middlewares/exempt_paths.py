@@ -18,6 +18,8 @@ exempt_paths = {
     "/api/v1/organizations/",
     "/api/v1/feeds/",
     "/api/v1/feeds/latest",
+    "/api/v1/notices/pinned",
+    "/api/v1/notices/",
     "/api/v1/feeds/top5"
 }
 
@@ -30,6 +32,7 @@ exempt_regex_paths = [
     r"^/api/v1/organizations/[\uAC00-\uD7A3]+/wordcloud$",
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+",
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+/latest",
+    r"^/api/v1/notices/-?[1-9]\d*$"
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+/press",
     r"^/api/v1/feeds/[1-9]\d*$"
 ]

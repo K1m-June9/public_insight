@@ -10,9 +10,14 @@ from app.F6_schemas.feed import (
     OrganizationFeedQuery, 
     LatestFeedQuery, 
     LatestFeedResponse,
-    OrganizationLatestFeedResponse
+    OrganizationLatestFeedResponse,
+    Top5FeedResponse,
+    Top5FeedQuery,
+    PressReleaseResponse,
+    PressReleaseQuery,
+    FeedDetailResponse
     )
-from app.F6_schemas.base import PaginationQuery, ErrorResponse
+from app.F6_schemas.base import PaginationQuery, ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +68,10 @@ async def get_feeds(
     
     # Service에서 에러 응답이 반환된 경우 처리
     if isinstance(result, ErrorResponse):
-        # INTERNAL_SERVER_ERROR의 경우 500 상태 코드로 응답
-        status_code = 500
+        if result.error.code == ErrorCode.INTERNAL_ERROR:
+            status_code = 500
+        else:
+            status_code = 400
         return JSONResponse(status_code=status_code, content=result.model_dump())
     
     # 성공 시 Service에서 반환된 MainFeedListResponse를 그대로 반환
@@ -121,7 +128,7 @@ async def get_organization_feeds(
     if isinstance(result, ErrorResponse):
         # 에러 코드에 따라 HTTP 상태 코드 설정
         # ORGANIZATION_NOT_FOUND: 404, INTERNAL_SERVER_ERROR: 500
-        status_code = 404 if result.error.code == "ORGANIZATION_NOT_FOUND" else 500
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
         return JSONResponse(status_code=status_code, content=result.model_dump())
     
     # 성공 시 Service에서 반환된 OrganizationFeedListResponse를 그대로 반환
@@ -144,9 +151,9 @@ async def get_latest_feeds(
     
     # Service에서 에러 응답이 반환된 경우 처리
     if isinstance(result, ErrorResponse):
-        if result.error.code == "NOT_FOUND":
+        if result.error.code == ErrorCode.NOT_FOUND:
             status_code = 404
-        elif result.error.code == "INTERNAL_SERVER_ERROR":
+        elif result.error.code == ErrorCode.INTERNAL_ERROR:
             status_code = 500
         else:
             status_code = 400
@@ -171,9 +178,86 @@ async def get_organization_feeds_latest(
     
     # Service에서 에러 응답이 반환된 경우 처리
     if isinstance(result, ErrorResponse):
-        if result.error.code == "NOT_FOUND":
+        if result.error.code == ErrorCode.NOT_FOUND:
             status_code = 404
-        elif result.error.code == "INTERNAL_SERVER_ERROR":
+        elif result.error.code == ErrorCode.INTERNAL_ERROR:
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+@router.get("/top5", response_model=Top5FeedResponse)
+async def get_feeds_top5(
+    query: Top5FeedQuery = Depends(),
+    feed_service: FeedService = Depends(get_feed_service)
+) -> Top5FeedResponse:
+    """
+    메인 페이지 TOP5 피드 조회
+    
+    별점순, 조회수순, 북마크순 상위 피드를 각각 제공합니다.
+    메인 페이지 좌측 TOP5 피드 게시 목록에서 사용됩니다.
+    """
+    # Service를 통해 TOP5 피드 데이터 조회
+    result = await feed_service.get_top5_feeds(query.limit)
+    
+    # Service에서 에러 응답이 반환된 경우 처리
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.INTERNAL_ERROR:
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+@router.get("/{name}/press", response_model=PressReleaseResponse)
+async def get_press_releases(
+    name: str,
+    query: PressReleaseQuery = Depends(),
+    feed_service: FeedService = Depends(get_feed_service)
+) -> PressReleaseResponse:
+    """
+    기관 페이지 보도자료 목록 조회
+    
+    각 기관의 보도자료 목록을 페이지네이션과 함께 제공합니다.
+    기관 페이지 좌측 하단 보도자료 리스트에서 사용됩니다.
+    """
+    # Service를 통해 기관별 보도자료 데이터 조회
+    result = await feed_service.get_organization_press_releases(name, query)
+    
+    # Service에서 에러 응답이 반환된 경우 처리
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.NOT_FOUND:
+            status_code = 404
+        elif result.error.code == ErrorCode.INTERNAL_ERROR:
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+@router.get("/{id}", response_model=FeedDetailResponse)
+async def get_feed_by_id(
+    id: int,
+    feed_service: FeedService = Depends(get_feed_service)
+) -> FeedDetailResponse:
+    """
+    피드 상세 정보 조회
+    
+    특정 피드의 상세 정보를 조회합니다.
+    피드 조회 시 해당 피드의 조회수가 1 증가합니다.
+    """
+    # Service를 통해 피드 상세 정보 조회
+    result = await feed_service.get_feed_detail_for_page(id)
+    
+    # Service에서 에러 응답이 반환된 경우 처리
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.NOT_FOUND:
+            status_code = 404
+        elif result.error.code == ErrorCode.INTERNAL_ERROR:
             status_code = 500
         else:
             status_code = 400

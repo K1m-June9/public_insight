@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 import logging
@@ -6,6 +6,7 @@ from app.F7_models.feeds import Feed
 from app.F7_models.ratings import Rating
 from app.F7_models.organizations import Organization
 from app.F7_models.categories import Category
+from app.F7_models.bookmarks import Bookmark
 
 logger = logging.getLogger(__name__)
 
@@ -336,3 +337,376 @@ class FeedRepository:
             'organization': organization_info,
             'feeds': feeds_data
         }
+    
+    # 조회수 기준 상위 피드 목록 조회 메서드
+    # 입력: 
+    #   limit - 조회할 피드 수 제한 (int)
+    # 반환: 
+    #   조회수 기준 상위 피드 정보가 포함된 Dict 객체들의 리스트 또는 None
+    #   각 Dict는 피드 기본 정보, 평균 별점, 조회수, 북마크 수를 포함
+    # 설명: 
+    #   활성화된 피드 중 조회수가 높은 순으로 정렬하여 상위 피드 조회
+    #   동일 조회수일 경우 피드 ID가 큰 순으로 정렬
+    #   결과가 없는 경우 None 반환
+    async def get_top5_viewed(self, limit: int) -> Optional[List[Dict[str, Any]]]:
+        query = select(
+            Feed.id,
+            Feed.title,
+            Feed.view_count,
+            func.avg(Rating.score).label('average_rating'),
+            func.count(Bookmark.id).label('bookmark_count')
+        ).select_from(
+            Feed.__table__.outerjoin(
+                Rating.__table__,
+                Feed.id == Rating.feed_id
+            ).outerjoin(
+                Bookmark.__table__,
+                Feed.id == Bookmark.feed_id
+            )
+        ).where(
+            Feed.is_active == True
+        ).group_by(
+            Feed.id, Feed.title, Feed.view_count
+        ).order_by(
+            Feed.view_count.desc(),
+            Feed.id.desc()
+        ).limit(limit)
+        
+        result = await self.db.execute(query)
+        rows = result.fetchall()
+        
+        # 결과가 없는 경우 None 반환
+        if not rows:
+            return None
+        
+        # 쿼리 결과를 Dict 형태로 변환하여 반환
+        feeds_data = []
+        for row in rows:
+            feed_dict = {
+                'id': row.id,
+                'title': row.title,
+                'average_rating': float(row.average_rating) if row.average_rating else 0.0,
+                'view_count': row.view_count,
+                'bookmark_count': row.bookmark_count
+            }
+            feeds_data.append(feed_dict)
+        
+        return feeds_data
+
+    # 평균 별점 기준 상위 피드 목록 조회 메서드
+    # 입력: 
+    #   limit - 조회할 피드 수 제한 (int)
+    # 반환: 
+    #   평균 별점 기준 상위 피드 정보가 포함된 Dict 객체들의 리스트 또는 None
+    #   각 Dict는 피드 기본 정보, 평균 별점, 조회수, 북마크 수를 포함
+    # 설명: 
+    #   활성화된 피드 중 평균 별점이 높은 순으로 정렬하여 상위 피드 조회
+    #   별점이 없는 피드는 제외하고 조회 (INNER JOIN 사용)
+    #   동일 평균 별점일 경우 피드 ID가 큰 순으로 정렬
+    #   결과가 없는 경우 None 반환
+    async def get_top5_rated(self, limit: int) -> Optional[List[Dict[str, Any]]]:
+        query = select(
+            Feed.id,
+            Feed.title,
+            Feed.view_count,
+            func.avg(Rating.score).label('average_rating'),
+            func.count(Bookmark.id).label('bookmark_count')
+        ).select_from(
+            Feed.__table__.join(
+                Rating.__table__,
+                Feed.id == Rating.feed_id
+            ).outerjoin(
+                Bookmark.__table__,
+                Feed.id == Bookmark.feed_id
+            )
+        ).where(
+            Feed.is_active == True
+        ).group_by(
+            Feed.id, Feed.title, Feed.view_count
+        ).order_by(
+            func.avg(Rating.score).desc(),
+            Feed.id.desc()
+        ).limit(limit)
+        
+        result = await self.db.execute(query)
+        rows = result.fetchall()
+        
+        # 결과가 없는 경우 None 반환
+        if not rows:
+            return None
+        
+        # 쿼리 결과를 Dict 형태로 변환하여 반환
+        feeds_data = []
+        for row in rows:
+            feed_dict = {
+                'id': row.id,
+                'title': row.title,
+                'average_rating': float(row.average_rating),
+                'view_count': row.view_count,
+                'bookmark_count': row.bookmark_count
+            }
+            feeds_data.append(feed_dict)
+        
+        return feeds_data
+
+    # 북마크 수 기준 상위 피드 목록 조회 메서드
+    # 입력: 
+    #   limit - 조회할 피드 수 제한 (int)
+    # 반환: 
+    #   북마크 수 기준 상위 피드 정보가 포함된 Dict 객체들의 리스트 또는 None
+    #   각 Dict는 피드 기본 정보, 평균 별점, 조회수, 북마크 수를 포함
+    # 설명: 
+    #   활성화된 피드 중 북마크 수가 많은 순으로 정렬하여 상위 피드 조회
+    #   북마크가 없는 피드는 제외하고 조회 (INNER JOIN 사용)
+    #   동일 북마크 수일 경우 피드 ID가 큰 순으로 정렬
+    #   결과가 없는 경우 None 반환
+    async def get_top5_bookmarked(self, limit: int) -> Optional[List[Dict[str, Any]]]:
+        query = select(
+            Feed.id,
+            Feed.title,
+            Feed.view_count,
+            func.avg(Rating.score).label('average_rating'),
+            func.count(Bookmark.id).label('bookmark_count')
+        ).select_from(
+            Feed.__table__.join(
+                Bookmark.__table__,
+                Feed.id == Bookmark.feed_id
+            ).outerjoin(
+                Rating.__table__,
+                Feed.id == Rating.feed_id
+            )
+        ).where(
+            Feed.is_active == True
+        ).group_by(
+            Feed.id, Feed.title, Feed.view_count
+        ).order_by(
+            func.count(Bookmark.id).desc(),
+            Feed.id.desc()
+        ).limit(limit)
+        
+        result = await self.db.execute(query)
+        rows = result.fetchall()
+        
+        # 결과가 없는 경우 None 반환
+        if not rows:
+            return None
+        
+        # 쿼리 결과를 Dict 형태로 변환하여 반환
+        feeds_data = []
+        for row in rows:
+            feed_dict = {
+                'id': row.id,
+                'title': row.title,
+                'average_rating': float(row.average_rating) if row.average_rating else 0.0,
+                'view_count': row.view_count,
+                'bookmark_count': row.bookmark_count
+            }
+            feeds_data.append(feed_dict)
+        
+        return feeds_data
+    
+    # 기관별 보도자료 목록 조회 메서드 (페이지네이션)
+    # 입력: 
+    #   organization_name - 기관명 (str)
+    #   offset - 시작 위치 (int)
+    #   limit - 조회할 피드 수 제한 (int)
+    # 반환: 
+    #   기관 정보와 보도자료 목록이 포함된 Dict 객체 또는 None
+    #   다음 페이지 존재 여부(has_more) 포함
+    # 설명: 
+    #   특정 기관의 '보도자료' 카테고리 피드만 조회
+    #   published_date 기준 내림차순, 동일 시 created_at 기준 내림차순 정렬
+    #   활성화된 피드(is_active=True)만 대상
+    #   limit + 1개 조회하여 다음 페이지 존재 여부 확인
+    #   결과가 없는 경우 None 반환
+    async def get_organization_press(
+        self, organization_name: str, offset: int, limit: int
+    ) -> Optional[Dict[str, Any]]:
+        # 메인 쿼리: 기관의 보도자료 조회 (평균 별점 포함)
+        query = select(
+            Feed.id,
+            Feed.title,
+            Feed.summary,
+            Feed.view_count,
+            Feed.organization_id,
+            Organization.name.label('organization_name'),
+            Category.id.label('category_id'),
+            Category.name.label('category_name'),
+            func.avg(Rating.score).label('average_rating')
+        ).select_from(
+            Feed.__table__.join(
+                Organization.__table__,
+                Feed.organization_id == Organization.id
+            ).join(
+                Category.__table__,
+                Feed.category_id == Category.id
+            ).outerjoin(
+                Rating.__table__,
+                Feed.id == Rating.feed_id
+            )
+        ).where(
+            # 특정 기관명으로 필터링
+            Organization.name == organization_name,
+            # '보도자료' 카테고리만 필터링
+            Category.name == '보도자료',
+            # 활성화된 피드만 대상
+            Feed.is_active == True
+        ).group_by(
+            Feed.id, Feed.title, Feed.summary, Feed.view_count,
+            Feed.organization_id, Organization.name,
+            Category.id, Category.name
+        ).order_by(
+            Feed.published_date.desc(),
+            Feed.created_at.desc()
+        ).offset(offset).limit(limit + 1)  # limit + 1개 조회 (다음 페이지 확인용)
+        
+        result = await self.db.execute(query)
+        rows = result.fetchall()
+        
+        # 결과가 없는 경우 None 반환
+        if not rows:
+            return None
+        
+        # 다음 페이지 존재 여부 확인
+        has_more = len(rows) > limit
+        actual_rows = rows[:limit]  # 실제 반환할 데이터 (limit개만)
+        
+        # 첫 번째 행에서 기관 정보 추출
+        first_row = actual_rows[0]
+        organization_info = {
+            'id': first_row.organization_id,
+            'name': first_row.organization_name
+        }
+        
+        # 보도자료 리스트 구성
+        press_releases_data = []
+        for row in actual_rows:
+            press_release_dict = {
+                'id': row.id,
+                'title': row.title,
+                'summary': row.summary,
+                'view_count': row.view_count,
+                'average_rating': float(row.average_rating) if row.average_rating else 0.0,
+                'category_id': row.category_id,
+                'category_name': row.category_name
+            }
+            press_releases_data.append(press_release_dict)
+        
+        # 기관 정보, 보도자료 리스트, 다음 페이지 여부를 포함한 구조로 반환
+        return {
+            'organization': organization_info,
+            'press_releases': press_releases_data,
+            'has_more': has_more
+        }
+    
+    # 특정 피드의 상세 정보 조회 메서드
+    # 입력: 
+    #   feed_id - 조회할 피드 ID (int)
+    # 반환: 
+    #   피드 상세 정보가 포함된 Dict 객체 또는 None
+    #   Dict는 피드 기본 정보, 평균 별점, 기관/카테고리 정보를 포함
+    # 설명: 
+    #   활성화된 피드, 기관, 카테고리만 조회 (3중 활성화 체크)
+    #   Rating 테이블과 LEFT JOIN하여 평균 별점 계산
+    #   original_text를 content로 반환
+    #   결과가 없는 경우 None 반환
+    async def get_feed_detail(self, feed_id: int) -> Optional[Dict[str, Any]]:
+        try:
+            # 서브쿼리: 피드별 평균 별점 계산
+            rating_subquery = (
+                self.db.query(
+                    Rating.feed_id,
+                    func.avg(Rating.score).label('average_rating')
+                )
+                .group_by(Rating.feed_id)
+                .subquery()
+            )
+            
+            # 메인 쿼리: 피드 상세 정보 조회
+            query = (
+                self.db.query(
+                    Feed.id,
+                    Feed.title,
+                    Feed.original_text.label('content'),
+                    Feed.source_url,
+                    Feed.published_date,
+                    Feed.view_count,
+                    Organization.id.label('organization_id'),
+                    Organization.name.label('organization_name'),
+                    Category.id.label('category_id'),
+                    Category.name.label('category_name'),
+                    rating_subquery.c.average_rating
+                )
+                .join(Organization, Feed.organization_id == Organization.id)
+                .join(Category, Feed.category_id == Category.id)
+                .outerjoin(rating_subquery, Feed.id == rating_subquery.c.feed_id)
+                .filter(
+                    and_(
+                        Feed.id == feed_id,
+                        Feed.is_active == True,
+                        Organization.is_active == True,
+                        Category.is_active == True
+                    )
+                )
+            )
+            
+            result = query.first()
+            
+            if not result:
+                return None
+                
+            return {
+                'id': result.id,
+                'title': result.title,
+                'content': result.content,
+                'source_url': result.source_url,
+                'published_date': result.published_date,
+                'view_count': result.view_count,
+                'average_rating': float(result.average_rating) if result.average_rating else 0.0,
+                'organization_id': result.organization_id,
+                'organization_name': result.organization_name,
+                'category_id': result.category_id,
+                'category_name': result.category_name
+            }
+            
+        except Exception as e:
+            logger.error(f"피드 상세 조회 중 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
+            return None
+
+    # 특정 피드의 조회수 증가 메서드
+    # 입력: 
+    #   feed_id - 조회수를 증가시킬 피드 ID (int)
+    # 반환: 
+    #   성공 여부 (bool)
+    # 설명: 
+    #   활성화된 피드의 조회수를 1 증가시킴
+    #   피드가 존재하지 않거나 비활성화된 경우 False 반환
+    #   예외 발생 시 롤백 후 False 반환
+    async def increment_feed_view_count(self, feed_id: int) -> bool:
+        try:
+            result = (
+                self.db.query(Feed)
+                .filter(
+                    and_(
+                        Feed.id == feed_id,
+                        Feed.is_active == True
+                    )
+                )
+                .update(
+                    {Feed.view_count: Feed.view_count + 1},
+                    synchronize_session=False
+                )
+            )
+            
+            if result > 0:
+                self.db.commit()
+                logger.info(f"피드 조회수 증가 성공 - feed_id: {feed_id}")
+                return True
+            else:
+                logger.warning(f"피드 조회수 증가 실패 - 피드를 찾을 수 없음: feed_id: {feed_id}")
+                return False
+                
+        except Exception as e:
+            self.db.rollback()
+            logger.warning(f"피드 조회수 증가 중 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
+            return False

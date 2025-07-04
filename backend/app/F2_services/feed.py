@@ -30,16 +30,19 @@ from app.F6_schemas.feed import (
     PressReleaseResponse,
     FeedDetail,
     FeedDetailData,
-    FeedDetailResponse
+    FeedDetailResponse,
+    RatingResponse, 
+    RatingData,
+
 )
 from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail, ErrorCode, Message
 
 logger = logging.getLogger(__name__)
 
 class FeedService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.feed_repository = FeedRepository(db)
+    def __init__(self, repo: FeedRepository):
+        self.feed_repository = repo
+
     
     # 메인 페이지 피드 목록 조회 서비스 메서드
     # 입력: 
@@ -658,3 +661,79 @@ class FeedService:
                     message=Message.INTERNAL_ERROR
                 )
             )
+        
+
+    async def post_feed_rating(self, feed_id: int, user_id: str, score: int)-> RatingResponse:
+        try:
+            # user_id를 통해 user pk 구하기
+            user_pk = await self.feed_repository.get_user_pk_by_user_id(user_id)
+            
+            if not user_pk:
+                logger.warning(f"존재하지 않는 사용자 - user_id: {user_id}")
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code="USER_NOT_FOUND",
+                        message="존재하지 않는 사용자입니다"
+                    )
+                )
+            
+            # 피드 존재 여부
+            is_exists = await self.feed_repository.is_feed_exists(feed_id)
+
+            if not is_exists: 
+                logger.warning(f"존재하지 않는 피드 - feed_id: {feed_id}")
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code="FEED_NOT_FOUND",
+                        message="존재하지 않는 피드입니다"
+                    )
+                )
+        
+            # 이미 평점 존재하는 경우
+            already_rated = await self.feed_repository.is_rating_exists(feed_id, user_pk)
+            
+            if already_rated:
+                logger.warning(f"이미 완료된 피드 - feed_id: {feed_id}")
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code="RATING_ALREADY_EXISTS",
+                        message="이미 별점을 준 피드입니다"
+                    )
+                )
+            
+
+            # 점수 유효성 (중복 검사)
+            if not (1 <= score <= 5):
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code="INVALID_RATING_SCORE",
+                        message="별점은 1-5점 사이의 값이어야 합니다"
+                    )
+                )
+
+            # 평점 등록
+            await self.feed_repository.register_rating(feed_id, user_pk, score)
+
+            # 평점 통계 조회
+            rating_stats  = await self.feed_repository.get_feed_rating(feed_id)
+            # 반환
+            return RatingResponse(
+                success=True,
+                data = RatingData(
+                    user_rating=score,
+                    average_rating= rating_stats["average_rating"],
+                    total_ratings= rating_stats["total_ratings"],
+                    message= "별점이 등록되었습니다"
+                )
+            )
+
+        except Exception as e:
+            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
+            logger.error(f"Error in post_feed_rating_for_page: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                )
+            )
+    

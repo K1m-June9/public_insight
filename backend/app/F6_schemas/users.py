@@ -40,33 +40,33 @@ from app.F6_schemas.base import BaseSchema, BaseResponse, PaginationInfo
 # 2. 별점 관련 스키마
 # =================================
 
-# class RatingItem(BaseSchema):
-#     """별점 항목 정보"""
-#     feed_id: int
-#     feed_title: str
-#     organization_id: int
-#     organization_name: str
-#     category_id: int
-#     category_name: str
-#     view_count: int
-#     published_date: datetime
-#     user_rating: int
-#     average_rating: float
-#     rated_at: datetime
+class RatingItem(BaseSchema):
+    """별점 항목 정보"""
+    feed_id: int
+    feed_title: str
+    organization_id: int
+    organization_name: str
+    category_id: int
+    category_name: str
+    view_count: int
+    published_date: datetime
+    user_rating: int
+    average_rating: float
+    rated_at: datetime
 
-# class UserRatingListData(BaseModel):
-#     """별점 목록 데이터"""
-#     ratings: List[RatingItem]
-#     pagination: PaginationInfo
+class UserRatingListData(BaseModel):
+    """별점 목록 데이터"""
+    ratings: List[RatingItem]
+    pagination: PaginationInfo
 
-# class UserRatingListResponse(BaseResponse):
-#     """별점 목록 응답"""
-#     data: UserRatingListData
+class UserRatingListResponse(BaseResponse):
+    """별점 목록 응답"""
+    data: UserRatingListData
 
-# class UserRatingListQuery(BaseModel):
-#     """별점 목록 쿼리 파라미터"""
-#     page: int = 1
-#     limit: int = Field(default=20, le=20)
+class UserRatingListQuery(BaseModel):
+    """별점 목록 쿼리 파라미터"""
+    page: int = 1
+    limit: int = Field(default=20, le=20)
 
 # =================================
 # 3. 프로필 관련 스키마

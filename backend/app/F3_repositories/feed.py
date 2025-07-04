@@ -7,6 +7,7 @@ from app.F7_models.ratings import Rating
 from app.F7_models.organizations import Organization
 from app.F7_models.categories import Category
 from app.F7_models.bookmarks import Bookmark
+from app.F7_models.users import User
 
 logger = logging.getLogger(__name__)
 
@@ -710,3 +711,58 @@ class FeedRepository:
             self.db.rollback()
             logger.warning(f"피드 조회수 증가 중 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
             return False
+        
+    
+
+    async def is_feed_exists(self, feed_id: int) -> bool:
+        result = await self.db.execute(
+            select(Feed).where(Feed.id == feed_id, Feed.is_active.is_(True))
+        )
+        feed = result.scalars().first()
+        return feed is not None
+
+    async def is_rating_exists(self, feed_id: int, user_pk: int) -> bool:
+        result = await self.db.execute(
+            select(Rating).where(
+                    Rating.feed_id == feed_id,
+                    Rating.user_id == user_pk    
+            )
+        )
+        rating = result.scalars().first()
+        return rating is not None
+
+    async def get_user_pk_by_user_id(self, user_id: str) -> int | None:
+        result = await self.db.execute(select(User).where(User.user_id == user_id))
+        
+        user_obj = result.scalar_one_or_none()
+        if user_obj is None:
+            return None
+        return user_obj.id
+
+    async def register_rating(self, feed_id: int, user_pk: int, score: int) -> None:
+        new_rating = Rating(
+            feed_id=feed_id, 
+            user_id=user_pk, 
+            score=score
+        )
+
+        self.db.add(new_rating)
+        await self.db.commit()
+        await self.db.refresh(new_rating)
+
+    async def get_feed_rating(self, feed_id: int) -> dict:
+        result = await self.db.execute(
+            select(
+                func.avg(Rating.score).label("average_rating"),
+                func.count(Rating.id).label("total_ratings")
+            ).where(Rating.feed_id == feed_id)
+        )
+        row = result.first()
+        if row is None:
+            return {"average_rating": 0.0, "total_ratings": 0}
+
+        average_rating, total_ratings = row
+        return {
+            "average_rating": float(average_rating or 0),
+            "total_ratings": total_ratings
+        }

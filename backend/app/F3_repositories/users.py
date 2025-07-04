@@ -1,10 +1,18 @@
-from sqlalchemy import select, update, delete, exists
+from sqlalchemy import select, update, delete, exists, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 import logging
 
+from app.F6_schemas.users import (
+    RatingItem,
+)
 from app.F7_models.users import User
+from app.F7_models.ratings import Rating
+from app.F7_models.feeds import Feed
+from app.F7_models.categories import Category
+from app.F7_models.organizations import Organization
 
 logger = logging.getLogger(__name__)
 
@@ -63,4 +71,60 @@ class UserRepository:
         user.password_hash = password
         await self.db.commit()
         await self.db.refresh(user)
+
+
+    async def get_user_pk_by_user_id(self, user_id: str) -> int | None:
+        """주어진 user_id로 User 테이블에서 PK(id)를 조회"""
+        result = await self.db.execute(
+            select(User).where(User.user_id == user_id)
+        )
+        user_obj = result.scalar_one_or_none() # 결과가 없으면 None 반환
+        return user_obj.id if user_obj else None
     
+    async def get_total_ratings_count(self, user_pk: int) -> int:
+        """특정 사용자가 남긴 별점의 총 개수를 반환"""
+        result = await self.db.execute(
+            select(func.count()) # 카운트 쿼리
+            .select_from(Rating)
+            .where(Rating.user_id == user_pk)
+        )
+        return result.scalar_one() # 총 개수 반환
+
+
+    async def get_ratings_data(self, user_pk: int, offset: int, limit: int) -> list[RatingItem]:
+        """
+        사용자가 남긴 별점과 관련 피드 정보를 조회
+        (pagination 적용: offset, limit)
+        """
+        stmt = (
+            select(
+                Feed.id.label("feed_id"),       # 피드 ID
+                Feed.title.label("feed_title"), # 피드 제목
+                Feed.organization_id,           # 소속 기관 ID
+                Organization.name.label("organization_name"),   # 소속 기관 이름
+                Feed.category_id,               # 카테고리 ID
+                Category.name.label("category_name"),           # 카테고리 이름
+                Feed.view_count,                                # 피드 조회수
+                Feed.published_date,                            # 원본 콘텐츠의 발행 일시
+                Rating.score.label("user_rating"),              # 사용자가 준 별점
+                func.avg(Rating.score).over(partition_by=Feed.id).label("average_rating"),                              # 해당 피드의 평균
+                Rating.created_at.label("rated_at"),             # 사용자가 별점 남긴 날짜
+            )
+            .join(Rating, Rating.feed_id == Feed.id)    
+            .join(Organization, Feed.organization_id == Organization.id)
+            .join(Category, Feed.category_id == Category.id)
+            .where(
+                Rating.user_id == user_pk,  # 해당 사용자의 별점만 조회
+                Feed.is_active.is_(True)    # 활성화된 피드만
+            )
+            .order_by(Rating.created_at.desc()) # 최신 별점부터 정렬
+            .offset(offset)                     # 페이지네이션: 시작 위치
+            .limit(limit)                       # 페이지네이션: 조회 개수
+        )
+
+        result = await self.db.execute(stmt)
+        rows = result.all() # 결과 전부 가져오기
+
+        # SQLAlchemy Row 객체를 RatingItem으로 변환
+        return [RatingItem(**dict(row._mapping)) for row in rows]
+

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 import logging
 from app.F2_services.feed import FeedService
-from app.F5_core.dependencies import get_feed_service
+from app.F5_core.dependencies import get_feed_service, verify_active_user
 from app.F6_schemas.feed import (
     MainFeedListResponse, 
     FeedListQuery, 
@@ -15,9 +15,13 @@ from app.F6_schemas.feed import (
     Top5FeedQuery,
     PressReleaseResponse,
     PressReleaseQuery,
-    FeedDetailResponse
+    FeedDetailResponse,
+    RatingRequest,
+    RatingData,
+    RatingResponse,
     )
 from app.F6_schemas.base import PaginationQuery, ErrorResponse, ErrorCode
+from app.F7_models.users import User
 
 logger = logging.getLogger(__name__)
 
@@ -264,3 +268,20 @@ async def get_feed_by_id(
         return JSONResponse(status_code=status_code, content=result.model_dump())
     
     return result
+
+# 별점 주기
+@router.post("/{id}/ratings", response_model=RatingResponse)
+async def post_feed_rating(
+    id: int, 
+    payload: RatingRequest,
+    feed_service: FeedService = Depends(get_feed_service),
+    current_user: User = Depends(verify_active_user)
+):
+    result = await feed_service.post_feed_rating(id, current_user.user_id, payload.score)
+    
+    if isinstance(result, ErrorResponse):
+        return JSONResponse(
+            status_code=400, 
+            content=result.model_dump())
+    
+    return result 

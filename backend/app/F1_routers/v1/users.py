@@ -9,7 +9,8 @@ from app.F5_core.redis import RedisCacheService
 from app.F6_schemas import base
 from app.F6_schemas.users import (
     UserProfile, UserProfileData, UserProfileResponse, UserNickNameUpdateRequest,
-    UserPasswordUpdateRequest, UserPasswordUpdateResponse
+    UserPasswordUpdateRequest, UserPasswordUpdateResponse, UserRatingListResponse, 
+    UserRatingListQuery,
 )
 from app.F7_models.users import User
 
@@ -133,4 +134,30 @@ async def update_password(
     except Exception as e:
         logger.exception("비밀번호 변경 중 예외 발생")
         return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+
+# 사용자 별점 목록 조회
+@router.get("/ratings", response_model=UserRatingListResponse)
+async def get_my_ratings(
+    query: base.PaginationQuery = Depends(),               # 페이지네이션 쿼리 파라미터
+    current_user: User = Depends(verify_active_user),      # 현재 로그인한 사용자
+    user_service: UserService = Depends(get_user_service), # UserService 의존성 주입
+):
+    # 쿼리 파라미터 객체 변환
+    ratings_query =  UserRatingListQuery(
+        page= query.page,
+        limit = query.limit
+    )
+
+    # 서비스 호출하여 결과 가져오기
+    result = await user_service.get_my_ratings(ratings_query, current_user.user_id)
+
+    # 에러 응답 처리
+    if isinstance(result, base.ErrorResponse):
+        return JSONResponse(
+            status_code=500,
+            content=result.model_dump()
+        )
     
+    # 성공 응답 반환
+    return result

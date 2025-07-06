@@ -33,6 +33,10 @@ from app.F6_schemas.feed import (
     FeedDetailResponse,
     RatingResponse, 
     RatingData,
+    BookmarkResponse,
+    BookmarkData,
+    BookmarkRequest
+
 
 )
 from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail, ErrorCode, Message
@@ -737,3 +741,57 @@ class FeedService:
                 )
             )
     
+    async def post_feed_bookmark(self, feed_id: int, user_id: str) -> BookmarkResponse | ErrorResponse:
+        # user_id로 user_pk 조회
+        user_pk = await self.feed_repository.get_user_pk_by_user_id(user_id)
+
+        if not user_pk:
+            logger.warning(f"존재하지 않는 사용자 - user_id: {user_id}")
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code="USER_NOT_FOUND",
+                    message="존재하지 않는 사용자입니다"
+                )
+            )
+        
+        # feed 존재 여부 확인
+        is_exists = await self.feed_repository.is_feed_exists(feed_id)
+
+        if not is_exists: 
+            logger.warning(f"존재하지 않는 피드 - feed_id: {feed_id}")
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code="FEED_NOT_FOUND",
+                    message="존재하지 않는 피드입니다"
+                )
+            )
+        
+        # 북마크 존재 여부 확인
+        bookmark = await self.feed_repository.get_bookmark(user_pk, feed_id)
+
+        if bookmark:
+            # 북마크 존재하면 제거
+            await self.feed_repository.delete_bookmark(bookmark.id)
+            # 북마크 개수 조회
+            bookmark_count = await self.feed_repository.get_bookmark_count(feed_id)
+            return BookmarkResponse(
+                success=True,
+                data = BookmarkData(
+                    is_bookmarked=False,
+                    bookmark_count=bookmark_count,
+                    message="북마크가 제거되었습니다"
+                )
+            )
+        else:
+            # 북마크 없으면 추가
+            await self.feed_repository.create_bookmark(user_pk, feed_id)
+            # 북마크 개수 조회
+            bookmark_count = await self.feed_repository.get_bookmark_count(feed_id)
+            return BookmarkResponse(
+                success=True,
+                data = BookmarkData(
+                    is_bookmarked=True,
+                    bookmark_count=bookmark_count,
+                    message="북마크가 추가되었습니다"
+                )
+            )

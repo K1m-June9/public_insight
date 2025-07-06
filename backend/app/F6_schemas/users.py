@@ -9,31 +9,31 @@ from app.F6_schemas.base import BaseSchema, BaseResponse, PaginationInfo
 # 1. 북마크 관련 스키마
 # =================================
 
-# class BookmarkItem(BaseSchema):
-#     """북마크 항목 정보"""
-#     feed_id: int
-#     feed_title: str
-#     organization_id: int
-#     organization_name: str
-#     category_id: int
-#     category_name: str
-#     view_count: int
-#     published_date: datetime
-#     bookmarked_at: datetime
+class BookmarkItem(BaseSchema):
+    """북마크 항목 정보"""
+    feed_id: int
+    feed_title: str
+    organization_id: int
+    organization_name: str
+    category_id: int
+    category_name: str
+    view_count: int
+    published_date: datetime
+    bookmarked_at: datetime
 
-# class UserBookmarkListData(BaseModel):
-#     """북마크 목록 데이터"""
-#     bookmarks: List[BookmarkItem]
-#     pagination: PaginationInfo
+class UserBookmarkListData(BaseModel):
+    """북마크 목록 데이터"""
+    bookmarks: List[BookmarkItem]
+    pagination: PaginationInfo
 
-# class UserBookmarkListResponse(BaseResponse):
-#     """북마크 목록 응답"""
-#     data: UserBookmarkListData
+class UserBookmarkListResponse(BaseResponse):
+    """북마크 목록 응답"""
+    data: UserBookmarkListData
 
-# class UserBookmarkListQuery(BaseModel):
-#     """북마크 목록 쿼리 파라미터"""
-#     page: int = 1
-#     limit: int = Field(default=20, le=20)
+class UserBookmarkListQuery(BaseModel):
+    """북마크 목록 쿼리 파라미터"""
+    page: int = 1
+    limit: int = Field(default=20, le=20)
 
 
 # =================================

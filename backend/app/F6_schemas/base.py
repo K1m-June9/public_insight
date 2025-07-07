@@ -348,8 +348,11 @@ class Message:
     CREATED = "성공적으로 생성되었습니다"
     UPDATED = "성공적으로 수정되었습니다"
     DELETED = "성공적으로 삭제되었습니다"
+    LOGIN_SUCCESS = "로그인에 성공했습니다"
     
     # 에러 메시지
+    # ErrorCode.INVALID_
+
     # ErrorCode.NOT_FOUND
     NOT_FOUND = "요청한 리소스를 찾을 수 없습니다"
     SLIDER_NOT_FOUND = "슬라이더를 찾을 수 없습니다."
@@ -377,9 +380,12 @@ class Message:
 
     # ErrorCode.UNAUTHORIZED
     UNAUTHORIZED = "인증이 필요합니다"
-        
-    # ErrorCode.VALIDATION_ERROR
+    
+    # ErrorCode.INVALID_PARAMETER
     INVALID_PARAMETER = "잘못된 파라미터입니다"
+    LOGIN_FAILED = "아이디 또는 비밀번호가 올바르지 않습니다"
+    
+    # ErrorCode.VALIDATION_ERROR
     INVALID_URL = "유효하지 않은 URL 형식입니다."
     INVALID_SLUG_ERROR = "유효하지 않은 페이지 슬러그입니다."
     INVALID_ROLE_CHANGE = "ADMIN 권한은 변경할 수 없습니다."

@@ -9,8 +9,8 @@ class WordCloud(Base):
     # Primary Key
     id = Column(Integer, primary_key=True, autoincrement=True)
     
-    # 기관 ID (외래키, 유니크)
-    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, unique=True)
+    # 기관 ID (외래키)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
     
     # 워드클라우드 데이터 (JSON 형태로 저장)
     # 예: [{"text": "예산", "value": 85.5}, {"text": "법안", "value": 72.3}, ...]

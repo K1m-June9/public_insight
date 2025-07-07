@@ -766,3 +766,32 @@ class FeedRepository:
             "average_rating": float(average_rating or 0),
             "total_ratings": total_ratings
         }
+    
+
+    async def get_bookmark(self, user_pk: int, feed_id: int) -> Bookmark | None:
+        result = await self.db.execute(
+            select(Bookmark).where(
+                Bookmark.user_id == user_pk,
+                Bookmark.feed_id == feed_id
+            )
+        )
+        return result.scalar_one_or_none()
+    
+    async def create_bookmark(self, user_pk: int, feed_id: int):
+        new_bookmark = Bookmark(user_id=user_pk, feed_id=feed_id)
+        self.db.add(new_bookmark)
+        await self.db.commit()
+        await self.db.refresh(new_bookmark)
+    
+    async def delete_bookmark(self, bookmark_id: int):
+        bookmark = await self.db.get(Bookmark, bookmark_id)
+        if bookmark:
+            await self.db.delete(bookmark)
+            await self.db.commit()
+
+    
+    async def get_bookmark_count(self, feed_id: int) -> int:
+        result = await self.db.execute(
+            select(func.count(Bookmark.id)).where(Bookmark.feed_id == feed_id)
+        )
+        return result.scalar_one()

@@ -6,11 +6,12 @@ from typing import Optional, List
 import logging
 
 from app.F6_schemas.users import (
-    RatingItem,
+    RatingItem, BookmarkItem
 )
 from app.F7_models.users import User
 from app.F7_models.ratings import Rating
 from app.F7_models.feeds import Feed
+from app.F7_models.bookmarks import Bookmark
 from app.F7_models.categories import Category
 from app.F7_models.organizations import Organization
 
@@ -81,6 +82,7 @@ class UserRepository:
         user_obj = result.scalar_one_or_none() # 결과가 없으면 None 반환
         return user_obj.id if user_obj else None
     
+
     async def get_total_ratings_count(self, user_pk: int) -> int:
         """특정 사용자가 남긴 별점의 총 개수를 반환"""
         result = await self.db.execute(
@@ -128,3 +130,48 @@ class UserRepository:
         # SQLAlchemy Row 객체를 RatingItem으로 변환
         return [RatingItem(**dict(row._mapping)) for row in rows]
 
+
+    async def get_total_bookmarks_count(self, user_pk: int) -> int:
+        """특정 사용자가 남긴 별점의 총 개수를 반환"""
+        result = await self.db.execute(
+            select(func.count()) # 카운트 쿼리
+            .select_from(Bookmark)
+            .where(Bookmark.user_id == user_pk)
+        )
+        return result.scalar_one() # 총 개수 반환
+    
+    
+    async def get_bookmarks_data(self, user_pk: int, offset: int, limit: int) -> list[BookmarkItem]:
+        """
+        북마크된 피드 정보를 조회
+        (pagination 적용: offset, limit)
+        """
+        stmt = (
+            select(
+                Feed.id.label("feed_id"),       # 피드 ID
+                Feed.title.label("feed_title"), # 피드 제목
+                Feed.organization_id,           # 소속 기관 ID
+                Organization.name.label("organization_name"),   # 소속 기관 이름
+                Feed.category_id,               # 카테고리 ID
+                Category.name.label("category_name"),           # 카테고리 이름
+                Feed.view_count,                                # 피드 조회수
+                Feed.published_date,                            # 원본 콘텐츠의 발행 일시
+                Bookmark.created_at.label("bookmarked_at")
+            )
+            .join(Bookmark, Bookmark.feed_id == Feed.id)    
+            .join(Organization, Feed.organization_id == Organization.id)
+            .join(Category, Feed.category_id == Category.id)
+            .where(
+                Bookmark.user_id == user_pk,  # 해당 사용자의 별점만 조회
+                Feed.is_active.is_(True)    # 활성화된 피드만
+            )
+            .order_by(Bookmark.created_at.desc()) # 최신 북마크 순으로 정렬
+            .offset(offset)                     # 페이지네이션: 시작 위치
+            .limit(limit)                       # 페이지네이션: 조회 개수
+        )
+
+        result = await self.db.execute(stmt)
+        rows = result.all() # 결과 전부 가져오기
+
+        # SQLAlchemy Row 객체를 RatingItem으로 변환
+        return [BookmarkItem(**dict(row._mapping)) for row in rows]

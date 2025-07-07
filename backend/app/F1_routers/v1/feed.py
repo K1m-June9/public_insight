@@ -19,6 +19,9 @@ from app.F6_schemas.feed import (
     RatingRequest,
     RatingData,
     RatingResponse,
+    BookmarkResponse,
+    BookmarkData,
+    BookmarkRequest
     )
 from app.F6_schemas.base import PaginationQuery, ErrorResponse, ErrorCode
 from app.F7_models.users import User
@@ -285,3 +288,22 @@ async def post_feed_rating(
             content=result.model_dump())
     
     return result 
+
+
+# 북마크
+@router.post("/{id}/bookmark", response_model=BookmarkResponse)
+async def post_feed_bookmark(
+    id: int, 
+    payload: BookmarkRequest,
+    feed_service: FeedService = Depends(get_feed_service),
+    current_user: User = Depends(verify_active_user)
+):
+    result = await feed_service.post_feed_bookmark(id, current_user.user_id)
+
+    if isinstance(result, ErrorResponse):
+        return JSONResponse(
+            status_code=400,
+            content=result.model_dump()
+        )
+    return result
+

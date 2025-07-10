@@ -18,8 +18,8 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-# 사용자 프로필 조회 - 로그인 직후, 마이페이지
-@router.get("/profile", response_model=UserProfileResponse)
+# 사용자 프로필 조회 - 로그인 직후, 마이페이지, + 내 정보 조회
+@router.get("/me", response_model=UserProfileResponse)
 async def get_my_profile(
     current_user: User = Depends(verify_active_user),
     ):

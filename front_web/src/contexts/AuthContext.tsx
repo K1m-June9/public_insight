@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/lib/types/user';
-import { getMyProfile } from '@/services/authService';
+import { getMyProfile } from '@/services/userService';
 import { getAccessToken, setAccessToken } from '@/lib/api/tokenManager';
 
 // Context에 저장될 값의 타입을 정의합니다.

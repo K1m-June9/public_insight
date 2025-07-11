@@ -11,7 +11,7 @@ interface PaginationParams {
 }
 
 /**
-* 고정된 공지사항 목록을 조회합니다.
+* 고정된 공지사항 목록을 조회
 * @returns Promise<PinnedNoticeResponse>
 */
 export const getPinnedNotices = async (): Promise<PinnedNoticeResponse> => {
@@ -20,7 +20,7 @@ export const getPinnedNotices = async (): Promise<PinnedNoticeResponse> => {
 };
 
 /**
-* 전체 공지사항 목록을 페이지네이션하여 조회합니다.
+* 전체 공지사항 목록을 페이지네이션하여 조회 (정적페이지 공지사항)
 * @param params - 페이지네이션 파라미터 (page, limit)
 * @returns Promise<NoticeListResponse>
 */
@@ -31,7 +31,7 @@ export const getNotices = async (params: PaginationParams): Promise<NoticeListRe
 };
 
 /**
-* 특정 공지사항의 상세 정보를 조회합니다.
+* 특정 공지사항의 상세 정보를 조회
 * @param id - 공지사항의 고유 ID
 * @returns Promise<NoticeDetailResponse>
 */

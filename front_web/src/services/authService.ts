@@ -65,6 +65,7 @@ export const sendVerificationCode = async (params: UserCheckEmailRequest): Promi
 
 /**
 * 입력된 이메일 인증 코드를 검증
+* 이건 왜 벌써 만들어놓은거
 * @param params - 이메일과 인증 코드
 * @returns Promise<BaseResponse>
 */
@@ -75,6 +76,7 @@ export const verifyEmailCode = async (params: { email: string; code: string }): 
 
 /**
 * 비밀번호 재설정 요청을 보냄 (이메일 발송)
+* 이건 왜 벌써?
 * @param params - 사용자 아이디와 이메일
 * @returns Promise<BaseResponse>
 */
@@ -85,6 +87,7 @@ export const requestPasswordReset = async (params: ResetPasswordRequest): Promis
 
 /**
 * 비밀번호를 실제로 재설정
+* 흐음
 * @param params - 재설정 토큰과 새로운 비밀번호
 * @returns Promise<BaseResponse>
 */

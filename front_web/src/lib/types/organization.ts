@@ -68,3 +68,22 @@ export interface WordCloudData {
 }
 
 export type WordCloudResponse = DataResponse<WordCloudData>;
+
+// ============================================================================
+// 4. 기관 아이콘 관련
+//    나중에 삭제할거지만 지금 당장은 쓸 타입
+//    시₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩₩발
+// ============================================================================
+
+export interface OrganizationWithIcon {
+    id: number;
+    name: string;
+    website_url: string; //기관 웹사이트 url
+    icon: string;        // Base64 인코딩된 이미지 데이터
+}
+
+export interface OrganizationIconData {
+    organization: OrganizationWithIcon;
+}
+
+export type OrganizationIconResponse = DataResponse<OrganizationIconData>;

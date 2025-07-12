@@ -9,6 +9,7 @@ import logging
 import secrets
 import json
 from typing import Optional, Dict, Any, Callable, Awaitable
+import os
 
 from app.F7_models.users import User
 from app.F5_core.config import settings
@@ -28,7 +29,7 @@ class RedisSettings(BaseSettings):
     PASSWORD_RESET_REDIS_URL: Optional[str] = None
 
     model_config = ConfigDict(
-        env_file = ".env",
+        env_file =  os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env")),
         env_file_encoding = "utf-8",
         extra = "ignore",
     )

@@ -20,7 +20,8 @@ exempt_paths = {
     "/api/v1/feeds/latest",
     "/api/v1/notices/pinned",
     "/api/v1/notices/",
-    "/api/v1/feeds/top5"
+    "/api/v1/feeds/top5",
+    "/api/v1/search"
 }
 
 # 동적 경로 처리용

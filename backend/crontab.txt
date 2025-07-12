@@ -1,0 +1,1 @@
+0 3 * * * cd /app && PYTHONPATH=. /usr/local/bin/python app/F11_search/ES6_indexer.py >> /app/logs/reindexing.log 2>&1

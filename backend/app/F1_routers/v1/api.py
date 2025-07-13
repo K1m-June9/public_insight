@@ -7,6 +7,8 @@ from .organization import router as organization_router
 from .feed import router as feed_router
 from .users import router as users_router
 from .notice import router as notice_router
+from .search import router as search_router
+
 # 메인 API 라우터 설정
 router = APIRouter()
 
@@ -30,6 +32,9 @@ router.include_router(users_router, prefix="/users")
 
 # /notices 엔드포인트 하위에 연결
 router.include_router(notice_router, prefix="/notices")
+
+# /search 엔드포인트 하위에 연결
+router.include_router(search_router, prefix="/search")
 
 # 미들웨어와 verify_active_user 동작 테스트
 router.include_router(test_router, prefix="/test")

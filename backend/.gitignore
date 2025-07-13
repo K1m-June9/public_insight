@@ -9,9 +9,14 @@ venv/
 Dockerfile.txt
 Dockerfile
 
+# Elasticsearch
+start.sh
+logs/
+
 # Pytest
 .pytest_cache/
 F11_tests/
+F12_tests/
 pytest.ini
 
 # Logs

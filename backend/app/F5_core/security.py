@@ -34,6 +34,7 @@ class AuthHandler:
         try:
             return pwd_context.verify(plain_password, hashed_password)
         except Exception as e:
+            ###########로그 나중에 수정#############
             logger.error(f"Password verification failed: {str(e)}")
             return False
 

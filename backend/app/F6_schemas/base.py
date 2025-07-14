@@ -352,6 +352,7 @@ class Message:
     
     # 에러 메시지
     # ErrorCode.INVALID_
+    INVALID_CREDENTIALS = "현재 비밀번호가 일치하지 않습니다."
 
     # ErrorCode.NOT_FOUND
     NOT_FOUND = "요청한 리소스를 찾을 수 없습니다"
@@ -366,6 +367,8 @@ class Message:
     # ErrorCode.DUPLICATE
     DUPLICATE_ORGANIZATION_NAME = "이미 존재하는 기관명입니다."
     DUPLICATE_CATEGORY_NAME = "해당 기관에 이미 존재하는 카테고리명입니다."
+    DUPLICATE_NICKNAME = "이미 사용 중인 닉네임입니다."
+    DUPLICATE_PASSWROD = "새 비밀번호는 기존 비밀번호와 달라야 합니다."
 
     # ErrorCode.FORBIDDEN
     PROTECTED_CATEGORY_DELETE_ERROR = "보도자료 카테고리는 삭제할 수 없습니다."
@@ -392,19 +395,20 @@ class Message:
     INVALID_STATUS_ERROR = "유효하지 않은 상태값입니다."
     
     # ErrorCode.VALIDATION_ERROR
-    VALIDATION_ERROR = "입력값 검증에 실패했습니다"
+    VALIDATION_ERROR = "입력값 검증에 실패했습니다."
+    VALIDATION_PASSWORD = "비밀번호는 8자 이상, 영문, 숫자, 특수문자를 포함해야 합니다."
 
     # ErrorCode.INTERNAL_ERROR
-    INTERNAL_ERROR = "서버 내부 오류가 발생했습니다"
+    INTERNAL_ERROR = "서버 내부 오류가 발생했습니다."
     
     # ErrorCode.FILE_TOO_LARGE
-    FILE_TOO_LARGE = "파일 크기가 너무 큽니다"
+    FILE_TOO_LARGE = "파일 크기가 너무 큽니다."
 
     # ErrorCode.INVALID_FILE_TYPE
-    INVALID_FILE_TYPE = "지원하지 않는 파일 형식입니다"
+    INVALID_FILE_TYPE = "지원하지 않는 파일 형식입니다."
 
     # ErrorCode.FILE_UPLOAD_FAILED
-    FILE_UPLOAD_FAILED = "파일 업로드에 실패했습니다"
+    FILE_UPLOAD_FAILED = "파일 업로드에 실패했습니다."
 
     # ErrorCode.CONFLICT
     PROCESSING_IN_PROGRESS = "현재 처리 중입니다. 완료 후 다시 시도해주세요."

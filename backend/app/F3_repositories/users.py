@@ -1,8 +1,6 @@
-from sqlalchemy import select, update, delete, exists, func
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
-from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 import logging
 
 from app.F6_schemas.users import (

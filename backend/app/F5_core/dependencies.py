@@ -58,12 +58,21 @@ async def get_feed_service(db: AsyncSession = Depends(get_db)) -> FeedService:
     """피드 관련 서비스 의존성 주입용 함수"""
     return FeedService(FeedRepository(db))
 
-async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+async def get_user_service(
+    db: AsyncSession = Depends(get_db),
+    session_service: SessionService = Depends(get_session_service)
+    ) -> UserService:
     """사용자 관련 서비스 의존성 주입용 함수"""
-    return UserService(UserRepository(db))
+    
+    user_repo = UserRepository(db)
+
+    return UserService(repo=user_repo, session_service=session_service)
 
 async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeService:
     return NoticeService(NoticeRepository(db))
+
+
+
 
 async def verify_active_user(
     request: Request,

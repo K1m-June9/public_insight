@@ -10,7 +10,6 @@ import { getAccessToken, setAccessToken } from '@/lib/api/tokenManager';
 // Context에 저장될 값의 타입을 정의합니다.
 interface AuthContextType {
     user: User | null;
-    setUser: (user: User | null) => void;
     isLoading: boolean;
     login: (accessToken: string, user: User) => void;
     logout: () => void;
@@ -69,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // 예: authService.logout();
     };
 
-    const value = { user, setUser, isLoading, login, logout };
+    const value = { user, isLoading, login, logout };
 
     return (
         <AuthContext.Provider value={value}>

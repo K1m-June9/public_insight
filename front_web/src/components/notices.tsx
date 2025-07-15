@@ -1,12 +1,17 @@
+// 파일 위치: components/notices.tsx
+
 import Link from "next/link";
 import { PinnedNoticeData } from "@/lib/types/notice";
-import { formatDate } from "@/lib/utils/date"; // 날짜 포맷팅 유틸 사용
+import { formatDate } from "@/lib/utils/date";
 
+// 1. Props 타입 정의
 interface NoticesProps {
   data?: PinnedNoticeData;
 }
 
+// 2. 컴포넌트가 props를 받도록 수정
 export function Notices({ data }: NoticesProps) {
+  // 3. Mock 데이터를 props로 받은 데이터로 교체
   const notices = data?.notices || [];
 
   return (
@@ -18,17 +23,18 @@ export function Notices({ data }: NoticesProps) {
             <Link href={`/notice/${notice.id}`} className="block hover:bg-gray-50 rounded p-1 -m-1 transition-colors">
               <div className="flex justify-between">
                 <span className="font-medium">{notice.title}</span>
-                <span className="text-sm text-gray-500">{notice.created_at}</span>
+                {/* formatDate 유틸리티 함수 사용 */}
+                <span className="text-sm text-gray-500">{formatDate(notice.created_at)}</span>
               </div>
             </Link>
           </li>
         ))}
       </ul>
       <div className="mt-4 text-right">
-        <Link href="/notices" className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href="/notice" className="text-sm text-gray-500 hover:text-gray-700">
           더보기 &gt;
         </Link>
       </div>
     </div>
-  )
+  );
 }

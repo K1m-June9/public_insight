@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko"> {/* 기본: en*/}
+    <html lang="ko">
       <body className={inter.className}>
         <AppProviders>
           {children}

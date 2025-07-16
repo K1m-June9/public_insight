@@ -8,7 +8,8 @@ from app.F5_core.redis import RedisCacheService
 from app.F6_schemas.base import (
     ErrorResponse,
     ErrorCode,
-    PaginationQuery
+    PaginationQuery,
+    UserRole
 )
 
 from app.F6_schemas.users import (
@@ -40,7 +41,8 @@ async def get_my_profile(
             user=UserProfile(
                 user_id=current_user.user_id,
                 nickname=current_user.nickname,
-                email=current_user.email
+                email=current_user.email,
+                role = current_user.role
                 )
             )
         )

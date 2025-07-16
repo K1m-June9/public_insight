@@ -119,6 +119,7 @@ export interface PressReleaseItem {
     title: string;
     category: CategoryInfo;
     summary: string;
+    published_date: string;
     view_count: number;
     average_rating: number;
 }

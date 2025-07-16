@@ -1,4 +1,4 @@
-import { DataResponse, PaginationInfo } from './base';
+import { DataResponse, PaginationInfo, UserRole } from './base';
 
 // =================================
 // 기존 타입 (수정 없음)[백엔드의 UserProfile 스키마에 해당]
@@ -7,6 +7,7 @@ export interface User {
     user_id: string;
     nickname: string;
     email: string;
+    role: UserRole
 }
 
 //백엔드의 UserProfileResponse 스키마에 해당

@@ -77,6 +77,7 @@ class UserProfile(BaseSchema):
     user_id: str
     nickname: str
     email: str
+    role: str
     updated_at: Optional[datetime] = None
 
 class UserProfileData(BaseModel):

@@ -528,6 +528,7 @@ class FeedRepository:
             Feed.id,
             Feed.title,
             Feed.summary,
+            Feed.published_date,
             Feed.view_count,
             Feed.organization_id,
             Organization.name.label('organization_name'),
@@ -553,7 +554,7 @@ class FeedRepository:
             # 활성화된 피드만 대상
             Feed.is_active == True
         ).group_by(
-            Feed.id, Feed.title, Feed.summary, Feed.view_count,
+            Feed.id, Feed.title, Feed.summary, Feed.view_count, Feed.published_date,
             Feed.organization_id, Organization.name,
             Category.id, Category.name
         ).order_by(
@@ -586,6 +587,7 @@ class FeedRepository:
                 'id': row.id,
                 'title': row.title,
                 'summary': row.summary,
+                'published_date': row.published_date,
                 'view_count': row.view_count,
                 'average_rating': float(row.average_rating) if row.average_rating else 0.0,
                 'category_id': row.category_id,

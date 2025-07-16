@@ -157,6 +157,7 @@ class PressReleaseItem(BaseSchema):
     title: str
     category: CategoryInfo
     summary: str
+    published_date: datetime
     view_count: int
     average_rating: float
 

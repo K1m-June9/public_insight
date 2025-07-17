@@ -111,7 +111,7 @@ export interface Top5FeedData {
 export type Top5FeedResponse = DataResponse<Top5FeedData>;
 
 // =================================
-// 5. 보도자료 (누락되었던 부분)
+// 5. 보도자료
 // =================================
 
 export interface PressReleaseItem {
@@ -144,8 +144,11 @@ export interface FeedDetail {
     average_rating: number;
     view_count: number;
     published_date: string;
-    content: string;
     source_url: string;
+
+    pdf_url: string; //PDF 자체
+    is_bookmarked?: boolean; // 로그인 시에만 오므로 optional '?' 처리
+    user_rating?: number;    // 로그인 시에만 오므로 optional '?' 처리
 }
 
 export interface FeedDetailData {

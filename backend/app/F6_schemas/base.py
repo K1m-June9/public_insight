@@ -488,8 +488,8 @@ class Settings:
     # 표시 순서 설정
     MIN_DISPLAY_ORDER = 0
     INACTIVE_DISPLAY_ORDER = -1
-    # 파일 업로드(backend/app/sliders/{UUID})
-    SLIDER_UPLOADS_PATH = "/sliders/"
+    # 파일 업로드(backend/app/static/sliders/{UUID})
+    SLIDER_UPLOADS_PATH = "static/sliders"
 
     # 정렬 기준
     DEFAULT_SORT = "is_active ASC, display_order ASC"

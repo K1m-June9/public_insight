@@ -370,6 +370,10 @@ class Message:
     DUPLICATE_NICKNAME = "이미 사용 중인 닉네임입니다."
     DUPLICATE_PASSWROD = "새 비밀번호는 기존 비밀번호와 달라야 합니다."
 
+    #ErrorCode.ALEADY_EXIST
+    RATING_ALEADY_EXIST = "이미 별점을 준 피드입니다"
+
+
     # ErrorCode.FORBIDDEN
     PROTECTED_CATEGORY_DELETE_ERROR = "보도자료 카테고리는 삭제할 수 없습니다."
     FORBIDDEN = "접근 권한이 없습니다"
@@ -393,6 +397,7 @@ class Message:
     INVALID_SLUG_ERROR = "유효하지 않은 페이지 슬러그입니다."
     INVALID_ROLE_CHANGE = "ADMIN 권한은 변경할 수 없습니다."
     INVALID_STATUS_ERROR = "유효하지 않은 상태값입니다."
+    INVALID_RATING_SCORE = "별점은 1-5점 사이의 값이어야 합니다"
     
     # ErrorCode.VALIDATION_ERROR
     VALIDATION_ERROR = "입력값 검증에 실패했습니다."
@@ -509,8 +514,14 @@ class Settings:
     MIN_CONTENT_LENGTH = 1
     DEFAULT_CONTENT_TYPE = "markdown"
     
-    """피드 관리 관련 설정"""
-    PDF_UPLOAD_PATH = "/feeds/"
+    # 실제 파일이 저장될 '서버 컴퓨터의 물리적 경로'
+    # pdf 저장할 때 DB: pdf_file_path = {UUID}
+    #    (파일을 '저장'할 때 사용)
+    PDF_STORAGE_PATH = "static/feeds_pdf"
+
+    # 웹 브라우저가 접근할 'URL 상의 기본 경로'
+    #    (URL을 '생성'할 때 사용)
+    STATIC_FILES_URL = "/static"
 
     # 처리 시간
     ESTIMATED_PROCESSING_TIME = 5  # 분

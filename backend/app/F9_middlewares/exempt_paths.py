@@ -26,16 +26,16 @@ exempt_paths = {
 
 # 동적 경로 처리용
 exempt_regex_paths = [
-    r"^/api/v1/sliders/[1-9]\d*$",
+    r"^/api/v1/sliders/\\d+$$",
     r"^/api/v1/static-pages/[a-z-]+$",
     r"^/api/v1/organizations/[\uAC00-\uD7A3]+/categories$",
     r"^/api/v1/organizations/[\uAC00-\uD7A3]+/icon$",
     r"^/api/v1/organizations/[\uAC00-\uD7A3]+/wordcloud$",
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+",
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+/latest",
-    r"^/api/v1/notices/-?[1-9]\d*$"
+    r"^/api/v1/notices/\\d+$"
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+/press",
-    r"^/api/v1/feeds/[1-9]\d*$"
+    r"^/api/v1/feeds/\\d+$"
 ]
 
 

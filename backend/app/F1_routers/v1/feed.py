@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from typing import Optional
 import logging
 from app.F2_services.feed import FeedService
-from app.F5_core.dependencies import get_feed_service, verify_active_user
+from app.F5_core.dependencies import get_feed_service, verify_active_user, verify_active_user_optional
 from app.F6_schemas.feed import (
     MainFeedListResponse, 
     FeedListQuery, 
@@ -249,25 +250,24 @@ async def get_press_releases(
 @router.get("/{id}", response_model=FeedDetailResponse)
 async def get_feed_by_id(
     id: int,
-    feed_service: FeedService = Depends(get_feed_service)
+    feed_service: FeedService = Depends(get_feed_service),
+    current_user: Optional[User] = Depends(verify_active_user_optional) #선택적 인증 메서드
 ) -> FeedDetailResponse:
     """
     피드 상세 정보 조회
     
-    특정 피드의 상세 정보를 조회합니다.
-    피드 조회 시 해당 피드의 조회수가 1 증가합니다.
+    특정 피드의 상세 정보를 조회
+    - 비로그인 사용자: 기본 정보만 제공
+    - 로그인 사용자: 북마크 여부, 내가 매긴 별점 정보 추가 제공
     """
-    # Service를 통해 피드 상세 정보 조회
-    result = await feed_service.get_feed_detail_for_page(id)
+    user_pk = current_user.id if current_user else None # 인증된 사용자면 사용, 아니면 말고
+    result = await feed_service.get_feed_detail_for_page(id, user_pk)
     
-    # Service에서 에러 응답이 반환된 경우 처리
     if isinstance(result, ErrorResponse):
         if result.error.code == ErrorCode.NOT_FOUND:
             status_code = 404
-        elif result.error.code == ErrorCode.INTERNAL_ERROR:
-            status_code = 500
         else:
-            status_code = 400
+            status_code = 500
         return JSONResponse(status_code=status_code, content=result.model_dump())
     
     return result

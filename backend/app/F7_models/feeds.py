@@ -21,8 +21,8 @@ class Feed(Base):
     # NLP로 생성된 요약문 (제한 없는 텍스트)
     summary = Column(Text)
 
-    # 원본 텍스트 내용 (제한 없는 텍스트)
-    original_text = Column(Text)
+    # 원본 텍스트 내용 (제한 없는 텍스트) -> 삭제(주석처리한건 그냥 히스토리 보려고)
+    #original_text = Column(Text)
 
     # PDF 파일의 파일 시스템 저장 경로 (최대 1000자)
     pdf_file_path = Column(String(1000))

@@ -362,7 +362,9 @@ class Message:
     USER_NOT_FOUND = "사용자를 찾을 수 없습니다."
     FEED_NOT_FOUND = "피드를 찾을 수 없습니다."
     ORGANIZATION_NOT_FOUND = "기관을 찾을 수 없습니다."
+    ORGANIZATION_FEED_NOT_FOUND = "모든 기관의 피드 데이터가 없습니다."
     CATEGORY_NOT_FOUND = "카테고리를 찾을 수 없습니다."
+    CATEGORY_FEED_NOT_FOUND = "해당 기관의 카테고리에 피드 데이터가 없습니다."
 
     # ErrorCode.DUPLICATE
     DUPLICATE_ORGANIZATION_NAME = "이미 존재하는 기관명입니다."
@@ -405,6 +407,7 @@ class Message:
 
     # ErrorCode.INTERNAL_ERROR
     INTERNAL_ERROR = "서버 내부 오류가 발생했습니다."
+    ICON_UPLOADS_FAIL = "아이콘을 불러오는 중 오류가 발생했습니다."
     
     # ErrorCode.FILE_TOO_LARGE
     FILE_TOO_LARGE = "파일 크기가 너무 큽니다."
@@ -534,5 +537,5 @@ class Settings:
     # 보호 카테고리
     PROTECTED_CATEGORY_NAME = "보도자료"
 
-    # 파일 업로드(backend/app/organization_icon/{UUID})
-    ICON_UPLOAD_PATH = "/organization_icon/"
+    # 파일 업로드(backend/app/static/organization_icon/{UUID})
+    ICON_STORAGE_PATH = "static/organization_icon/"

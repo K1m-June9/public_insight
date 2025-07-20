@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Shield } from "lucide-react";
+import { Search, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLogoutMutation } from "@/hooks/mutations/useAuthMutations";
 import { Button } from "@/components/ui/button";

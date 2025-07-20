@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {AxiosError} from 'axios'
+import { ErrorResponse } from '@/lib/types/base'; 
 import { postRating, toggleBookmark } from '@/services/feedService';
 import { feedQueryKeys } from '@/hooks/queries/useFeedQueries';
 import { userQueryKeys } from '@/hooks/queries/useUserQueries';
@@ -18,10 +20,10 @@ export const usePostRatingMutation = () => {
       // 사용자의 별점 목록 쿼리도 무효화
       queryClient.invalidateQueries({ queryKey: userQueryKeys.lists() });
     },
-    onError: (error) => {
-      console.error('Rating submission failed:', error);
-      alert('별점을 등록하는 중 오류가 발생했습니다.');
-    }
+      onError: (error: AxiosError<ErrorResponse>) => {
+          const message = error.response?.data?.error?.message || '오류가 발생했습니다.';
+          alert(message);
+      }
   });
 };
 
@@ -38,9 +40,9 @@ export const useToggleBookmarkMutation = () => {
             queryClient.invalidateQueries({ queryKey: feedQueryKeys.detail(id) });
             queryClient.invalidateQueries({ queryKey: userQueryKeys.bookmarks({}) }); // 북마크 목록 전체 무효화
         },
-        onError: (error) => {
-            console.error('Bookmark toggle failed:', error);
-            alert('북마크 처리 중 오류가 발생했습니다.');
-        }
+      onError: (error: AxiosError<ErrorResponse>) => {
+          const message = error.response?.data?.error?.message || '오류가 발생했습니다.';
+          alert(message);
+      }
     });
 };

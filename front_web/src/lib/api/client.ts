@@ -33,7 +33,7 @@ export const apiClient = axios.create({
 
 // 재요청 로직을 위한 변수
 let isRefreshing = false;
-let failedQueue: { resolve: (value: unknown) => void; reject: (reason?: any) => void; }[] = [];
+let failedQueue: { resolve: (token: string | null) => void; reject: (error: Error) => void; }[] = [];
 
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
     failedQueue.forEach(prom => {

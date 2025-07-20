@@ -1,6 +1,3 @@
-// 파일 위치: front_web/src/components/pie-chart.tsx
-// 이 코드로 파일 전체를 다시 한번 교체해주세요.
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";

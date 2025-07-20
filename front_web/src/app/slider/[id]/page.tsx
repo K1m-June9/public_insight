@@ -1,5 +1,3 @@
-// 파일 위치: app/slider/[id]/page.tsx
-
 "use client";
 
 import { useRouter, useParams } from "next/navigation";

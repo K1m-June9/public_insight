@@ -1,6 +1,3 @@
-// 파일 위치: front_web/src/components/main-content.tsx
-// 이 코드로 파일 전체를 교체해주세요.
-
 "use client";
 
 import { PieChart } from "@/components/pie-chart";

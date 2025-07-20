@@ -1,5 +1,3 @@
-// 파일 위치: components/notices.tsx
-
 import Link from "next/link";
 import { PinnedNoticeData } from "@/lib/types/notice";
 import { formatDate } from "@/lib/utils/date";

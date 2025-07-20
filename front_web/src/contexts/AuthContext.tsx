@@ -1,6 +1,4 @@
-// 파일 위치: front_web/src/contexts/AuthContext.tsx
-
-'use client'; // 이 컴포넌트는 클라이언트 측에서만 렌더링되어야 함을 명시합니다.
+'use client'; // 이 컴포넌트는 클라이언트 측에서만 렌더링되어야 함을 명시
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/lib/types/user';

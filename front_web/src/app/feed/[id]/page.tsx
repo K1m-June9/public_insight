@@ -1,6 +1,3 @@
-// 파일 위치: app/feed/[id]/page.tsx
-// 이 코드로 파일 전체를 교체해주세요.
-
 "use client";
 
 import { useRouter, useParams } from "next/navigation";

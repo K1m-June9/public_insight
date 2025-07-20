@@ -1,5 +1,5 @@
-import { BaseResponse, DataResponse } from './base';
-import { UserRole } from './base'; // base.ts에 정의된 UserRole enum 사용
+import { BaseResponse } from './base';
+//import { UserRole } from './base'; // base.ts에 정의된 UserRole enum 사용
 
 // =================================
 // 1. 토큰 관련

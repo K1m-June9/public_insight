@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/header";
 
 export default function LoginPage() {
-  const router = useRouter();
+  //const router = useRouter();
   // 1. useLoginMutation 훅 사용
   const { mutate: login, isPending, error } = useLoginMutation();
 

@@ -6,19 +6,14 @@ import {
     logout as logoutService,
     register as registerService,
     checkUserIdAvailability,
-    sendVerificationCode,
-    verifyEmailCode,
-    requestPasswordReset,
-    resetPassword,
+    sendVerificationCode
 } from '@/services/authService';
 import { getMyProfile } from '@/services/userService';
 import { 
     LoginRequest, 
     UserCreate, 
     UserCheckIDRequest,
-    UserCheckEmailRequest,
-    ResetPasswordRequest,
-    PasswordResetSubmitRequest
+    UserCheckEmailRequest
 } from '@/lib/types/auth';
 
 /**

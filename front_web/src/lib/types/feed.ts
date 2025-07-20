@@ -1,4 +1,4 @@
-import { BaseResponse, DataResponse, PaginationInfo } from './base';
+import { DataResponse, PaginationInfo } from './base';
 import { OrganizationInfo } from './organization';
 
 // =================================

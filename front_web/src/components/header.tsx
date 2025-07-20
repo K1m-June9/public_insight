@@ -8,12 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLogoutMutation } from "@/hooks/mutations/useAuthMutations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+//   DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@/lib/types/base"; // UserRole enum 임포트
 

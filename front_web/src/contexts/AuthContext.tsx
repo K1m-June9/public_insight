@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setAccessToken(null); // 토큰도 비워줍니다.
             }
         } catch (error) {
-            console.log('Authentication check failed, user is not logged in.');
+            console.log('Authentication check failed, user is not logged in.',error);
             setUser(null);
             // getMyProfile 내부에서 이미 토큰을 비웠을 것입니다.
         } finally {

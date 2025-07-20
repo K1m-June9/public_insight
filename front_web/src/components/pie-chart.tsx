@@ -60,7 +60,7 @@ export function PieChart({ chartData, latestFeeds }: PieChartProps) {
 
   // --- 💡 여기가 핵심 수정 부분 💡 ---
   const renderActiveShape = (props: any) => {
-    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value, ...rest } = props;
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, ...rest } = props; // percent, value 없앰
     
     // 현재 렌더링되는 섹터가 활성화된 섹터인지 직접 확인
     const isActive = activeIndex === rest.index;

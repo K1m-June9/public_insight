@@ -1,5 +1,3 @@
-// 파일 위치: front_web/src/components/PdfViewer.tsx
-
 "use client";
 
 import { useState } from 'react';

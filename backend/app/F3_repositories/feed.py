@@ -611,7 +611,8 @@ class FeedRepository:
     # 설명: 
     #   활성화된 피드, 기관, 카테고리만 조회 (3중 활성화 체크)
     #   Rating 테이블과 LEFT JOIN하여 평균 별점 계산
-    #   original_text를 content로 반환
+    #   original_text를 content로 반환 -> 삭제
+    #   {pdf_file_path 반환}
     #   결과가 없는 경우 None 반환
     async def get_feed_detail(self, feed_id: int) -> Optional[Dict[str, Any]]:
         try:
@@ -630,8 +631,9 @@ class FeedRepository:
                 self.db.query(
                     Feed.id,
                     Feed.title,
-                    Feed.original_text.label('content'),
+                    #Feed.original_text.label('content'),
                     Feed.source_url,
+                    Feed.pdf_file_path,
                     Feed.published_date,
                     Feed.view_count,
                     Organization.id.label('organization_id'),
@@ -661,8 +663,9 @@ class FeedRepository:
             return {
                 'id': result.id,
                 'title': result.title,
-                'content': result.content,
+                #'content': result.content,
                 'source_url': result.source_url,
+                'pdf_file_path': result.pdf_file_path,
                 'published_date': result.published_date,
                 'view_count': result.view_count,
                 'average_rating': float(result.average_rating) if result.average_rating else 0.0,
@@ -797,3 +800,24 @@ class FeedRepository:
             select(func.count(Bookmark.id)).where(Bookmark.feed_id == feed_id)
         )
         return result.scalar_one()
+    
+    async def get_user_rating_for_feed(self, user_pk: int, feed_id: int) -> Optional[Rating]:
+        """
+        특정 사용자가 특정 피드에 남긴 별점(Rating) 객체를 조회
+        피드 상세페이지에서 로그인된 사용자가 사용할 메서드
+        is_rating_exists <- 쓰고싶었는데 T/F 반환이라서 못씀 ㅅㅂㅋㅋ
+        
+        Args:
+            user_pk (int): 사용자 기본 키
+            feed_id (int): 피드 ID
+        
+        Returns:
+            Optional[Rating]: Rating 객체 또는 None
+        """
+        result = await self.db.execute(
+            select(Rating).where(
+                Rating.user_id == user_pk,
+                Rating.feed_id == feed_id
+            )
+        )
+        return result.scalar_one_or_none()

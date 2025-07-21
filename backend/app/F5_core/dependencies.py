@@ -1,6 +1,7 @@
 from fastapi import Depends, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from typing import Optional
 
 from app.F2_services.auth import AuthService
 from app.F2_services.slider import SliderService
@@ -114,3 +115,46 @@ async def verify_active_user(
     await RedisCacheService.cache_user_info(user)
 
     return user
+
+#   새로운 선택적 인증 함수 추가
+#   로직 자체는 verify_active_user와 동일
+#   사용자가 없으면 None 반환 -> 선택적 인증(None이면 인증 X)
+async def verify_active_user_optional(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """
+    요청에 유효한 토큰이 있는 경우에만 사용자 정보를 반환하고,
+    그렇지 않은 경우 None을 반환하는 선택적 인증 함수.
+    """
+    
+    # JWT 미들웨어가 에러를 발생시키지 않고, request.state에 user_id를 설정했다면
+    # (즉, 유효한 토큰이 헤더에 있었다면) user_id를 가져옴
+    user_id = getattr(request.state, "user_id", None)
+    
+    # 토큰이 없었으면 user_id는 None이므로, 그대로 None을 반환
+    if not user_id:
+        return None
+
+    # 토큰이 있었다면, 기존 verify_active_user와 동일한 검증 로직 수행
+    # 단, 오류 발생 시 HTTPException 대신 None을 반환하여 API 실행이 중단되지 않도록 함
+    try:
+        # Redis 캐시 확인 등 기존 로직 재사용
+        cached = await RedisCacheService.get_cached_user_info(user_id)
+        if cached and cached.get("status") != UserStatus.ACTIVE.value:
+            return None # 비활성 사용자는 로그인하지 않은 것과 동일하게 취급
+
+        auth_repo = AuthRepository(db)
+        user = await auth_repo.get_user_by_user_id(user_id)
+
+        if not user or user.status != UserStatus.ACTIVE:
+            return None
+
+        # 캐시가 없었다면 저장
+        if not cached:
+            await RedisCacheService.cache_user_info(user)
+            
+        return user
+    except Exception:
+        # 검증 과정에서 어떤 예외가 발생하더라도 None을 반환
+        return None

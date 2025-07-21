@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, Bookmark, Star, Building, Lock, Save, Eye, EyeOff } from "lucide-react";
+import { User, Bookmark, Star, Lock } from "lucide-react";
 
 // shadcn/ui components
 import { Button } from "@/components/ui/button";

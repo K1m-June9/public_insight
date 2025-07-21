@@ -1,5 +1,3 @@
-// 파일 위치: app/slider/[id]/page.tsx
-
 "use client";
 
 import { useRouter, useParams } from "next/navigation";
@@ -75,11 +73,18 @@ export default function SliderDetailPage() {
             </div>
           </div>
         </div>
-
         {/* 본문 내용 */}
         <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-          {/* 백엔드에서 HTML로 전달된 콘텐츠를 렌더링 */}
-          <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: slider.content }} />
+          {/* 
+            'prose' 클래스는 h1, p, ul 등의 태그에 자동으로 스타일을 입혀주는 역할
+            일반 텍스트를 표시할 때는 필요하지 않지만, 줄바꿈 등을 위해 남겨둘 수 있음
+            또는 Tailwind CSS의 whitespace-pre-wrap 클래스를 사용하여 줄바꿈을 유지할 수 있음.
+            현재는 그냥 평문
+            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: slider.content }} /> <- 예전거(나중에 필요해지면 쓸까 싶어서 그냥 남겨둠)
+          */}
+          <div className="prose max-w-none">
+            <p className="whitespace-pre-wrap">{slider.content}</p>
+          </div>
         </div>
       </div>
     </div>

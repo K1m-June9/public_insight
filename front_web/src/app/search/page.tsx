@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -56,48 +56,9 @@ function useSearchState() {
   return { params, localSearchQuery, setLocalSearchQuery, updateSearch };
 }
 
-// 필터 컴포넌트 (수정 없음)
-function FilterSidebar({ aggregations, params, updateSearch }: { aggregations: SearchData['aggregations'], params: SearchParams, updateSearch: (p: Partial<SearchParams>) => void }) {
-    const handleFilterChange = (filterType: 'organizations' | 'categories' | 'types', value: string) => {
-        const currentFilters = params[filterType]?.split(',') || [];
-        const newFilters = currentFilters.includes(value)
-            ? currentFilters.filter(item => item !== value)
-            : [...currentFilters, value];
-        updateSearch({ [filterType]: newFilters.join(',') || undefined });
-    };
-
-    const renderFilterSection = (title: string, filterType: 'organizations' | 'categories' | 'types', items: AggregationItem[]) => (
-        <AccordionItem value={filterType}>
-            <AccordionTrigger className="text-sm font-medium">{title}</AccordionTrigger>
-            <AccordionContent>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {items.map((item) => (
-                        <div key={item.name} className="flex items-center space-x-2">
-                            <Checkbox id={`${filterType}-${item.name}`} checked={params[filterType]?.includes(item.name)} onCheckedChange={() => handleFilterChange(filterType, item.name)} />
-                            <label htmlFor={`${filterType}-${item.name}`} className="text-sm">{item.name} ({item.count})</label>
-                        </div>
-                    ))}
-                </div>
-            </AccordionContent>
-        </AccordionItem>
-    );
-
-    return (
-        <div className="md:w-1/4 lg:w-1/5">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h2 className="font-semibold mb-4">상세 필터</h2>
-                <Accordion type="multiple" defaultValue={['organizations', 'categories', 'types']}>
-                    {renderFilterSection('기관(부)', 'organizations', aggregations.organizations)}
-                    {renderFilterSection('카테고리', 'categories', aggregations.categories)}
-                    {renderFilterSection('게시물 유형', 'types', aggregations.types)}
-                </Accordion>
-            </div>
-        </div>
-    );
-}
-
-// 메인 검색 페이지 컴포넌트
-export default function SearchPage() {
+// 1. useSearchParams를 사용하는 로직을 별도의 컴포넌트로 분리
+function SearchContent() {
+  // useSearchState와 useSearchQuery 훅을 이 컴포넌트 안으로 이동
   const { params, localSearchQuery, setLocalSearchQuery, updateSearch } = useSearchState();
   const { data: searchData, isLoading, isError } = useSearchQuery(params, { enabled: !!params.q });
 
@@ -111,15 +72,12 @@ export default function SearchPage() {
   };
   
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Header />
       <main className="flex-grow">
         <div className="container px-4 py-8 md:px-6">
           <form onSubmit={handleSearchSubmit} className="flex gap-2 mb-6 max-w-2xl mx-auto">
             <div className="relative flex-grow"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input type="search" placeholder="검색어를 입력하세요" className="pl-10" value={localSearchQuery} onChange={(e) => setLocalSearchQuery(e.target.value)} /></div>
             <Button type="submit">검색</Button>
           </form>
-
           <div className="flex flex-col md:flex-row gap-8">
             {aggregations && <FilterSidebar aggregations={aggregations} params={params} updateSearch={updateSearch} />}
             
@@ -161,7 +119,7 @@ export default function SearchPage() {
                   ))}
                 </div>
               )}
-               {pagination && pagination.total_pages > 1 && (
+              {pagination && pagination.total_pages > 1 && (
                   <div className="flex justify-center mt-8 space-x-2">
                       {/* 페이지네이션 버튼 렌더링 */}
                       {Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map(pageNumber => (
@@ -175,6 +133,57 @@ export default function SearchPage() {
           </div>
         </div>
       </main>
+    );
+  }
+
+// 필터 컴포넌트 (수정 없음)
+function FilterSidebar({ aggregations, params, updateSearch }: { aggregations: SearchData['aggregations'], params: SearchParams, updateSearch: (p: Partial<SearchParams>) => void }) {
+    const handleFilterChange = (filterType: 'organizations' | 'categories' | 'types', value: string) => {
+        const currentFilters = params[filterType]?.split(',') || [];
+        const newFilters = currentFilters.includes(value)
+            ? currentFilters.filter(item => item !== value)
+            : [...currentFilters, value];
+        updateSearch({ [filterType]: newFilters.join(',') || undefined });
+    };
+
+    const renderFilterSection = (title: string, filterType: 'organizations' | 'categories' | 'types', items: AggregationItem[]) => (
+        <AccordionItem value={filterType}>
+            <AccordionTrigger className="text-sm font-medium">{title}</AccordionTrigger>
+            <AccordionContent>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {items.map((item) => (
+                        <div key={item.name} className="flex items-center space-x-2">
+                            <Checkbox id={`${filterType}-${item.name}`} checked={params[filterType]?.includes(item.name)} onCheckedChange={() => handleFilterChange(filterType, item.name)} />
+                            <label htmlFor={`${filterType}-${item.name}`} className="text-sm">{item.name} ({item.count})</label>
+                        </div>
+                    ))}
+                </div>
+            </AccordionContent>
+        </AccordionItem>
+    );
+
+    return (
+        <div className="md:w-1/4 lg:w-1/5">
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <h2 className="font-semibold mb-4">상세 필터</h2>
+                <Accordion type="multiple" defaultValue={['organizations', 'categories', 'types']}>
+                    {renderFilterSection('기관(부)', 'organizations', aggregations.organizations)}
+                    {renderFilterSection('카테고리', 'categories', aggregations.categories)}
+                    {renderFilterSection('게시물 유형', 'types', aggregations.types)}
+                </Accordion>
+            </div>
+        </div>
+    );
+}
+
+// 2. 메인 SearchPage 컴포넌트는 Suspense로 감싸는 역할
+export default function SearchPage() {
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Header />
+      <Suspense fallback={<div className="flex-grow flex justify-center items-center"><div>검색 페이지 로딩 중...</div></div>}>
+        <SearchContent />
+      </Suspense>
       <Footer />
     </div>
   );

@@ -1,6 +1,4 @@
-// 파일 위치: front_web/src/contexts/AuthContext.tsx
-
-'use client'; // 이 컴포넌트는 클라이언트 측에서만 렌더링되어야 함을 명시합니다.
+'use client'; // 이 컴포넌트는 클라이언트 측에서만 렌더링되어야 함을 명시
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/lib/types/user';
@@ -41,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setAccessToken(null); // 토큰도 비워줍니다.
             }
         } catch (error) {
-            console.log('Authentication check failed, user is not logged in.');
+            console.log('Authentication check failed, user is not logged in.',error);
             setUser(null);
             // getMyProfile 내부에서 이미 토큰을 비웠을 것입니다.
         } finally {

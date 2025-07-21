@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, setAccessToken } from './tokenManager';
 
 // 새로운 Access Token을 발급받기 위한 API 호출 함수
-// 이 함수는 인터셉터 내부에서만 사용됩니다.
+// 이 함수는 인터셉터 내부에서만 사용
 const refreshAccessToken = async () => {
     try {
         // '/api/v1'은 apiClient의 baseURL에 이미 포함되어 있으므로, 그 뒤의 경로만 작성
@@ -33,7 +33,7 @@ export const apiClient = axios.create({
 
 // 재요청 로직을 위한 변수
 let isRefreshing = false;
-let failedQueue: { resolve: (value: unknown) => void; reject: (reason?: any) => void; }[] = [];
+let failedQueue: { resolve: (token: string | null) => void; reject: (error: Error) => void; }[] = [];
 
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
     failedQueue.forEach(prom => {

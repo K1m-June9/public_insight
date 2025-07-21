@@ -1,22 +1,19 @@
-// 파일 위치: front_web/src/components/header.tsx
-// 이 코드로 파일 전체를 교체해주세요.
-
 "use client";
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Shield } from "lucide-react";
+import { Search, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLogoutMutation } from "@/hooks/mutations/useAuthMutations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+//   DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@/lib/types/base"; // UserRole enum 임포트
 

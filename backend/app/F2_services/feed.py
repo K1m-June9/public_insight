@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import Union, Optional
 import logging
 import math
+
 from app.F3_repositories.feed import FeedRepository
 from app.F6_schemas.feed import (
     FeedListQuery, 
@@ -36,10 +37,9 @@ from app.F6_schemas.feed import (
     BookmarkResponse,
     BookmarkData,
     BookmarkRequest
-
-
 )
-from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail, ErrorCode, Message
+
+from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail, ErrorCode, Message, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +125,7 @@ class FeedService:
             # 최종 응답 반환
             return MainFeedListResponse(
                 success=True,
+                message=Message.SUCCESS,
                 data=response_data
             )
             
@@ -265,6 +266,7 @@ class FeedService:
             # 최종 응답 반환
             return OrganizationFeedListResponse(
                 success=True,
+                message=Message.SUCCESS,
                 data=response_data
             )
             
@@ -328,7 +330,7 @@ class FeedService:
             # 성공 응답 반환
             return LatestFeedResponse(
                 success=True,
-                message="최신 피드 조회가 완료되었습니다",
+                message=Message.SUCCESS,
                 data=latest_feed_data
             )
             
@@ -402,7 +404,7 @@ class FeedService:
             # 성공 응답 반환
             return OrganizationLatestFeedResponse(
                 success=True,
-                message="기관별 최신 피드 조회가 완료되었습니다",
+                message=Message.SUCCESS,
                 data=organization_latest_feed_data
             )
             
@@ -484,7 +486,7 @@ class FeedService:
             # 성공 응답 반환
             return Top5FeedResponse(
                 success=True,
-                message="TOP5 피드 조회가 완료되었습니다",
+                message=Message.SUCCESS,
                 data=top5_feed_data
             )
             
@@ -576,7 +578,7 @@ class FeedService:
             # 성공 응답 반환
             return PressReleaseResponse(
                 success=True,
-                message="보도자료 조회가 완료되었습니다",
+                message=Message.SUCCESS,
                 data=press_release_data
             )
             
@@ -598,15 +600,16 @@ class FeedService:
     #   ErrorResponse - 실패 시 에러 정보
     # 설명: 
     #   특정 피드의 상세 정보를 조회하여 피드 상세 페이지용 데이터로 변환
+    #   PDF 통째로 전달해버림
     #   조회 성공 시 해당 피드의 조회수를 1 증가시킴
     #   Repository에서 None 반환 시 적절한 에러 메시지 제공
     #   예외 발생 시 로깅 후 표준화된 에러 응답 반환
-    async def get_feed_detail_for_page(self, feed_id: int) -> FeedDetailResponse:
+    async def get_feed_detail_for_page(
+        self, feed_id: int, user_id: Optional[int] = None
+    ) -> Union[FeedDetailResponse, ErrorResponse]:
         try:
-            # Repository를 통해 피드 상세 정보 조회
             feed_data = await self.feed_repository.get_feed_detail(feed_id)
             
-            # Repository에서 None 반환 시 (데이터 없음) 에러 응답
             if feed_data is None:
                 return ErrorResponse(
                     error=ErrorDetail(
@@ -614,51 +617,51 @@ class FeedService:
                         message=Message.NOT_FOUND
                     )
                 )
+
+            # 조회수 증가
+            await self.feed_repository.increment_feed_view_count(feed_id)
             
-            # 피드 조회 성공 시 조회수 증가 시도
-            view_increment_success = await self.feed_repository.increment_feed_view_count(feed_id)
-            if not view_increment_success:
-                logger.warning(f"조회수 증가 실패 - feed_id: {feed_id}")
             
-            # 기관 정보 객체 생성
-            organization_info = OrganizationInfo(
-                id=feed_data['organization_id'],
-                name=feed_data['organization_name']
-            )
+            # 1. pdf_url 생성
+            pdf_url = f"{Settings.STATIC_FILES_URL}/feeds_pdf/{feed_data['pdf_file_path']}"
+
+            # 2. 사용자별 정보 초기화
+            is_bookmarked = None
+            user_rating = None
+
+            # 3. 로그인한 사용자(user_id가 주어짐)인 경우, 추가 정보 조회
+            if user_id:
+                # 북마크 여부 확인
+                bookmark = await self.feed_repository.get_bookmark(user_id, feed_id)
+                is_bookmarked = bookmark is not None
+                
+                # 사용자가 매긴 별점 확인
+                rating = await self.feed_repository.get_user_rating_for_feed(user_id, feed_id)
+                user_rating = rating.score if rating else None
             
-            # 카테고리 정보 객체 생성
-            category_info = CategoryInfo(
-                id=feed_data['category_id'],
-                name=feed_data['category_name']
-            )
+            organization_info = OrganizationInfo(id=feed_data['organization_id'], name=feed_data['organization_name'])
+            category_info = CategoryInfo(id=feed_data['category_id'], name=feed_data['category_name'])
             
-            # 피드 상세 정보 객체 생성
             feed_detail = FeedDetail(
                 id=feed_data['id'],
                 title=feed_data['title'],
                 organization=organization_info,
                 category=category_info,
                 average_rating=feed_data['average_rating'],
-                view_count=feed_data['view_count'],
+                view_count=feed_data['view_count'] + 1, # 조회수 증가를 즉시 반영
                 published_date=feed_data['published_date'],
-                content=feed_data['content'],
-                source_url=feed_data['source_url']
+                source_url=feed_data['source_url'],
+                # 수정된 스키마에 맞춰 데이터 전달
+                pdf_url=pdf_url,
+                is_bookmarked=is_bookmarked,
+                user_rating=user_rating
             )
             
-            # 피드 상세 데이터 객체 생성
-            feed_detail_data = FeedDetailData(
-                feed=feed_detail
-            )
+            feed_detail_data = FeedDetailData(feed=feed_detail)
             
-            # 성공 응답 반환
-            return FeedDetailResponse(
-                success=True,
-                message=Message.SUCCESS,
-                data=feed_detail_data
-            )
+            return FeedDetailResponse(success=True, data=feed_detail_data)
             
         except Exception as e:
-            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
             logger.error(f"Error in get_feed_detail_for_page: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
@@ -677,8 +680,8 @@ class FeedService:
                 logger.warning(f"존재하지 않는 사용자 - user_id: {user_id}")
                 return ErrorResponse(
                     error=ErrorDetail(
-                        code="USER_NOT_FOUND",
-                        message="존재하지 않는 사용자입니다"
+                        code=ErrorCode.NOT_FOUND,
+                        message=Message.USER_NOT_FOUND
                     )
                 )
             
@@ -689,8 +692,8 @@ class FeedService:
                 logger.warning(f"존재하지 않는 피드 - feed_id: {feed_id}")
                 return ErrorResponse(
                     error=ErrorDetail(
-                        code="FEED_NOT_FOUND",
-                        message="존재하지 않는 피드입니다"
+                        code=ErrorCode.NOT_FOUND,
+                        message=Message.FEED_NOT_FOUND
                     )
                 )
         
@@ -701,8 +704,8 @@ class FeedService:
                 logger.warning(f"이미 완료된 피드 - feed_id: {feed_id}")
                 return ErrorResponse(
                     error=ErrorDetail(
-                        code="RATING_ALREADY_EXISTS",
-                        message="이미 별점을 준 피드입니다"
+                        code=ErrorCode.ALREADY_EXISTS,
+                        message=Message.RATING_ALEADY_EXIST
                     )
                 )
             
@@ -711,8 +714,8 @@ class FeedService:
             if not (1 <= score <= 5):
                 return ErrorResponse(
                     error=ErrorDetail(
-                        code="INVALID_RATING_SCORE",
-                        message="별점은 1-5점 사이의 값이어야 합니다"
+                        code=ErrorCode.INVALID_PARAMETER,
+                        message=Message.INVALID_RATING_SCORE
                     )
                 )
 
@@ -728,7 +731,7 @@ class FeedService:
                     user_rating=score,
                     average_rating= rating_stats["average_rating"],
                     total_ratings= rating_stats["total_ratings"],
-                    message= "별점이 등록되었습니다"
+                    message= Message.SUCCESS
                 )
             )
 
@@ -750,8 +753,8 @@ class FeedService:
             logger.warning(f"존재하지 않는 사용자 - user_id: {user_id}")
             return ErrorResponse(
                 error=ErrorDetail(
-                    code="USER_NOT_FOUND",
-                    message="존재하지 않는 사용자입니다"
+                    code=ErrorCode.NOT_FOUND,
+                    message=Message.USER_NOT_FOUND
                 )
             )
         
@@ -762,8 +765,8 @@ class FeedService:
             logger.warning(f"존재하지 않는 피드 - feed_id: {feed_id}")
             return ErrorResponse(
                 error=ErrorDetail(
-                    code="FEED_NOT_FOUND",
-                    message="존재하지 않는 피드입니다"
+                    code=ErrorCode.NOT_FOUND,
+                    message=Message.FEED_NOT_FOUND
                 )
             )
         
@@ -780,7 +783,7 @@ class FeedService:
                 data = BookmarkData(
                     is_bookmarked=False,
                     bookmark_count=bookmark_count,
-                    message="북마크가 제거되었습니다"
+                    message=Message.DELETED
                 )
             )
         else:
@@ -793,6 +796,6 @@ class FeedService:
                 data = BookmarkData(
                     is_bookmarked=True,
                     bookmark_count=bookmark_count,
-                    message="북마크가 추가되었습니다"
+                    message=Message.SUCCESS
                 )
             )

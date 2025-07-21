@@ -362,13 +362,19 @@ class Message:
     USER_NOT_FOUND = "사용자를 찾을 수 없습니다."
     FEED_NOT_FOUND = "피드를 찾을 수 없습니다."
     ORGANIZATION_NOT_FOUND = "기관을 찾을 수 없습니다."
+    ORGANIZATION_FEED_NOT_FOUND = "모든 기관의 피드 데이터가 없습니다."
     CATEGORY_NOT_FOUND = "카테고리를 찾을 수 없습니다."
+    CATEGORY_FEED_NOT_FOUND = "해당 기관의 카테고리에 피드 데이터가 없습니다."
 
     # ErrorCode.DUPLICATE
     DUPLICATE_ORGANIZATION_NAME = "이미 존재하는 기관명입니다."
     DUPLICATE_CATEGORY_NAME = "해당 기관에 이미 존재하는 카테고리명입니다."
     DUPLICATE_NICKNAME = "이미 사용 중인 닉네임입니다."
     DUPLICATE_PASSWROD = "새 비밀번호는 기존 비밀번호와 달라야 합니다."
+
+    #ErrorCode.ALEADY_EXIST
+    RATING_ALEADY_EXIST = "이미 별점을 준 피드입니다"
+
 
     # ErrorCode.FORBIDDEN
     PROTECTED_CATEGORY_DELETE_ERROR = "보도자료 카테고리는 삭제할 수 없습니다."
@@ -393,6 +399,7 @@ class Message:
     INVALID_SLUG_ERROR = "유효하지 않은 페이지 슬러그입니다."
     INVALID_ROLE_CHANGE = "ADMIN 권한은 변경할 수 없습니다."
     INVALID_STATUS_ERROR = "유효하지 않은 상태값입니다."
+    INVALID_RATING_SCORE = "별점은 1-5점 사이의 값이어야 합니다"
     
     # ErrorCode.VALIDATION_ERROR
     VALIDATION_ERROR = "입력값 검증에 실패했습니다."
@@ -400,6 +407,7 @@ class Message:
 
     # ErrorCode.INTERNAL_ERROR
     INTERNAL_ERROR = "서버 내부 오류가 발생했습니다."
+    ICON_UPLOADS_FAIL = "아이콘을 불러오는 중 오류가 발생했습니다."
     
     # ErrorCode.FILE_TOO_LARGE
     FILE_TOO_LARGE = "파일 크기가 너무 큽니다."
@@ -483,8 +491,8 @@ class Settings:
     # 표시 순서 설정
     MIN_DISPLAY_ORDER = 0
     INACTIVE_DISPLAY_ORDER = -1
-    # 파일 업로드(backend/app/sliders/{UUID})
-    SLIDER_UPLOADS_PATH = "/sliders/"
+    # 파일 업로드(backend/app/static/sliders/{UUID})
+    SLIDER_UPLOADS_PATH = "static/sliders"
 
     # 정렬 기준
     DEFAULT_SORT = "is_active ASC, display_order ASC"
@@ -509,8 +517,14 @@ class Settings:
     MIN_CONTENT_LENGTH = 1
     DEFAULT_CONTENT_TYPE = "markdown"
     
-    """피드 관리 관련 설정"""
-    PDF_UPLOAD_PATH = "/feeds/"
+    # 실제 파일이 저장될 '서버 컴퓨터의 물리적 경로'
+    # pdf 저장할 때 DB: pdf_file_path = {UUID}
+    #    (파일을 '저장'할 때 사용)
+    PDF_STORAGE_PATH = "static/feeds_pdf"
+
+    # 웹 브라우저가 접근할 'URL 상의 기본 경로'
+    #    (URL을 '생성'할 때 사용)
+    STATIC_FILES_URL = "/static"
 
     # 처리 시간
     ESTIMATED_PROCESSING_TIME = 5  # 분
@@ -523,5 +537,5 @@ class Settings:
     # 보호 카테고리
     PROTECTED_CATEGORY_NAME = "보도자료"
 
-    # 파일 업로드(backend/app/organization_icon/{UUID})
-    ICON_UPLOAD_PATH = "/organization_icon/"
+    # 파일 업로드(backend/app/static/organization_icon/{UUID})
+    ICON_STORAGE_PATH = "static/organization_icon/"

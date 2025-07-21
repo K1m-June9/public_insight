@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -48,6 +49,9 @@ app.add_middleware(
 
 # 세션 미들웨어
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
+
+# 정적 파일 전달(현재는 PDF)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # JWT 인증 미들웨어
 app.add_middleware(

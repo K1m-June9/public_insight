@@ -1,24 +1,21 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { AxiosError } from 'axios';
+import { ErrorResponse } from '@/lib/types/base'; 
 import { useAuth } from '@/contexts/AuthContext';
 import {
     login as loginService,
     logout as logoutService,
     register as registerService,
     checkUserIdAvailability,
-    sendVerificationCode,
-    verifyEmailCode,
-    requestPasswordReset,
-    resetPassword,
+    sendVerificationCode
 } from '@/services/authService';
 import { getMyProfile } from '@/services/userService';
 import { 
     LoginRequest, 
     UserCreate, 
     UserCheckIDRequest,
-    UserCheckEmailRequest,
-    ResetPasswordRequest,
-    PasswordResetSubmitRequest
+    UserCheckEmailRequest
 } from '@/lib/types/auth';
 
 /**
@@ -42,9 +39,9 @@ export const useLoginMutation = () => {
                 }
             }
         },
-        onError: (error) => {
-            console.error('Login failed:', error);
-            alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+        onError: (error: AxiosError<ErrorResponse>) => {
+            const message = error.response?.data?.error?.message || '오류가 발생했습니다.';
+            alert(message);
         },
     });
 };
@@ -64,13 +61,14 @@ export const useLogoutMutation = () => {
             queryClient.clear(); // 캐시된 모든 쿼리 데이터 삭제
             router.push('/');
         },
-        onError: (error) => {
+        onError: (error: AxiosError<ErrorResponse>) => {
             console.error('Logout failed:', error);
             // 에러가 발생하더라도 클라이언트 측 상태는 초기화
             clearAuthContext();
             queryClient.clear();
             router.push('/');
-            alert('로그아웃 중 오류가 발생했습니다.');
+            const message = error.response?.data?.error?.message || '오류가 발생했습니다.';
+            alert(message);
         }
     });
 };
@@ -87,8 +85,8 @@ export const useRegisterMutation = () => {
             alert('회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.');
             router.push('/login'); // 실제 로그인 페이지 경로로 가정
         },
-        onError: (error: any) => {
-            const message = error.response?.data?.error?.message || '회원가입 중 오류가 발생했습니다.';
+        onError: (error: AxiosError<ErrorResponse>) => {
+            const message = error.response?.data?.error?.message || '오류가 발생했습니다.';
             alert(message);
         }
     });
@@ -113,8 +111,8 @@ export const useSendCodeMutation = () => {
         onSuccess: () => {
             alert('인증코드가 발송되었습니다.');
         },
-        onError: (error: any) => {
-            const message = error.response?.data?.error?.message || '인증코드 발송에 실패했습니다.';
+        onError: (error: AxiosError<ErrorResponse>) => {
+            const message = error.response?.data?.error?.message || '오류가 발생했습니다.';
             alert(message);
         }
     });

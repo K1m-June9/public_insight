@@ -177,7 +177,7 @@ class PressReleaseQuery(BaseModel):
     limit: int = Field(default=15, ge=1, le=100, description="페이지당 항목 수 (최대 100)")
 
 # ============================================================================
-# 6. 피드 상세 관련 스키마
+# 6. 피드 상세 관련 스키마 (PDF 버전)
 # ============================================================================
 
 class FeedDetail(BaseSchema):
@@ -189,8 +189,15 @@ class FeedDetail(BaseSchema):
     average_rating: float
     view_count: int
     published_date: datetime
-    content: str
+    # content: str  삭제(히스토리 보려고 만듦)
     source_url: str
+
+    # PDF 파일에 직접 접근할 수 있는 URL
+    pdf_url: str
+    
+    # 로그인한 사용자에게만 제공될 선택적 정보(선택적 인증)
+    is_bookmarked: Optional[bool] = None
+    user_rating: Optional[int] = None
 
 class FeedDetailData(BaseModel):
     """피드 상세 데이터"""

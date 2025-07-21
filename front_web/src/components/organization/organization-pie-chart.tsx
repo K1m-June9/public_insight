@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { PieChart as PieChartComponent, Pie, Cell, Sector, ResponsiveContainer } from "recharts";
 import Image from "next/image";
 import { useOrganizationCategoriesForChartQuery, useOrganizationIconQuery } from "@/hooks/queries/useOrganizationQueries";

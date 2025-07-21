@@ -87,7 +87,7 @@ export function isValidNickname(nickname: string | null | undefined): boolean {
  * @param value - 검사할 값
  * @returns 빈 값인지 여부
  */
-export function isEmpty(value: any): boolean {
+export function isEmpty(value: unknown): boolean {
     return value === null || value === undefined || value === '';
 }
 
@@ -96,6 +96,6 @@ export function isEmpty(value: any): boolean {
  * @param value - 검사할 값
  * @returns 필수 입력값이 있는지 여부
  */
-export function isRequired(value: any): boolean {
+export function isRequired(value: unknown): boolean {
     return !isEmpty(value);
 }

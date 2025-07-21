@@ -1,5 +1,3 @@
-// 파일 위치: app/organization/[name]/page.tsx
-
 "use client";
 
 import { useState } from "react";

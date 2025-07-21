@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+//import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useLoginMutation } from "@/hooks/mutations/useAuthMutations";
@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/header";
 
 export default function LoginPage() {
-  const router = useRouter();
+  //const router = useRouter();
   // 1. useLoginMutation 훅 사용
   const { mutate: login, isPending, error } = useLoginMutation();
 

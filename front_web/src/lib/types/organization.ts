@@ -1,4 +1,4 @@
-import { BaseResponse, DataResponse } from './base';
+import { DataResponse } from './base';
 
 // ============================================================================
 // 1. 기관 목록 관련

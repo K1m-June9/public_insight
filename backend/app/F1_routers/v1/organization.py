@@ -1,8 +1,8 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, JSONResponse
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Union
-
+from fastapi.responses import JSONResponse
 from app.F2_services.organization import OrganizationService, OrganizationServiceException
 from app.F5_core.dependencies import get_organization_service
 from app.F6_schemas.organization import OrganizationListResponse, OrganizationCategoryResponse, OrganizationIconResponse, WordCloudResponse, EmptyWordCloudResponse

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -50,8 +51,11 @@ app.add_middleware(
 # 세션 미들웨어
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
 
+# static 폴더 절대 경로
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 # 정적 파일 전달(현재는 PDF)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # JWT 인증 미들웨어
 app.add_middleware(

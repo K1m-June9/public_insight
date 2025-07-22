@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useParams } from "next/navigation";
+import dynamic from 'next/dynamic'; // 1. next/dynamic을 임포트
 import { ArrowLeft, Bookmark, Share2, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFeedDetailQuery } from "@/hooks/queries/useFeedQueries";
@@ -10,7 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils/date";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { PdfViewer } from "@/components/PdfViewer"; // 1. PdfViewer 컴포넌트 임포트
+// import { PdfViewer } from "@/components/PdfViewer"; // <- 이 줄은 제거
+
+// 2. PdfViewer 컴포넌트를 dynamic import
+const PdfViewer = dynamic(() => import('@/components/PdfViewer').then(mod => mod.PdfViewer), {
+  ssr: false, // 서버 사이드 렌더링을 비활성화
+  loading: () => <div className="text-center p-10">PDF 뷰어를 불러오는 중...</div>,
+});
+
 
 export default function FeedDetailPage() {
   const router = useRouter();
@@ -30,6 +38,7 @@ export default function FeedDetailPage() {
   const isBookmarked = feed?.is_bookmarked ?? false;
   const userRating = feed?.user_rating ?? 0;
 
+  // ... (handleToggleBookmark, handleRating 등 다른 함수들은 이전과 동일)
   const handleToggleBookmark = () => {
     if (!user) { alert("로그인이 필요한 서비스입니다."); return; }
     toggleBookmark(feedId);
@@ -44,8 +53,8 @@ export default function FeedDetailPage() {
     navigator.clipboard.writeText(window.location.href);
     alert("URL이 클립보드에 복사되었습니다.");
   };
-
   const goBack = () => router.back();
+
 
   const renderContent = () => {
     if (isLoading) {
@@ -67,6 +76,7 @@ export default function FeedDetailPage() {
           <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /><span>{feed.average_rating.toFixed(1)}</span></div>
         </div>
         <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200">
+            {/* ... (북마크, 공유, 별점 버튼 JSX는 이전과 동일) ... */}
           <Button variant="outline" className={`flex items-center gap-2 ${isBookmarked ? "text-yellow-500" : ""}`} onClick={handleToggleBookmark}><Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} /><span>{isBookmarked ? "북마크됨" : "북마크"}</span></Button>
           <Button variant="outline" className="flex items-center gap-2" onClick={handleShare}><Share2 className="h-4 w-4" /><span>공유</span></Button>
           <div className="ml-auto flex items-center gap-1">
@@ -75,9 +85,9 @@ export default function FeedDetailPage() {
           </div>
         </div>
         
-        {/* 2. 기존 content 렌더링 부분을 PdfViewer로 교체 */}
         <div className="mb-8 pb-8 border-b border-gray-200">
           <h3 className="text-lg font-bold mb-4">원문 보기</h3>
+          {/* 3. 이제 PdfViewer는 클라이언트에서만 렌더링 */}
           <PdfViewer fileUrl={feed.pdf_url} />
         </div>
 

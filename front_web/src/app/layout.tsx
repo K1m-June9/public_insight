@@ -1,26 +1,27 @@
-import "./globals.css"
-import { Inter } from "next/font/google"
-import { AuthProvider } from "../contexts/AuthContext"
-import type React from "react" // Added import for React
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import AppProviders from '@/components/providers/AppProviders';
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ['latin'] });
 
-export const metadata = {
-  title: "Public Insight",
-  description: "Explore public policies and insights",
-}
+export const metadata: Metadata = {
+  title: 'Public Insight',
+  description: '살려주세요',
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} custom-scrollbar`}>
-        <AuthProvider>{children}</AuthProvider>
+    <html lang="ko">
+      <body className={inter.className}>
+        <AppProviders>
+          {children}
+        </AppProviders>
       </body>
     </html>
-  )
+  );
 }
-

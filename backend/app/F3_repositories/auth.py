@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import Optional
@@ -138,3 +138,67 @@ class AuthRepository:
         except Exception:
             await self.db.rollback()
             raise
+    
+
+    
+    # user_id 중복 여부 확인
+    async def is_user_id_exists(self, user_id: str) -> bool:
+        """user_id 중복 여부 확인"""
+        stmt = select(exists().where(User.user_id == user_id))
+        return await self.db.scalar(stmt)
+
+    # email 중복 여부 확인
+    async def is_email_exists(self, email: str) -> bool:
+        """email 중복 여부 확인"""
+        stmt = select(exists().where(User.email == email))
+        return await self.db.scalar(stmt)
+
+    
+    # nickname 중복 여부 확인
+    async def is_nickname_exists(self, nickname: str) -> bool:
+        stmt = select(exists().where(User.nickname == nickname))
+        return await self.db.scalar(stmt)
+    
+
+    # 새로운 사용자 등록
+    async def save_user(self, user: User):
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+
+
+    # 아이디 찾기 - 이메일을 통해 user_id 
+    async def find_user_id_by_email(self, email: str) -> str:
+        result = await self.db.execute(select(User).where(User.email == email))
+        return result.scalar_one_or_none()
+
+
+    # 이메일과 user_id를 동시에 만족하는 사용자 조회
+    async def get_user_by_email_and_id(self, email: str, user_id: str):
+        result = await self.db.execute(
+            select(User).where(
+                (User.email == email) & (User.user_id == user_id)
+            )
+        )
+        return result.scalar_one_or_none()
+
+
+    # 이메일과 user_id를 동시에 만족하는 사용자의 비밀번호 변경
+    async def update_password(self,user_id: str, email: str, hashed_password:str):
+        # 1. user_id와 email이 일치하는 사용자 조회
+        result = await self.db.execute(
+            select(User).where(
+                (User.email == email) & (User.user_id == user_id)
+            )
+        )
+        user = result.scalar_one_or_none()
+
+        # 2. 사용자가 존재하지 않으면 예외 발생
+        if not user:
+            raise ValueError("해당 사용자를 찾을 수 없습니다.")
+        
+        # 3. 비밀번호 해시값 업데이트
+        user.password_hash = hashed_password
+
+        # 4. 변경사항 커밋
+        await self.db.commit()

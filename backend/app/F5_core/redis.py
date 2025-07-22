@@ -6,7 +6,10 @@ from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
 from datetime import timedelta
 import logging
+import secrets
+import json
 from typing import Optional, Dict, Any, Callable, Awaitable
+import os
 
 from app.F7_models.users import User
 from app.F5_core.config import settings
@@ -23,9 +26,10 @@ class RedisSettings(BaseSettings):
     CLIENT_REDIS_URL: Optional[str] = None
     EMAIL_REDIS_URL: Optional[str] = None
     TOKEN_REDIS_URL: Optional[str] = None
+    PASSWORD_RESET_REDIS_URL: Optional[str] = None
 
     model_config = ConfigDict(
-        env_file = ".env",
+        env_file =  os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env")),
         env_file_encoding = "utf-8",
         extra = "ignore",
     )
@@ -43,6 +47,9 @@ class RedisSettings(BaseSettings):
 
     def get_token_url(self) -> str:
         return self.TOKEN_REDIS_URL or f"{self._default_base_url()}/13"
+    
+    def get_password_reset_url(self) -> str:
+        return self.PASSWORD_RESET_REDIS_URL or f"{self._default_base_url()}/14"
 
 
 # 인스턴스 생성
@@ -52,7 +59,9 @@ redis_settings = RedisSettings()
 client_redis = Redis.from_url(redis_settings.get_client_url())
 email_redis = Redis.from_url(redis_settings.get_email_url())
 token_redis = Redis.from_url(redis_settings.get_token_url())
+password_reset_redis = Redis.from_url(redis_settings.get_password_reset_url())
 
+# token_redis
 class RedisManager:
     """
     Redis에 관련된 캐시 및 토큰 저장 기능을 모은 정적 유틸 클래스
@@ -100,7 +109,6 @@ class RedisManager:
         """Redis SCAN 명령으로 키를 검색"""
         return await token_redis.scan(cursor=cursor, match=pattern, count=count)
 
-
     @staticmethod
     async def delete_access_token(jti: str) -> None:
         """Redis에서 액세스 토큰 JTI 키 삭제(토큰 무효화)"""
@@ -117,98 +125,39 @@ class RedisManager:
         if keys:
             await token_redis.delete(*keys)
 
-    @staticmethod
-    async def cache_user_data(user_id: str, user_data: Dict[str, Any], expire: int = settings.USER_CACHE_EXPIRE_SECONDS) -> None:
-        """
-        사용자 정보를 Redis 해시(Hash)로 저장
-        - key: user:{user_id}
-        - user_data 딕셔너리의 각 키-값을 Redis 해시의 필드-값으로 저장 (값은 모두 문자열로 변환하여 저장)
-        - expire: TTL 기본값 1일 (기본 1일, 86400초)
 
-        Args:
-        user_id (str): 사용자 고유 ID
-        user_data (Dict[str, Any]): 저장할 사용자 데이터 (필드-값 쌍)
-        expire (int, optional): 키 만료 시간(초 단위). 기본값은 설정값 USER_CACHE_EXPIRE_SECONDS
-        """
-        key = f"user:{user_id}" # Redis에 저장할 키 생성
-        args = []
-        for k, v in user_data.items():
-            args.extend([k, str(v)]) # 값은 반드시 문자열로 변환
-
-        # Redis에 해시 필드-값들을 한 번에 저장
-        await client_redis.hset(key, *args)
-        # Redis 키에 만료시간(TTL) 설정
-        await client_redis.expire(key, expire)
-
-
-    @staticmethod
-    async def get_user_data(user_id: str) -> Dict[str, Any]:
-        """
-        Redis에서 사용자 정보 해시를 조회하여 반환
-        데이터가 없으면 빈 dict 또는 None 반환 예상
-        """
-        raw_data = await client_redis.hgetall(f"user:{user_id}")
-        return {k.decode('utf-8'): v.decode('utf-8') for k, v in raw_data.items()}
-
-
-    @staticmethod
-    async def invalidate_user_cache(user_id: str) -> None:
-        """
-        사용자 캐시 무효화(삭제)
-        - 주로 회원정보 수정 후 사용
-        """
-        await client_redis.delete(f"user:{user_id}")
-
-
-    @staticmethod
-    async def safe_cache_get(key: str, db_fallback: Callable[[str], Awaitable[Any]]) -> Any:
-        """
-        Redis 장애를 대비한 안전한 get 메서드
-        - 장애 시 DB 조회 함수를 호출해 fallback 처리
-        - 예: key를 Redis에서 못찾으면 db_fallback(key)를 실행
-
-        Args:
-            key (str): 조회할 Redis 키
-            db_fallback (Callable): fallback 비동기 함수
-
-        """
-        try:
-            val = await client_redis.get(key)
-            if val is None:
-                return None
-            return val.decode("utf-8")
-        except RedisError as e:
-            logger.warning(f"Redis 장애 발생 ({e}). DB 폴백 실행")
-            return await db_fallback(key)
-
+# client token
 class RedisCacheService:
     @staticmethod
     async def cache_user_info(user: User):
         """유저 정보를 Redis에 캐싱(1일 후 만료)"""
-        user_data = {
-            "user_id": user.user_id, 
-            "role": user.role.value,
-            "status": user.status.value,
+        if not user.user_id or not user.email or not user.nickname:
+            raise ValueError("Invalid user data for caching")
+        
+        cache_data = {
+            "user_id":user.user_id,
+            "email":user.email,
+            "nickname":user.nickname,
+            "status":user.status.value,
+            "role":user.role.value,
         }
-        key = f"user:{user.user_id}"
-        await client_redis.hset(key, mapping=user_data)
-        await client_redis.expire(key, timedelta(days=1))
+
+        key = f"user_cache:{user.user_id}"
+        await client_redis.set(key, json.dumps(cache_data), ex=3600)
     
     @staticmethod
     async def get_cached_user_info(user_id: str):
         """Redis에서 유저 정보 조회"""
-        key = f"user:{user_id}"
-        data = await client_redis.hgetall(key)
-
-        # Redis hgetall 결과가 bytes형 dict라면 decode 처리 필요
+        key = f"user_cache:{user_id}"
+        data = await client_redis.get(key)
         if data:
-            return {k.decode(): v.decode() for k, v in data.items()}
+            return json.loads(data)
         return None
 
     @staticmethod
     async def invalidate_user_cache(user_id: str):
         """유저 캐시 무효화(삭제)"""
-        await client_redis.delete(f"user:{user_id}")
+        await client_redis.delete(f"user_cache:{user_id}")
     """
     캐시에서 삭제 조건(필수)
     1. 사용자 계정 상태가 변경될 때
@@ -216,6 +165,44 @@ class RedisCacheService:
     3. 사용자 정보가 민감하게 바뀌었을 떄
     """
         
+
+# password_reset_redis
+class PasswordResetRedisService:
+    def __init__(self):
+        self.redis = password_reset_redis
+        self.expire_seconds = 600
+        self.key_prefix = "password_reset:"
+
+    async def generate_token(self):
+        """중복되지 않는 고유한 토큰 생성"""
+
+        # 최대 5회 중복 체크 후 생성 실패 시 예외 발생
+        for _ in range(5):
+            token = secrets.token_urlsafe(32)
+            key = self.key_prefix + token 
+            if not await self.redis.exists(key):
+                return token 
+        raise RuntimeError("토큰 생성 실패")
+
+    async def save_token(self, token: str, email: str, user_id: str):
+        """Redis에 토큰과 관련 정보를 JSON 형태로 저장"""
+        value = json.dumps({"email": email.lower(), "user_id": user_id})
+        # 저장시 지정된 expire_seconds 동안만 유효
+        await self.redis.setex(self.key_prefix + token, self.expire_seconds, value)
+    
+    async def get_token_data(self, token: str):
+        """Redis에서 토큰에 해당하는 데이터를 조회"""
+        data = await self.redis.get(self.key_prefix + token)
+        if data:
+            return json.loads(data)
+        return None 
+    
+    async def delete_token(self, token: str):
+        """토큰이 사용 완료되었거나 만료 시, Redis에서 해당 키를 삭제하여 무효화"""
+        await self.redis.delete(self.key_prefix + token)
+
+
+
 
 """
 async def get_user_from_db(user_id: str) -> Optional[str]:

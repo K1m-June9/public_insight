@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 class Settings(BaseSettings):
     # JWT 설정
@@ -26,6 +27,17 @@ class Settings(BaseSettings):
     SMTP_PORT: int
     EMAIL: str
     EMAIL_PASSWORD: str
+
+    # Elasticsearch 설정 (content로 통일)
+    ELASTICSEARCH_URL: str
+    ELASTICSEARCH_USERNAME: str
+    ELASTICSEARCH_PASSWORD: str
+    ELASTICSEARCH_INDEX_PREFIX: str = "content_index"
+    ELASTICSEARCH_READ_ALIAS: str = "content_search"
+    ELASTICSEARCH_WRITE_ALIAS: str = "content_write"
+    ELASTICSEARCH_USER_DICT_PATH: Optional[str] = "/etc/elasticsearch/userdict_ko.txt"
+    ELASTICSEARCH_SYNONYMS_PATH: Optional[str] = "/etc/elasticsearch/synonym-set.txt"
+    ELASTICSEARCH_STOPWORDS_PATH: Optional[str] = "/etc/elasticsearch/stopwords.txt"
 
     # 환경 설정
     ENVIRONMENT: str = "development"
@@ -60,7 +72,7 @@ class Settings(BaseSettings):
 
     model_config = {
         "extra": "allow",  # 앱 전체 환경 변수는 자유롭게 허용
-        "env_file": "../.env",
+        "env_file": os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env")),
         "env_file_encoding": "utf-8",
     }
 

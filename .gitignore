@@ -1,6 +1,10 @@
 # Docker 관련 파일들
 docker-compose.yml
 docker-compose_*.txt
+Dockerfile.elasticsearch
 certbot-etc/
 cookies.txt
 .env
+
+# Elasticsearch 관련 파일들
+esdata/

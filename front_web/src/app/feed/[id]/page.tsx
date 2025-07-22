@@ -1,68 +1,103 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import FeedDetail from "@/components/FeedDetail"
-import type { FeedDetail as FeedDetailType } from "@/types/feed" // type 키워드 추가
+import { useRouter, useParams } from "next/navigation";
+import { ArrowLeft, Bookmark, Share2, Star } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFeedDetailQuery } from "@/hooks/queries/useFeedQueries";
+import { useToggleBookmarkMutation, usePostRatingMutation } from "@/hooks/mutations/useFeedMutations";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils/date";
+import Header from "@/components/header";
+import Footer from "@/components/footer";
+import { PdfViewer } from "@/components/PdfViewer"; // 1. PdfViewer 컴포넌트 임포트
 
-export default function FeedPage() {
-  const { id } = useParams()
-  const [feedData, setFeedData] = useState<FeedDetailType | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export default function FeedDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const feedId = Number(params.id);
 
-  useEffect(() => {
-    async function fetchFeedData() {
-      try {
-        const res = await fetch(`/api/feeds?id=${id}`)
-        if (!res.ok) {
-          throw new Error("Failed to fetch feed")
-        }
-        const data = await res.json()
+  const { user } = useAuth();
 
-        // 댓글 데이터에 isDeleted 속성 추가
-        if (data.comments) {
-          // 재귀적으로 모든 댓글과 대댓글에 isDeleted 속성 추가하는 함수
-          const addIsDeletedProperty = (comment: any): any => {
-            return {
-              ...comment,
-              isDeleted: false, // 명시적으로 false로 설정
-              createdAt: comment.createdAt || "2024.03.15", // createdAt 속성 추가
-              replies: Array.isArray(comment.replies) 
-                ? comment.replies.map(addIsDeletedProperty) 
-                : []
-            };
-          };
-          
-          data.comments = data.comments.map(addIsDeletedProperty);
-        }
+  const { data: feedData, isLoading, isError } = useFeedDetailQuery(feedId, {
+    enabled: !isNaN(feedId) && feedId > 0,
+  });
+  
+  const { mutate: toggleBookmark } = useToggleBookmarkMutation();
+  const { mutate: postRating } = usePostRatingMutation();
 
-        setFeedData(data)
-      } catch (err) {
-        console.error("Failed to load feed:", err)
-        setError("Failed to load feed. Please try again later.")
-      } finally {
-        setIsLoading(false)
-      }
+  const feed = feedData?.data.feed;
+  const isBookmarked = feed?.is_bookmarked ?? false;
+  const userRating = feed?.user_rating ?? 0;
+
+  const handleToggleBookmark = () => {
+    if (!user) { alert("로그인이 필요한 서비스입니다."); return; }
+    toggleBookmark(feedId);
+  };
+
+  const handleRating = (rating: number) => {
+    if (!user) { alert("로그인이 필요한 서비스입니다."); return; }
+    postRating({ id: feedId, score: rating });
+  };
+  
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    alert("URL이 클립보드에 복사되었습니다.");
+  };
+
+  const goBack = () => router.back();
+
+  const renderContent = () => {
+    if (isLoading) {
+      return <div className="flex justify-center items-center h-[60vh]"><div className="animate-pulse text-gray-500">로딩 중...</div></div>;
     }
-
-    if (id) {
-      fetchFeedData()
+    if (isError || !feed) {
+      return <div className="flex flex-col justify-center items-center h-[60vh] gap-4"><p className="text-gray-500">피드를 찾을 수 없습니다.</p><Button variant="outline" onClick={() => router.push('/')}>메인으로 돌아가기</Button></div>;
     }
-  }, [id])
+    return (
+      <div className="max-w-3xl mx-auto">
+        <Button variant="ghost" onClick={goBack} className="mb-6 flex items-center gap-1"><ArrowLeft className="h-4 w-4" /><span>뒤로가기</span></Button>
+        <h1 className="text-3xl font-bold mb-4 text-gray-900">{feed.title}</h1>
+        <div className="flex flex-wrap items-center gap-3 mb-6 text-sm text-gray-500">
+          <Badge variant="outline" className="bg-gray-100">{feed.organization.name}</Badge>
+          <Badge variant="outline" className="bg-gray-50">{feed.category.name}</Badge>
+          <span>조회수 {feed.view_count.toLocaleString()}</span>
+          <span>•</span>
+          <span>{formatDate(feed.published_date)}</span>
+          <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /><span>{feed.average_rating.toFixed(1)}</span></div>
+        </div>
+        <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200">
+          <Button variant="outline" className={`flex items-center gap-2 ${isBookmarked ? "text-yellow-500" : ""}`} onClick={handleToggleBookmark}><Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} /><span>{isBookmarked ? "북마크됨" : "북마크"}</span></Button>
+          <Button variant="outline" className="flex items-center gap-2" onClick={handleShare}><Share2 className="h-4 w-4" /><span>공유</span></Button>
+          <div className="ml-auto flex items-center gap-1">
+            <span className="text-sm text-gray-500 mr-2">별점 주기:</span>
+            {[1, 2, 3, 4, 5].map((star) => (<Button key={star} variant="ghost" size="icon" className={`h-8 w-8 ${userRating >= star ? "text-yellow-400" : "text-gray-300"}`} onClick={() => handleRating(star)}><Star className={`h-5 w-5 ${userRating >= star ? "fill-current" : ""}`} /></Button>))}
+          </div>
+        </div>
+        
+        {/* 2. 기존 content 렌더링 부분을 PdfViewer로 교체 */}
+        <div className="mb-8 pb-8 border-b border-gray-200">
+          <h3 className="text-lg font-bold mb-4">원문 보기</h3>
+          <PdfViewer fileUrl={feed.pdf_url} />
+        </div>
 
-  if (isLoading) {
-    return <div className="text-center text-gray-500 text-xl mt-8">Loading...</div>
-  }
+        <div className="mb-8">
+          <h3 className="text-lg font-medium mb-2">원문 링크</h3>
+          <a href={feed.source_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{feed.source_url}</a>
+        </div>
+      </div>
+    );
+  };
 
-  if (error) {
-    return <div className="text-center text-red-500 text-xl mt-8">Error: {error}</div>
-  }
-
-  if (!feedData) {
-    return <div className="text-center text-gray-500 text-xl mt-8">Feed not found</div>
-  }
-
-  return <FeedDetail {...feedData} comments={feedData.comments || []} />
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Header />
+      <main className="flex-grow">
+        <div className="container px-4 py-8 md:px-6">
+          {renderContent()}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
 }
-

@@ -17,22 +17,6 @@ class BaseSchema(BaseModel):
         validate_assignment=True,
     )
 
-class TimestampMixin(BaseModel):
-    """생성/수정 시간 필드 믹스인"""
-    created_at: datetime
-    updated_at: datetime
-
-
-class IDMixin(BaseModel):
-    """ID 필드 믹스인"""
-    id: int
-
-
-class BaseEntity(BaseSchema, IDMixin, TimestampMixin):
-    """ID와 타임스탬프를 포함한 기본 엔티티"""
-    pass
-
-
 # ============================================================================
 # 2. 기본 응답 구조
 # ============================================================================
@@ -69,7 +53,6 @@ class DataResponse(BaseResponse):
 # ============================================================================
 # 3. 페이지네이션
 # ============================================================================
-
 class PaginationInfo(BaseModel):
     """페이지네이션 정보"""
     current_page: int = Field(..., ge=1, description="현재 페이지")
@@ -325,6 +308,8 @@ class ErrorCode:
     INVALID_PARAMETER = "INVALID_PARAMETER"
     MISSING_PARAMETER = "MISSING_PARAMETER"
     VALIDATION_ERROR = "VALIDATION_ERROR"
+    BAD_REQUEST = "BAD_REQUEST"
+    DUPLICATE = "DUPLICATE"
     
     # 인증/권한 에러
     UNAUTHORIZED = "UNAUTHORIZED"
@@ -363,22 +348,78 @@ class Message:
     CREATED = "성공적으로 생성되었습니다"
     UPDATED = "성공적으로 수정되었습니다"
     DELETED = "성공적으로 삭제되었습니다"
-    LOGIN_SUCCESS = "로그인에 성공했습니다" # 추가
+    LOGIN_SUCCESS = "로그인에 성공했습니다"
     
     # 에러 메시지
-    NOT_FOUND = "요청한 리소스를 찾을 수 없습니다"
-    UNAUTHORIZED = "인증이 필요합니다"
-    FORBIDDEN = "접근 권한이 없습니다"
-    INVALID_PARAMETER = "잘못된 파라미터입니다"
-    VALIDATION_ERROR = "입력값 검증에 실패했습니다"
-    INTERNAL_ERROR = "서버 내부 오류가 발생했습니다"
-    LOGIN_FAILED = "아이디 또는 비밀번호가 올바르지 않습니다" # 추가
-    
-    # 파일 관련 메시지
-    FILE_TOO_LARGE = "파일 크기가 너무 큽니다"
-    INVALID_FILE_TYPE = "지원하지 않는 파일 형식입니다"
-    FILE_UPLOAD_FAILED = "파일 업로드에 실패했습니다"
+    # ErrorCode.INVALID_
+    INVALID_CREDENTIALS = "현재 비밀번호가 일치하지 않습니다."
 
+    # ErrorCode.NOT_FOUND
+    NOT_FOUND = "요청한 리소스를 찾을 수 없습니다"
+    SLIDER_NOT_FOUND = "슬라이더를 찾을 수 없습니다."
+    NOTICE_NOT_FOUND = "공지사항을 찾을 수 없습니다."
+    PAGE_NOT_FOUND = "해당 페이지를 찾을 수 없습니다."
+    USER_NOT_FOUND = "사용자를 찾을 수 없습니다."
+    FEED_NOT_FOUND = "피드를 찾을 수 없습니다."
+    ORGANIZATION_NOT_FOUND = "기관을 찾을 수 없습니다."
+    ORGANIZATION_FEED_NOT_FOUND = "모든 기관의 피드 데이터가 없습니다."
+    CATEGORY_NOT_FOUND = "카테고리를 찾을 수 없습니다."
+    CATEGORY_FEED_NOT_FOUND = "해당 기관의 카테고리에 피드 데이터가 없습니다."
+
+    # ErrorCode.DUPLICATE
+    DUPLICATE_ORGANIZATION_NAME = "이미 존재하는 기관명입니다."
+    DUPLICATE_CATEGORY_NAME = "해당 기관에 이미 존재하는 카테고리명입니다."
+    DUPLICATE_NICKNAME = "이미 사용 중인 닉네임입니다."
+    DUPLICATE_PASSWROD = "새 비밀번호는 기존 비밀번호와 달라야 합니다."
+
+    #ErrorCode.ALEADY_EXIST
+    RATING_ALEADY_EXIST = "이미 별점을 준 피드입니다"
+
+
+    # ErrorCode.FORBIDDEN
+    PROTECTED_CATEGORY_DELETE_ERROR = "보도자료 카테고리는 삭제할 수 없습니다."
+    FORBIDDEN = "접근 권한이 없습니다"
+    PINNED_NOTICE_DELETE_FORBIDDEN = "고정된 공지사항은 삭제할 수 없습니다."
+
+    # ErrorCode.BAD_REQUEST
+    MISSING_REQUIRED_FIELDS = "필수 필드가 누락되었습니다."
+    INVALID_CONTENT_TYPE = "PDF 파일 또는 텍스트 중 하나만 제공해야 합니다."
+    EMPTY_CONTENT_ERROR = "콘텐츠가 비어있습니다."
+
+
+    # ErrorCode.UNAUTHORIZED
+    UNAUTHORIZED = "인증이 필요합니다"
+    
+    # ErrorCode.INVALID_PARAMETER
+    INVALID_PARAMETER = "잘못된 파라미터입니다"
+    LOGIN_FAILED = "아이디 또는 비밀번호가 올바르지 않습니다"
+    
+    # ErrorCode.VALIDATION_ERROR
+    INVALID_URL = "유효하지 않은 URL 형식입니다."
+    INVALID_SLUG_ERROR = "유효하지 않은 페이지 슬러그입니다."
+    INVALID_ROLE_CHANGE = "ADMIN 권한은 변경할 수 없습니다."
+    INVALID_STATUS_ERROR = "유효하지 않은 상태값입니다."
+    INVALID_RATING_SCORE = "별점은 1-5점 사이의 값이어야 합니다"
+    
+    # ErrorCode.VALIDATION_ERROR
+    VALIDATION_ERROR = "입력값 검증에 실패했습니다."
+    VALIDATION_PASSWORD = "비밀번호는 8자 이상, 영문, 숫자, 특수문자를 포함해야 합니다."
+
+    # ErrorCode.INTERNAL_ERROR
+    INTERNAL_ERROR = "서버 내부 오류가 발생했습니다."
+    ICON_UPLOADS_FAIL = "아이콘을 불러오는 중 오류가 발생했습니다."
+    
+    # ErrorCode.FILE_TOO_LARGE
+    FILE_TOO_LARGE = "파일 크기가 너무 큽니다."
+
+    # ErrorCode.INVALID_FILE_TYPE
+    INVALID_FILE_TYPE = "지원하지 않는 파일 형식입니다."
+
+    # ErrorCode.FILE_UPLOAD_FAILED
+    FILE_UPLOAD_FAILED = "파일 업로드에 실패했습니다."
+
+    # ErrorCode.CONFLICT
+    PROCESSING_IN_PROGRESS = "현재 처리 중입니다. 완료 후 다시 시도해주세요."
 
 # ============================================================================
 # 14. 설정 상수
@@ -386,15 +427,35 @@ class Message:
 
 class Settings:
     """공통 설정 상수"""
-    # 페이지네이션
+    # 페이지네이션(기본)
     DEFAULT_PAGE_SIZE = 20
     MAX_PAGE_SIZE = 100
     
-    # 파일 업로드
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-    ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
-    ALLOWED_DOCUMENT_TYPES = ["application/pdf", "application/msword"]
+    # 페이지네이션(사용자 관리, 피드 관리)
+    PAGE_SIZE_50 = 50
+    MAX_PAGE_SIZE_50 = 50
     
+    # 최대 이미지 크기
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    
+    # 최대 PDF 크기
+    MAX_PDF_SIZE = 50 * 1024 * 1024  # 50MB
+
+    # 업로드 가능한 이미지 타입
+    ALLOWED_IMAGE_TYPES = [
+        'image/jpeg', 'image/jpg', 'image/png',
+        'image/gif', 'image/svg+xml', 'image/tiff'
+    ]
+    
+    # 업로드 가능한 정책 및 보도자료 파일 타입(PDF 제외 불가)
+    ALLOWED_DOCUMENT_TYPES = ["application/pdf"]
+
+    # 업로드 가능한 아이콘 타입(일반 이미지와 별도)
+    ALLOWED_ICON_EXTENSIONS = ['.ico', '.svg']
+
+    # 허용 가능한 pdf 확장자
+    ALLOWED_PDF_EXTENSIONS = ['.pdf']
+
     # 텍스트 길이 제한
     MAX_TITLE_LENGTH = 200
     MAX_DESCRIPTION_LENGTH = 1000
@@ -408,4 +469,73 @@ class Settings:
     # 캐시 TTL (초)
     CACHE_TTL_SHORT = 300      # 5분
     CACHE_TTL_MEDIUM = 1800    # 30분
-    CACHE_TTL_LONG = 3600      # 1시간
+    CACHE_TTL_LONG = 3600      # 1시간 
+    
+    """대시보드 관련 설정"""
+    # 데이터 제한
+    MAX_POPULAR_KEYWORDS = 10
+    MAX_ORGANIZATION_STATS = 5
+    MAX_TOP_FEEDS = 3
+    MAX_RECENT_ACTIVITIES = 10
+    
+    # 기간 설정
+    MONTHLY_SIGNUPS_DAYS = 90  # 90일간의 일별 가입자 통계
+    
+    # 캐시 설정 (향후 적용 시)
+    CACHE_TTL_DASHBOARD = 300  # 5분
+    
+    # 활동 로그 보관 기간(일)
+    ACTIVITY_LOG_RETENTION_DAYS = 30
+    
+    """슬라이더 관련 설정"""
+    # 표시 순서 설정
+    MIN_DISPLAY_ORDER = 0
+    INACTIVE_DISPLAY_ORDER = -1
+    # 파일 업로드(backend/app/static/sliders/{UUID})
+    SLIDER_UPLOADS_PATH = "static/sliders"
+
+    # 정렬 기준
+    DEFAULT_SORT = "is_active ASC, display_order ASC"
+    
+    """공지사항 관련 설정"""
+    # 정렬 기준
+    DEFAULT_SORT = "is_pinned DESC, created_at DESC"
+    
+    """정적 페이지 관련 설정"""
+    # 고정 페이지 정보
+    FIXED_PAGES = {
+        "about": "프로젝트 소개",
+        "terms": "이용 약관",
+        "privacy": "개인정보처리방침",
+        "youth-protection": "청소년 보호 정책"
+    }
+
+    # 허용된 슬러그 목록
+    ALLOWED_SLUGS = ["about", "terms", "privacy", "youth-protection"]
+
+    # 콘텐츠 관련
+    MIN_CONTENT_LENGTH = 1
+    DEFAULT_CONTENT_TYPE = "markdown"
+    
+    # 실제 파일이 저장될 '서버 컴퓨터의 물리적 경로'
+    # pdf 저장할 때 DB: pdf_file_path = {UUID}
+    #    (파일을 '저장'할 때 사용)
+    PDF_STORAGE_PATH = "static/feeds_pdf"
+
+    # 웹 브라우저가 접근할 'URL 상의 기본 경로'
+    #    (URL을 '생성'할 때 사용)
+    STATIC_FILES_URL = "/static"
+
+    # 처리 시간
+    ESTIMATED_PROCESSING_TIME = 5  # 분
+    PROCESSING_TIMEOUT = 30  # 분
+
+    # 검색 설정
+    SEARCH_FIELDS = ["title"]
+    
+    """기관/카테고리 관련 상수"""
+    # 보호 카테고리
+    PROTECTED_CATEGORY_NAME = "보도자료"
+
+    # 파일 업로드(backend/app/static/organization_icon/{UUID})
+    ICON_STORAGE_PATH = "static/organization_icon/"

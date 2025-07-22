@@ -1,167 +1,85 @@
-"use client"
+'use client'; // 이 컴포넌트는 클라이언트 측에서만 렌더링되어야 함을 명시
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User } from '@/lib/types/user';
+import { getMyProfile } from '@/services/userService';
+import { getAccessToken, setAccessToken } from '@/lib/api/tokenManager';
 
-interface User {
-  id: string
-  username: string
-  nickname: string
-  allowNotifications: boolean
-  isAdmin: boolean
-}
-
-interface UpdateUserData {
-  nickname?: string
-  currentPassword?: string
-  newPassword?: string
-}
-
-interface Notification {
-  id: number
-  content: string
-  read: boolean
-}
-
+// Context에 저장될 값의 타입을 정의합니다.
 interface AuthContextType {
-  isLoggedIn: boolean
-  user: User | null
-  login: (username: string, password: string) => Promise<void>
-  logout: () => void
-  signup: (username: string, password: string, nickname: string, allowNotifications: boolean) => Promise<void>
-  checkUsernameAvailability: (username: string) => Promise<boolean>
-  updateUser: (data: UpdateUserData) => Promise<void>
-  notifications: Notification[]
-  markNotificationsAsRead: () => void
-  checkNicknameAvailability: (nickname: string) => Promise<boolean>
+    user: User | null;
+    isLoading: boolean;
+    login: (accessToken: string, user: User) => void;
+    logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+// Context 생성 (초기값은 undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
-  const [user, setUser] = useState<User | null>(null)
-  const [notifications, setNotifications] = useState<Notification[]>([])
+// AuthProvider 컴포넌트: 앱 전체를 감싸서 인증 상태를 제공합니다.
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true); // 앱 시작 시 인증 상태 확인 중임을 나타냄
 
-  // 더미 사용자 데이터
-  const dummyUsers = [
-    { id: "1", username: "abc123", password: "1111", nickname: "a", allowNotifications: true, isAdmin: false },
-    { id: "2", username: "ad", password: "12", nickname: "Admin", allowNotifications: false, isAdmin: true },
-  ]
+    useEffect(() => {
+        const checkAuthStatus = async () => {
+        // Access Token이 없으면 확인할 필요도 없이 비로그인 상태.
+        if (!getAccessToken()) {
+            setIsLoading(false);
+            return;
+        }
+        
+        try {
+            const response = await getMyProfile();
+            if (response.success && response.data.user) {
+            setUser(response.data.user);
+            } else {
+            // API 호출은 성공했으나, 데이터가 없는 경우 (이론상 발생하기 어려움)
+            setUser(null);
+            setAccessToken(null); // 토큰도 비워줍니다.
+            }
+        } catch (error) {
+            console.log('Authentication check failed, user is not logged in.',error);
+            setUser(null);
+            // getMyProfile 내부에서 이미 토큰을 비웠을 것입니다.
+        } finally {
+            setIsLoading(false);
+        }
+        };
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-      setIsLoggedIn(true)
+        checkAuthStatus();
+    }, []);
+
+    // 로그인 처리 함수
+    const login = (accessToken: string, userData: User) => {
+        setAccessToken(accessToken);
+        setUser(userData);
+    };
+
+    // 로그아웃 처리 함수
+    const logout = () => {
+        // 실제 로그아웃 API 호출은 서비스 파일에서 처리하고,
+        // 여기서는 클라이언트 측 상태만 변경합니다.
+        setAccessToken(null);
+        setUser(null);
+        // TODO: 백엔드의 /auth/logout API 호출 로직 추가 필요
+        // 예: authService.logout();
+    };
+
+    const value = { user, isLoading, login, logout };
+
+    return (
+        <AuthContext.Provider value={value}>
+        {children}
+        </AuthContext.Provider>
+    );
+};
+
+// useAuth 훅: 컴포넌트에서 쉽게 AuthContext 값에 접근할 수 있도록 합니다.
+export const useAuth = (): AuthContextType => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
     }
-
-    // 더미 알림 데이터 생성
-    setNotifications([
-      { id: 1, content: "새로운 알림 1", read: false },
-      { id: 2, content: "새로운 알림 2", read: false },
-      { id: 3, content: "이전 알림", read: true },
-    ])
-  }, [])
-
-  const login = async (username: string, password: string) => {
-    const foundUser = dummyUsers.find((u) => u.username === username && u.password === password)
-    if (foundUser) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _, ...userWithoutPassword } = foundUser
-      setUser(userWithoutPassword)
-      setIsLoggedIn(true)
-      localStorage.setItem("user", JSON.stringify(userWithoutPassword))
-    } else {
-      throw new Error("Invalid credentials")
-    }
-  }
-
-  const logout = () => {
-    setUser(null)
-    setIsLoggedIn(false)
-    localStorage.removeItem("user")
-  }
-
-  const signup = async (username: string, password: string, nickname: string, allowNotifications: boolean) => {
-    if (dummyUsers.some((u) => u.username === username)) {
-      throw new Error("Username already exists")
-    }
-    const newUser = {
-      id: String(dummyUsers.length + 1),
-      username,
-      password,
-      nickname,
-      allowNotifications,
-      isAdmin: false,
-    }
-    dummyUsers.push(newUser)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: passwordToRemove, ...userWithoutPassword } = newUser
-    setUser(userWithoutPassword)
-    setIsLoggedIn(true)
-    localStorage.setItem("user", JSON.stringify(userWithoutPassword))
-  }
-
-  const checkUsernameAvailability = async (username: string) => {
-    return !dummyUsers.some((u) => u.username === username)
-  }
-
-  const updateUser = async (data: UpdateUserData) => {
-    if (!user) throw new Error("User not logged in")
-
-    const userIndex = dummyUsers.findIndex((u) => u.id === user.id)
-    if (userIndex === -1) throw new Error("User not found")
-
-    if (data.currentPassword && data.newPassword) {
-      if (dummyUsers[userIndex].password !== data.currentPassword) {
-        throw new Error("Current password is incorrect")
-      }
-      dummyUsers[userIndex].password = data.newPassword
-    }
-
-    if (data.nickname) {
-      dummyUsers[userIndex].nickname = data.nickname
-      user.nickname = data.nickname
-    }
-
-    setUser({ ...user })
-    localStorage.setItem("user", JSON.stringify(user))
-  }
-
-  const markNotificationsAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })))
-  }
-
-  const checkNicknameAvailability = async (nickname: string) => {
-    return !dummyUsers.some((u) => u.nickname === nickname)
-  }
-
-  return (
-    <AuthContext.Provider
-      value={{
-        isLoggedIn,
-        user,
-        login,
-        logout,
-        signup,
-        checkUsernameAvailability,
-        updateUser,
-        notifications,
-        markNotificationsAsRead,
-        checkNicknameAvailability,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
-}
-
+    return context;
+};

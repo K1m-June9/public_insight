@@ -1,3 +1,4 @@
+# 정적 경로 처리용
 exempt_paths = {
     "/health",
     "/docs",
@@ -5,7 +6,39 @@ exempt_paths = {
     "/api/v1/auth/login",
     "/api/v1/auth/refresh",
     "/api/v1/auth/logout",
+    "/api/v1/auth/register",
+    "/api/v1/auth/check-id",
+    "/api/v1/auth/check-email/send",
+    "/api/v1/auth/check-email/verify",
+    "/api/v1/auth/find-id",
+    "/api/v1/auth/reset-password-reset",
+    "/api/v1/auth/verify-reset-token",
+    "/api/v1/auth/reset-password",
+    "/api/v1/sliders",
+    "/api/v1/organizations/",
+    "/api/v1/feeds/",
+    "/api/v1/feeds/latest",
+    "/api/v1/notices/pinned",
+    "/api/v1/notices/",
+    "/api/v1/feeds/top5",
+    "/api/v1/search"
 }
+
+# 동적 경로 처리용
+exempt_regex_paths = [
+    r"^/api/v1/sliders/\\d+$$",
+    r"^/api/v1/static-pages/[a-z-]+$",
+    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/categories$",
+    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/icon$",
+    r"^/api/v1/organizations/[\uAC00-\uD7A3]+/wordcloud$",
+    r"^/api/v1/feeds/[\uAC00-\uD7A3]+",
+    r"^/api/v1/feeds/[\uAC00-\uD7A3]+/latest",
+    r"^/api/v1/notices/\\d+$"
+    r"^/api/v1/feeds/[\uAC00-\uD7A3]+/press",
+    r"^/api/v1/feeds/\\d+$"
+]
+
+
 
 
 """

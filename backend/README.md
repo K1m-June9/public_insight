@@ -1,6 +1,10 @@
 [폴더구조]
+SU_DEV/
 backend/
-├── app/                         
+├── app/    
+│   ├── alembic
+│   ├── alembic.ini
+│   │                   
 │   ├── F1_routers/                
 │   │   ├── v1/                   
 │   │   │   ├── admin/
@@ -151,6 +155,7 @@ pytest F11_tests/auth/logout_test.py -v --html=F11_tests/reports/auth/logout_tes
 미들웨어
 pytest F11_tests/auth/middleware_test.py -v --html=F11_tests/reports/auth/middleware_test.html
 
+
 ▶️ 꿀팁: ChatGPT로 테스트 환경 빠르게 구성하기
 step1: 기본 코드 준비
 - conftest.py (공통 fixture)
@@ -191,5 +196,5 @@ docker-compose down --volumes
 ▶️ Swagger UI 주소 (로컬 기준)
 http://localhost:{port변경}/docs
 
-su: http://localhost:8000
-ha: http://localhost:8001
+su: http://localhost:8000/docs
+ha: http://localhost:8001/docs

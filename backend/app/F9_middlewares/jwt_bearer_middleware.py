@@ -1,8 +1,9 @@
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from typing import Set, Optional, Dict, Any
+from typing import Set, Optional, Dict, Any, List
 import logging 
+import re
 
 from app.F5_core.security import auth_handler
 from app.F5_core.redis import RedisManager
@@ -26,16 +27,23 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
         self, app,
         *,
         exempt_paths: Optional[Set[str]] = None,
+        exempt_regex_paths: Optional[List[str]] = None,
         admin_paths: Optional[Dict[str, Set[UserRole]]] = None,
     ):
         super().__init__(app)
         self.exempt_paths = exempt_paths or set()   # 인증 예외 경로들
+        self.exempt_regex_paths = [re.compile(p) for p in (exempt_regex_paths or [])]
         self.admin_paths = admin_paths or {}        # 관리자 전용 경로와 권한 매핑
 
     async def dispatch(self, request: Request, call_next):
-        # 인증 예외 경로는 미들웨어 통과
+        # 1) 정적 경로 예외
         if request.url.path in self.exempt_paths:
             return await call_next(request)
+        
+        # 2) 동적 경로 예외(정규식 매칭)
+        for pattern in self.exempt_regex_paths:
+            if pattern.match(request.url.path):
+                return await call_next(request)
 
         try:
             # 1. Authorization 헤더에서 토큰 추출
@@ -147,28 +155,6 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
                 detail="Token revoked or invalid"
             )
 
-
-    async def _verify_user_status(self, payload: Dict[str, Any]) -> None:
-        """
-        사용자 계정 상태 확인
-        - 탈퇴, 비활성, 차단된 계정일 경우 접근 차단
-        """
-        user_id = payload['sub']
-        user = await self.auth_repo.get_user_by_user_id(user_id)
-        if not user:
-            # 사용자가 존재하지 않을 경우 예외 발생
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # 사용자 상태가 "ACTIVE"가 아니면 인증 거부
-        if user.status != UserStatus.ACTIVE:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Account is {user.status.value}"
-            )
-
     def _check_role_access(self, request: Request, payload: Dict[str, Any]) -> None:
         """
         특정 경로에 Role 제한이 있는 경우 확인
@@ -247,4 +233,24 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
     - request.state에 사용자 정보 저장
 
 3. 이후 라우터나 서비스는 request.state.user_id 등으로 사용자 식별 가능
+"""
+
+
+"""
+    async def _verify_user_status(self, payload: Dict[str, Any]) -> None:
+        user_id = payload['sub']
+        user = await self.auth_repo.get_user_by_user_id(user_id)
+        if not user:
+            # 사용자가 존재하지 않을 경우 예외 발생
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # 사용자 상태가 "ACTIVE"가 아니면 인증 거부
+        if user.status != UserStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Account is {user.status.value}"
+            )
 """

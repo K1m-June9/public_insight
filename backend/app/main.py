@@ -1,6 +1,8 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -12,7 +14,7 @@ from app.F7_models import (
 from app.F8_database.connection import engine, Base 
 from app.F9_middlewares.jwt_bearer_middleware import JWTBearerMiddleware
 from app.F9_middlewares.admin_paths import admin_paths
-from app.F9_middlewares.exempt_paths import exempt_paths
+from app.F9_middlewares.exempt_paths import exempt_paths, exempt_regex_paths
 from app.F5_core.config import settings 
 
 # 환경 변수 로드
@@ -49,10 +51,17 @@ app.add_middleware(
 # 세션 미들웨어
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
 
+# static 폴더 절대 경로
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+# 정적 파일 전달(현재는 PDF)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 # JWT 인증 미들웨어
 app.add_middleware(
     JWTBearerMiddleware,
     exempt_paths=exempt_paths,
+    exempt_regex_paths=exempt_regex_paths,
     admin_paths=admin_paths
 )
 

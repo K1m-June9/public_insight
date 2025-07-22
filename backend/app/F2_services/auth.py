@@ -1,18 +1,23 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Union
 import uuid
-from fastapi import HTTPException, status, Depends
+import random
+import logging
+from fastapi import HTTPException, status, Depends, BackgroundTasks
 
+from app.F2_services.session import SessionService
 from app.F3_repositories.auth import AuthRepository
+from app.F4_utils.validators import validate_user_id, validate_password, validate_email
+from app.F4_utils.email import SendPasswordResetEmail
 from app.F5_core.config import settings
 from app.F5_core.security import auth_handler
-from app.F5_core.redis import RedisManager
-from app.F5_core.logger import logger
+from app.F5_core.redis import RedisManager, PasswordResetRedisService, RedisCacheService
 from app.F6_schemas import base
+from app.F6_schemas import auth
 from app.F7_models.users import User, UserStatus
 from app.F7_models.refresh_token import RefreshToken
 
-
+logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self, repo: AuthRepository):
@@ -51,6 +56,7 @@ class AuthService:
         # 4. 인증 성공: 사용자 객체 반환
         return user
 
+
     async def create_tokens(self, user: User, device_info: Dict[str, Any]) -> Dict[str, Any]:
         """사용자 로그인 성공 후 토큰 생성 및 관리"""
         
@@ -79,7 +85,6 @@ class AuthService:
             "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             "device_id": device_id
         }
-
 
 
     async def refresh_access_token(self, refresh_token: str, device_info: Dict[str, Any]) -> Union[Dict[str, Any], base.ErrorResponse]:
@@ -166,8 +171,6 @@ class AuthService:
             )
 
 
-
-
     async def logout(self, jti: str, user_id: str, refresh_token: str, device_id: str):
         try:
             """현재 디바이스 로그아웃"""
@@ -207,9 +210,6 @@ class AuthService:
             raise HTTPException(status_code=401, detail="Refresh token or device_id missing")
 
 
-
-
-
     async def logout_all_devices(self, user_id: str) -> None:
         """해당 사용자의 모든 디바이스 세션 종료 처리"""
         # 1. DB 내 해당 사용자의 모든 RefreshToken 무효화
@@ -231,8 +231,155 @@ class AuthService:
         logger.info(f"All sessions terminated for user: {user_id}")
 
 
+    async def is_user_id_available(self, user_id: str) -> bool:
+        """user_id 중복 및 유효성 검사"""
+        # 유효성 검사
+        if not validate_user_id(user_id):
+            logger.info(f"User ID validation failed: {user_id}")
+            return False
 
-    # ======== 내부 헬퍼 함수들 ========
+        # 중복 검사
+        exists = await self.repo.is_user_id_exists(user_id)
+        logger.info(f"User ID exists check: {user_id} => {exists}")
+        return not exists
+    
+
+    async def is_email_available(self, email: str) -> bool:
+        """email 중복 여부 검사"""
+        # 이메일 형식 검사
+        if not validate_email(email):
+            logger.info(f"이메일 형식 오류: {email}")
+            return False 
+
+        # 이메일 DB 중복 검사
+        exists = await self.repo.is_email_exists(email)
+        return not exists
+    
+
+    async def validate_password_rule(self, password: str) -> bool:
+        """password 규칙 검사"""
+        if not validate_password(password):
+            return False
+        return True 
+    
+
+    async def assign_initial_nickname(self, user_id: str) -> str:
+        """초기 닉네음은 user_id로 설정, 중복 시 난수를 붙여서 닉네임 생성"""
+        base_nickname = user_id
+        if not await self.repo.is_nickname_exists(base_nickname):
+            return base_nickname 
+        
+        for _ in range(5):
+            candidate = f"{base_nickname}{random.randint(100, 9999)}"
+            if not await self.repo.is_nickname_exists(candidate):
+                return candidate
+            
+        logger.error(f"닉네임 중복으로 인해 자동 생성 실패")
+        raise ValueError("닉네임 자동 생성 실패: 중복된 값이 너무 많습니다.")
+            
+    
+
+    async def create_user(self, credentials: auth.UserCreate) -> User:
+        """유저 생성하기"""
+        hashed_pw = auth_handler.get_password_hash(credentials.password)
+
+        logger.info(f"생성하기 중")
+        new_user = User(
+            user_id=credentials.user_id,
+            password_hash=hashed_pw,
+            email=credentials.email,
+            nickname=credentials.nickname,
+            terms_agreed=credentials.terms_agreed,
+            privacy_agreed=credentials.privacy_agreed,
+            notification_agreed=credentials.notification_agreed,
+            terms_agreed_at=datetime.utcnow() if credentials.terms_agreed else None,
+            privacy_agreed_at=datetime.utcnow() if credentials.privacy_agreed else None,
+            marketing_agreed_at=datetime.utcnow() if credentials.notification_agreed else None,
+        )
+
+        await self.repo.save_user(new_user)
+        return new_user
+    
+
+    async def find_user_id_by_email(self, email: str):
+        """이메일로 user_id 찾기"""
+        user = await self.repo.find_user_id_by_email(email)
+        if not user:
+            return False 
+        return self._mask_user_id(user.user_id)
+
+
+    async def handle_password_reset_request(self, email: str, user_id: str) -> bool:
+        """"""
+        # 1. 이메일 + user_id 일치하는 사용자 확인
+        user = await self.repo.get_user_by_email_and_id(email, user_id)
+        if not user:
+            return False
+        
+        # 2. 토큰 생성 및 이메일 보내기
+        try:   
+            redis_service = PasswordResetRedisService()
+            send_email_service = SendPasswordResetEmail()
+            token = await redis_service.generate_token()
+            await redis_service.save_token(token, email, user_id)
+            reset_link = f"https://publicinsight.site/reset-password?token={token}"
+            await send_email_service.send_password_reset_email(email, reset_link)
+            return True
+        except Exception as e:
+            logging.error(f"이메일 전송 실패: {e}")
+            return False 
+        
+    
+    async def verify_password_reset_token(self, token: str):
+        """비밀번호 재설정 토큰의 유효성을 검사"""
+        redis_service = PasswordResetRedisService()
+        token_data = await redis_service.get_token_data(token)
+
+        # 유효하면 사용자 정보 반환, 존재하지 않으면 None 반환
+        return token_data
+
+
+    async def reset_user_password(
+        self,
+        token: str,
+        new_password: str,
+        password_reset_redis_service: PasswordResetRedisService,
+        session_service: SessionService
+    ) -> bool:
+        
+        # Redis에서 토큰 데이터 조회 (존재하지 않으면 False 반환)
+        token_data = await password_reset_redis_service.get_token_data(token)
+        if not token_data:
+            return False
+
+        try:   
+            # 토큰 데이터에서 사용자 식별 정보 추출
+            user_id = token_data["user_id"]
+            email = token_data["email"]
+
+            # 새 비밀번호를 해시 처리
+            hashed_password = auth_handler.get_password_hash(new_password)
+
+            # 데이터베이스에서 해당 유저의 비밀번호 업데이트
+            await self.repo.update_password(user_id=user_id, email=email, hashed_password=hashed_password)
+
+            # 사용된 토큰은 Redis에서 즉시 삭제 (재사용 방지)
+            await password_reset_redis_service.delete_token(token)
+            
+            # 비밀번호 변경 성공 : 사용자 캐시 무효화 (보안 목적)
+            await RedisCacheService.invalidate_user_cache(user_id)
+
+            # 모든 디바이스에서의 로그인 세션 무효화(RefreshToken 전부 폐기)
+            await session_service.revoke_all_sessions(user_id)
+
+            return True
+        except Exception as e:
+            logging.error(f"비밀번호 재설정 실패: {e}")
+            return False
+
+    #==============================
+    # 내부 헬퍼 메서드
+    #==============================
     async def _generate_access_token(self, user: User) -> tuple[str, str]:
         """JWT Access Token 생성 및 Redis에 jti 저장 처리 함수"""
         try:
@@ -304,3 +451,8 @@ class AuthService:
             detail="Security alert: Token reuse detected. All sessions terminated."
         )
 
+    def _mask_user_id(self, user_id: str) -> str:
+        prefix = user_id[:3]
+        suffix = user_id[-2:]
+        middle_length = len(user_id) - len(prefix) - len(suffix)
+        return prefix + '*' * middle_length + suffix 

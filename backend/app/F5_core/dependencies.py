@@ -23,6 +23,7 @@ from app.F3_repositories.notice import NoticeRepository
 
 from app.F4_utils.email import EmailVerificationService
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
+from app.F5_core.security import AuthHandler
 from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
 
@@ -72,6 +73,8 @@ async def get_user_service(
 async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeService:
     return NoticeService(NoticeRepository(db))
 
+async def get_auth_handler() -> AuthHandler:
+    return AuthHandler()
 
 
 
@@ -158,3 +161,4 @@ async def verify_active_user_optional(
     except Exception:
         # 검증 과정에서 어떤 예외가 발생하더라도 None을 반환
         return None
+    

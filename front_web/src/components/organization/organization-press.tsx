@@ -1,5 +1,3 @@
-// 파일 위치: components/organization/organization-press.tsx
-
 "use client";
 
 import React, { useState, useEffect } from "react";

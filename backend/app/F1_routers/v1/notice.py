@@ -19,27 +19,9 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-# 중요(고정된) 게시물
-@router.get("/pinned", response_model=PinnedNoticeResponse)
-async def pinned_notices(
-    notice_service: NoticeService = Depends(get_notice_service)
-):
-    """메인 페이지에 표시할 고정된 공지사항 조회"""
-    # 1. 고정된 공지사항 데이터를 조회
-    result = await notice_service.get_pinned_notice()
-    
-    # 2. 결과가 ErrorResponse 타입이라면 에러 응답 처리
-    if isinstance(result, ErrorResponse):
-        # 에러 코드에 관계없이 기본적으로 HTTP 500 상태로 처리
-        status_code = 500
-        return JSONResponse(status_code=status_code, content=result.model_dump())  
-    
-    # 3. 성공적으로 조회된 경우 PinnedNoticeResponse 객체 반환
-    return result
-
 # 공지사항 목록 조회
 # 공지사항 페이지에서 전체 공지사항 목록 조회
-@router.get("/", response_model=NoticeListResponse)
+@router.get("", response_model=NoticeListResponse)
 async def read_notices(
     query: PaginationQuery = Depends(),
     notice_service: NoticeService = Depends(get_notice_service)
@@ -63,6 +45,26 @@ async def read_notices(
         return JSONResponse(status_code=status_code, content=result.model_dump())   
     
     return result
+
+
+# 중요(고정된) 게시물
+@router.get("/pinned", response_model=PinnedNoticeResponse)
+async def pinned_notices(
+    notice_service: NoticeService = Depends(get_notice_service)
+):
+    """메인 페이지에 표시할 고정된 공지사항 조회"""
+    # 1. 고정된 공지사항 데이터를 조회
+    result = await notice_service.get_pinned_notice()
+    
+    # 2. 결과가 ErrorResponse 타입이라면 에러 응답 처리
+    if isinstance(result, ErrorResponse):
+        # 에러 코드에 관계없이 기본적으로 HTTP 500 상태로 처리
+        status_code = 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())  
+    
+    # 3. 성공적으로 조회된 경우 PinnedNoticeResponse 객체 반환
+    return result
+
 
 
 @router.get("/{id}", response_model=Union[NoticeDetailResponse, ErrorResponse])

@@ -53,7 +53,10 @@ export default function NoticeDetailPage() {
                 <span className="text-gray-600">{notice.author}</span>
                 <span className="text-sm text-gray-500">{formatDate(notice.created_at)}</span>
               </div>
-              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: notice.content }} />
+              {/*<div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: notice.content }} />*/}
+              <div className="prose max-w-none">
+                <p className="whitespace-pre-wrap">{notice.content}</p>
+              </div>
             </div>
           </div>
         </div>

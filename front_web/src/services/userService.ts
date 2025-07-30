@@ -32,7 +32,7 @@ export const getMyProfile = async (): Promise<UserProfileResponse> => {
 * @returns Promise<UserProfileResponse> - 업데이트된 프로필 정보
 */
 export const updateNickname = async (nickname: string): Promise<UserProfileResponse> => {
-    const response = await apiClient.patch<UserProfileResponse>('/users/profile/nickname', { nickname });
+    const response = await apiClient.patch<UserProfileResponse>('/users/me/nickname', { nickname });
     return response.data;
 };
 

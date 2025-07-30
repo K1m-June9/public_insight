@@ -12,7 +12,7 @@ import OrganizationFeedList from "@/components/organization/organization-feed-li
 
 export default function OrganizationPage() {
   const params = useParams();
-  const organizationName = params.name as string;
+  const organizationName = decodeURIComponent(params.name as string);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
   const handleCategorySelect = (categoryId: number) => {
@@ -26,7 +26,8 @@ export default function OrganizationPage() {
         <div className="w-full px-4 py-8 md:px-6">
           <div className="flex flex-col lg:flex-row gap-8">
             {/* 좌측 컨텐츠 (45%) */}
-            <div className="w-full lg:w-[45%]">
+            {/*<div className="w-full lg:w-[45%]">*/}
+            <div className="w-full lg:w-[45%] overflow-y-auto" style={{ maxHeight: "calc(100vh - 16rem)" }}>
               <div className="space-y-8">
                 <OrganizationPieChart
                   organizationName={organizationName}
@@ -40,7 +41,8 @@ export default function OrganizationPage() {
             </div>
 
             {/* 우측 컨텐츠 (55%) */}
-            <div className="w-full lg:w-[55%]">
+            {/*<div className="w-full lg:w-[55%]">*/}
+            <div className="w-full lg:w-[55%] overflow-y-auto" style={{ maxHeight: "calc(100vh - 16rem)" }}>
               <OrganizationFeedList
                 organizationName={organizationName}
                 selectedCategoryId={selectedCategoryId}

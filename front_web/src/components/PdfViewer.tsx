@@ -30,7 +30,8 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
   
   // API 서버의 기본 URL을 환경 변수에서 가져옴
   // 백엔드에서 상대경로('/static/...')를 주면, 프론트엔드에서 조합
-  const fullPdfUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}${fileUrl}`;
+  // const fullPdfUrl = `${process.env.NEXT_PUBLIC_API_URL}${fileUrl}`;
+  const fullPdfUrl = `${fileUrl}`;
 
   return (
     <div className="w-full flex flex-col items-center">

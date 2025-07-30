@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense } from 'react';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLogoutMutation } from "@/hooks/mutations/useAuthMutations";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
+import { useLogoutMutation } from "@/hooks/mutations/useAuthMutations";
+import { SearchInput } from "@/components/SearchInput"
 // import {
 //   DropdownMenu,
 //   DropdownMenuContent,
@@ -19,21 +20,12 @@ import { UserRole } from "@/lib/types/base"; // UserRole enum 임포트
 
 export default function Header() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
   
   // 1. AuthContext와 커스텀 훅 사용
   const { user, isLoading } = useAuth();
   const { mutate: logout, isPending: isLoggingOut } = useLogoutMutation();
 
   const isLoggedIn = !!user; // user 객체의 존재 여부로 로그인 상태 판단
-
-  // 검색 제출 처리
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
 
   // 마이페이지/관리자페이지 이동 처리
   const handleUserPageClick = () => {
@@ -66,19 +58,9 @@ export default function Header() {
           <span className="text-xl font-bold text-gray-900">PublicInsight</span>
         </Link>
 
-        {/* 검색창 */}
-        <form onSubmit={handleSearch} className="hidden md:flex md:w-1/3 lg:w-1/2 xl:w-1/3">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              type="search"
-              placeholder="검색어를 입력하세요"
-              className="w-full pl-9 bg-gray-100 border-gray-300"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </form>
+        <Suspense fallback={<div className="hidden md:block h-8 w-1/3 bg-gray-100 rounded-md"></div>}>
+          <SearchInput />
+        </Suspense>
 
         {/* 로그인/회원가입 또는 사용자 메뉴 */}
         <div className="flex items-center gap-4">

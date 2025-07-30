@@ -33,7 +33,7 @@ class UserBookmarkListResponse(BaseResponse):
 class UserBookmarkListQuery(BaseModel):
     """북마크 목록 쿼리 파라미터"""
     page: int = 1
-    limit: int = Field(default=20, le=20)
+    limit: int = Field(default=20, le=100)
 
 
 # =================================
@@ -66,7 +66,7 @@ class UserRatingListResponse(BaseResponse):
 class UserRatingListQuery(BaseModel):
     """별점 목록 쿼리 파라미터"""
     page: int = 1
-    limit: int = Field(default=20, le=20)
+    limit: int = Field(default=20, le=100)
 
 # =================================
 # 3. 프로필 관련 스키마

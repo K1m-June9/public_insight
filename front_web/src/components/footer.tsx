@@ -9,7 +9,7 @@ export default function Footer() {
             <Link href="/about" className="text-gray-500 hover:text-gray-900">
               ▸ 프로젝트 소개
             </Link>
-            <Link href="/notices" className="text-gray-500 hover:text-gray-900">
+            <Link href="/notice" className="text-gray-500 hover:text-gray-900">
               ▸ 공지사항
             </Link>
             <Link href="/terms" className="text-gray-500 hover:text-gray-900">

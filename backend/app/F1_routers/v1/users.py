@@ -120,18 +120,18 @@ async def update_password(
 # 사용자 별점 목록 조회
 @router.get("/ratings", response_model=UserRatingListResponse)
 async def get_my_ratings(
-    query: PaginationQuery = Depends(),               # 페이지네이션 쿼리 파라미터
+    query: UserRatingListQuery = Depends(),               # 페이지네이션 쿼리 파라미터
     current_user: User = Depends(verify_active_user),      # 현재 로그인한 사용자
     user_service: UserService = Depends(get_user_service), # UserService 의존성 주입
 ):
-    # 쿼리 파라미터 객체 변환
-    ratings_query =  UserRatingListQuery(
-        page= query.page,
-        limit = query.limit
-    )
+    # # 쿼리 파라미터 객체 변환
+    # ratings_query =  UserRatingListQuery(
+    #     page= query.page,
+    #     limit = query.limit
+    # )
 
     # 서비스 호출하여 결과 가져오기
-    result = await user_service.get_my_ratings(ratings_query, current_user.user_id)
+    result = await user_service.get_my_ratings(query, current_user.user_id)
 
     # 에러 응답 처리
     if isinstance(result, ErrorResponse):
@@ -148,18 +148,18 @@ async def get_my_ratings(
 # 사용자 북마크 목록 조회
 @router.get("/bookmarks", response_model=UserBookmarkListResponse)
 async def get_my_bookmarks(
-    query: PaginationQuery = Depends(),
+    query: UserBookmarkListQuery = Depends(),
     current_user: User = Depends(verify_active_user),      # 현재 로그인한 사용자
     user_service: UserService = Depends(get_user_service), # UserService 의존성 주입
 ):
-    # 쿼리 파라미터 객체 변환
-    ratings_query =  UserBookmarkListQuery(
-        page= query.page,
-        limit = query.limit
-    )
+    # # 쿼리 파라미터 객체 변환
+    # ratings_query =  UserBookmarkListQuery(
+    #     page= query.page,
+    #     limit = query.limit
+    # )
 
     # 서비스 호출하여 결과 가져오기
-    result = await user_service.get_my_bookmarks(ratings_query, current_user.user_id)
+    result = await user_service.get_my_bookmarks(query, current_user.user_id)
 
         # 에러 응답 처리
     if isinstance(result, ErrorResponse):

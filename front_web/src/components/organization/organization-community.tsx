@@ -21,9 +21,7 @@ interface CommunityPost {
 
 export default function OrganizationCommunity({ organizationName }: OrganizationCommunityProps) {
   const [communityPosts] = useState<CommunityPost[]>([
-    { id: 1, title: `${organizationName} 관련 커뮤니티 글(사실아님 ㅋㅋ)`, likes: 45, dislikes: 5 },
-    { id: 2, title: `아직 없는 데이터`, likes: 38, dislikes: 12 },
-    { id: 3, title: `이건 또 언제 만들어서 언제 연결해놓냐`, likes: 72, dislikes: 8 },
+    { id: 1, title: `커뮤니티 (준비 중)`, likes: 1, dislikes: 1 }
   ]);
 
   const likedPosts = [...communityPosts].sort((a, b) => b.likes - a.likes);

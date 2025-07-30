@@ -32,21 +32,39 @@ class SliderService:
                 )
                 slider_items.append(slider_item)
             
-            return SliderListResponse(data=SliderListData(sliders=slider_items))
+            return SliderListResponse(
+                success=True,
+                data=SliderListData(sliders=slider_items)
+            )
             
         except Exception as e:
             logger.error(f"Failed to get active sliders list: {e}", exc_info=True)
-            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                    )
+                )
 
     async def get_slider_detail(self, slider_id: int) -> Union[SliderDetailResponse, ErrorResponse]:
         try:
             if slider_id <= 0:
-                return ErrorResponse(error=ErrorDetail(code=ErrorCode.INVALID_PARAMETER, message=Message.INVALID_PARAMETER))
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.INVALID_PARAMETER,
+                        message=Message.INVALID_PARAMETER
+                    )
+                )
 
             slider = await self.slider_repository.get_slider_by_id(slider_id, datetime.utcnow())
             
             if not slider:
-                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.SLIDER_NOT_FOUND))
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.NOT_FOUND, 
+                        message=Message.SLIDER_NOT_FOUND
+                    )
+                )
 
             image_base64 = await self.image_converter.to_base64(slider.image_path)
             
@@ -60,8 +78,16 @@ class SliderService:
                 created_at=slider.created_at
             )
             
-            return SliderDetailResponse(data=SliderDetailData(slider=slider_detail))
+            return SliderDetailResponse(
+                success= True, 
+                data=SliderDetailData(slider=slider_detail)
+            )
             
         except Exception as e:
             logger.error(f"Failed to get slider detail for ID {slider_id}: {e}", exc_info=True)
-            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR, 
+                    message=Message.INTERNAL_ERROR
+                )
+            )

@@ -44,29 +44,35 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
         for pattern in self.exempt_regex_paths:
             if pattern.match(request.url.path):
                 return await call_next(request)
+        
+        # 헤더 인증 여부 확인(새로추가)
+        auth_header = request.headers.get("Authorization")
 
+        if auth_header:
+            try:
+                # 1. Authorization 헤더에서 토큰 추출
+                token = self._extract_token(request)
+
+                # 2. 토큰 디코딩 및 기본 claim 검증
+                payload = self._validate_token(token)
+
+                # 3. Redis 기반 토큰 블랙리스트 확인 (jti)
+                await self._verify_token_not_revoked(payload)
+
+                # 4. Role 기반 경로 접근 권한 체크
+                self._check_role_access(request, payload)
+
+                # 5. 요청 컨텍스트에 인증된 사용자 정보 저장
+                self._set_request_state(request, payload)
+
+                return await call_next(request)
+
+            except HTTPException as http_exc:
+                logger.warning(f"Authentication failed: {http_exc.detail}")
+                raise
+        
         try:
-            # 1. Authorization 헤더에서 토큰 추출
-            token = self._extract_token(request)
-
-            # 2. 토큰 디코딩 및 기본 claim 검증
-            payload = self._validate_token(token)
-
-            # 3. Redis 기반 토큰 블랙리스트 확인 (jti)
-            await self._verify_token_not_revoked(payload)
-
-            # 4. Role 기반 경로 접근 권한 체크
-            self._check_role_access(request, payload)
-
-            # 5. 요청 컨텍스트에 인증된 사용자 정보 저장
-            self._set_request_state(request, payload)
-
             return await call_next(request)
-
-        except HTTPException as http_exc:
-            logger.warning(f"Authentication failed: {http_exc.detail}")
-            raise
-
         except Exception as exc:
             logger.error(f"Unexpected authentication error: {str(exc)}")
             raise HTTPException(

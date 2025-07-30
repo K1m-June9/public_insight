@@ -86,6 +86,116 @@ async def get_feeds(
     # FastAPI가 자동으로 JSON 직렬화 및 응답 스키마 검증 수행
     return result
 
+@router.get("/top5", response_model=Top5FeedResponse)
+async def get_feeds_top5(
+    query: Top5FeedQuery = Depends(),
+    feed_service: FeedService = Depends(get_feed_service)
+) -> Top5FeedResponse:
+    """
+    메인 페이지 TOP5 피드 조회
+    
+    별점순, 조회수순, 북마크순 상위 피드를 각각 제공합니다.
+    메인 페이지 좌측 TOP5 피드 게시 목록에서 사용됩니다.
+    """
+    # Service를 통해 TOP5 피드 데이터 조회
+    result = await feed_service.get_top5_feeds(query.limit)
+    
+    # Service에서 에러 응답이 반환된 경우 처리
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.INTERNAL_ERROR:
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+@router.get("/latest", response_model=LatestFeedResponse)
+async def get_latest_feeds(
+    query: LatestFeedQuery = Depends(),
+    feed_service: FeedService = Depends(get_feed_service)
+) -> LatestFeedResponse:
+    """
+    메인 페이지 최신 피드 슬라이드 조회
+    
+    각 기관의 가장 최신 피드를 기관당 1개씩 제공합니다.
+    메인 페이지 원형 그래프 아래 피드 슬라이드에서 사용됩니다.
+    """
+    # Service를 통해 최신 피드 데이터 조회
+    result = await feed_service.get_latest_feeds_for_main(query.limit)
+    
+    # Service에서 에러 응답이 반환된 경우 처리
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.NOT_FOUND:
+            status_code = 404
+        elif result.error.code == ErrorCode.INTERNAL_ERROR:
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+@router.get("/detail/{id}", response_model=FeedDetailResponse)
+async def get_feed_by_id(
+    id: int,
+    feed_service: FeedService = Depends(get_feed_service),
+    current_user: Optional[User] = Depends(verify_active_user_optional) #선택적 인증 메서드
+) -> FeedDetailResponse:
+    """
+    피드 상세 정보 조회
+    
+    특정 피드의 상세 정보를 조회
+    - 비로그인 사용자: 기본 정보만 제공
+    - 로그인 사용자: 북마크 여부, 내가 매긴 별점 정보 추가 제공
+    """
+    user_pk = current_user.id if current_user else None # 인증된 사용자면 사용, 아니면 말고
+    result = await feed_service.get_feed_detail_for_page(id, user_pk)
+    
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.NOT_FOUND:
+            status_code = 404
+        else:
+            status_code = 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+# 별점 주기
+@router.post("/detail/{id}/ratings", response_model=RatingResponse)
+async def post_feed_rating(
+    id: int, 
+    payload: RatingRequest,
+    feed_service: FeedService = Depends(get_feed_service),
+    current_user: User = Depends(verify_active_user)
+):
+    result = await feed_service.post_feed_rating(id, current_user.user_id, payload.score)
+    
+    if isinstance(result, ErrorResponse):
+        return JSONResponse(
+            status_code=400, 
+            content=result.model_dump())
+    
+    return result 
+
+
+# 북마크
+@router.post("/detail/{id}/bookmark", response_model=BookmarkResponse)
+async def post_feed_bookmark(
+    id: int, 
+    payload: BookmarkRequest,
+    feed_service: FeedService = Depends(get_feed_service),
+    current_user: User = Depends(verify_active_user)
+):
+    result = await feed_service.post_feed_bookmark(id, current_user.user_id)
+
+    if isinstance(result, ErrorResponse):
+        return JSONResponse(
+            status_code=400,
+            content=result.model_dump()
+        )
+    return result
+
 # 기관별 피드 목록 조회 엔드포인트
 # HTTP 메서드: GET
 # 경로: /api/feeds/{name}
@@ -143,32 +253,6 @@ async def get_organization_feeds(
     # FastAPI가 자동으로 JSON 직렬화 및 응답 스키마 검증 수행
     return result
 
-@router.get("/latest", response_model=LatestFeedResponse)
-async def get_latest_feeds(
-    query: LatestFeedQuery = Depends(),
-    feed_service: FeedService = Depends(get_feed_service)
-) -> LatestFeedResponse:
-    """
-    메인 페이지 최신 피드 슬라이드 조회
-    
-    각 기관의 가장 최신 피드를 기관당 1개씩 제공합니다.
-    메인 페이지 원형 그래프 아래 피드 슬라이드에서 사용됩니다.
-    """
-    # Service를 통해 최신 피드 데이터 조회
-    result = await feed_service.get_latest_feeds_for_main(query.limit)
-    
-    # Service에서 에러 응답이 반환된 경우 처리
-    if isinstance(result, ErrorResponse):
-        if result.error.code == ErrorCode.NOT_FOUND:
-            status_code = 404
-        elif result.error.code == ErrorCode.INTERNAL_ERROR:
-            status_code = 500
-        else:
-            status_code = 400
-        return JSONResponse(status_code=status_code, content=result.model_dump())
-    
-    return result
-
 @router.get("/{name}/latest", response_model=OrganizationLatestFeedResponse)
 async def get_organization_feeds_latest(
     name: str,
@@ -189,30 +273,6 @@ async def get_organization_feeds_latest(
         if result.error.code == ErrorCode.NOT_FOUND:
             status_code = 404
         elif result.error.code == ErrorCode.INTERNAL_ERROR:
-            status_code = 500
-        else:
-            status_code = 400
-        return JSONResponse(status_code=status_code, content=result.model_dump())
-    
-    return result
-
-@router.get("/top5", response_model=Top5FeedResponse)
-async def get_feeds_top5(
-    query: Top5FeedQuery = Depends(),
-    feed_service: FeedService = Depends(get_feed_service)
-) -> Top5FeedResponse:
-    """
-    메인 페이지 TOP5 피드 조회
-    
-    별점순, 조회수순, 북마크순 상위 피드를 각각 제공합니다.
-    메인 페이지 좌측 TOP5 피드 게시 목록에서 사용됩니다.
-    """
-    # Service를 통해 TOP5 피드 데이터 조회
-    result = await feed_service.get_top5_feeds(query.limit)
-    
-    # Service에서 에러 응답이 반환된 경우 처리
-    if isinstance(result, ErrorResponse):
-        if result.error.code == ErrorCode.INTERNAL_ERROR:
             status_code = 500
         else:
             status_code = 400
@@ -245,65 +305,5 @@ async def get_press_releases(
             status_code = 400
         return JSONResponse(status_code=status_code, content=result.model_dump())
     
-    return result
-
-@router.get("/{id}", response_model=FeedDetailResponse)
-async def get_feed_by_id(
-    id: int,
-    feed_service: FeedService = Depends(get_feed_service),
-    current_user: Optional[User] = Depends(verify_active_user_optional) #선택적 인증 메서드
-) -> FeedDetailResponse:
-    """
-    피드 상세 정보 조회
-    
-    특정 피드의 상세 정보를 조회
-    - 비로그인 사용자: 기본 정보만 제공
-    - 로그인 사용자: 북마크 여부, 내가 매긴 별점 정보 추가 제공
-    """
-    user_pk = current_user.id if current_user else None # 인증된 사용자면 사용, 아니면 말고
-    result = await feed_service.get_feed_detail_for_page(id, user_pk)
-    
-    if isinstance(result, ErrorResponse):
-        if result.error.code == ErrorCode.NOT_FOUND:
-            status_code = 404
-        else:
-            status_code = 500
-        return JSONResponse(status_code=status_code, content=result.model_dump())
-    
-    return result
-
-# 별점 주기
-@router.post("/{id}/ratings", response_model=RatingResponse)
-async def post_feed_rating(
-    id: int, 
-    payload: RatingRequest,
-    feed_service: FeedService = Depends(get_feed_service),
-    current_user: User = Depends(verify_active_user)
-):
-    result = await feed_service.post_feed_rating(id, current_user.user_id, payload.score)
-    
-    if isinstance(result, ErrorResponse):
-        return JSONResponse(
-            status_code=400, 
-            content=result.model_dump())
-    
-    return result 
-
-
-# 북마크
-@router.post("/{id}/bookmark", response_model=BookmarkResponse)
-async def post_feed_bookmark(
-    id: int, 
-    payload: BookmarkRequest,
-    feed_service: FeedService = Depends(get_feed_service),
-    current_user: User = Depends(verify_active_user)
-):
-    result = await feed_service.post_feed_bookmark(id, current_user.user_id)
-
-    if isinstance(result, ErrorResponse):
-        return JSONResponse(
-            status_code=400,
-            content=result.model_dump()
-        )
     return result
 

@@ -492,7 +492,7 @@ class Settings:
     MIN_DISPLAY_ORDER = 0
     INACTIVE_DISPLAY_ORDER = -1
     # 파일 업로드(backend/app/static/sliders/{UUID})
-    SLIDER_UPLOADS_PATH = "static/sliders"
+    SLIDER_STORAGE_PATH = "static/sliders"
 
     # 정렬 기준
     DEFAULT_SORT = "is_active ASC, display_order ASC"

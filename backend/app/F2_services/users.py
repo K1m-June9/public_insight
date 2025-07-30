@@ -222,19 +222,19 @@ class UserService:
                 # 3-1. 페이지네이션 offset 계산
                 # 예: page=2, limit 10 이면
                 # offset=(2-1)*10 = 10
-                offset = (query.page - 1) * query.limit
+                offset = (page - 1) * limit
                 
                 # 3-2. 유저의 별점 데이터 조회
-                ratings_list = await self.repo.get_ratings_data(user_pk, offset, query.limit)
+                ratings_list = await self.repo.get_ratings_data(user_pk, offset, limit)
             
             # 4. 페이지네이션 정보 생성
             pagination_info = PaginationInfo(
-                current_page=query.page,
+                current_page=page,
                 total_pages=total_pages,
                 total_count=total_count,
-                limit=query.limit,
-                has_next=query.page < total_pages,
-                has_previous=query.page > 1
+                limit=limit,
+                has_next=page < total_pages,
+                has_previous=page > 1
             )
 
             # 5. 최종 응답 객체 구성
@@ -296,20 +296,20 @@ class UserService:
                 # 3-1. 페이지네이션 offset 계산
                 # 예: page=2, limit 10 이면
                 # offset=(2-1)*10 = 10
-                offset = (query.page - 1) * query.limit
+                offset = (page - 1) * limit
                 
                 # 3-2. 유저의 별점 데이터 조회
-                bookmarks_list = await self.repo.get_bookmarks_data(user_pk, offset, query.limit)
+                bookmarks_list = await self.repo.get_bookmarks_data(user_pk, offset, limit)
             
 
             # 4. 페이지네이션 정보 생성
             pagination_info = PaginationInfo(
-                current_page=query.page,
+                current_page=page,
                 total_pages=total_pages,
                 total_count=total_count,
-                limit=query.limit,
-                has_next=query.page < total_pages,
-                has_previous=query.page > 1
+                limit=limit,
+                has_next=page < total_pages,
+                has_previous=page > 1
             )
 
             # 5. 최종 응답 객체 구성

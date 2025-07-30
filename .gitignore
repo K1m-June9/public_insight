@@ -3,8 +3,9 @@ docker-compose.yml
 docker-compose_*.txt
 Dockerfile.elasticsearch
 certbot-etc/
+certbot-webroot/
 cookies.txt
 .env
-
+test-compose.yml
 # Elasticsearch 관련 파일들
 esdata/

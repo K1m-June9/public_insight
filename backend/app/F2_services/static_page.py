@@ -65,6 +65,7 @@ class StaticPageService:
             
             # 5단계: 응답 스키마로 변환하여 반환
             return StaticPageResponse(
+                success=True,
                 data=StaticPageData(
                     page=StaticPageContent(
                         slug=static_page.slug,

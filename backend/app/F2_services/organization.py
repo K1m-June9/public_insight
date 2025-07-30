@@ -94,7 +94,7 @@ class OrganizationService:
             total_percentage = sum(item.percentage for item in organization_items)
             response_data = OrganizationListData(organizations=organization_items, total_percentage=round(total_percentage, 1))
             
-            return OrganizationListResponse(data=response_data)
+            return OrganizationListResponse(success=True, data=response_data)
         except Exception as e:
             logger.error(f"Error in get_organizations_for_chart: {e}", exc_info=True)
             return ErrorResponse(
@@ -143,13 +143,14 @@ class OrganizationService:
             total_percentage = sum(item.percentage for item in category_items)
             response_data = OrganizationCategoryData(organization=organization_info, categories=category_items, total_percentage=round(total_percentage, 1))
             
-            return OrganizationCategoryResponse(data=response_data)
+            return OrganizationCategoryResponse(success=True,data=response_data)
         except Exception as e:
             logger.error(f"Error in get_organization_categories_for_chart for {org_name}: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR,
-                    message=Message.INTERNAL_ERROR
+                    #message=Message.INTERNAL_ERROR
+                    message = f"{org_name}:{e}"
                 )
             )
         
@@ -184,13 +185,14 @@ class OrganizationService:
                 icon=base64_icon
             )
             
-            return OrganizationIconResponse(data=OrganizationIconData(organization=organization_with_icon))
+            return OrganizationIconResponse(success=True, data=OrganizationIconData(organization=organization_with_icon))
         except Exception as e:
             logger.error(f"Error in get_organization_icon for {org_name}: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR,
-                    message=Message.ICON_UPLOADS_FAIL
+                    #message=Message.ICON_UPLOADS_FAIL
+                    message = f"{org_name}:{e}"
                 )
             )
         
@@ -219,7 +221,7 @@ class OrganizationService:
                     organization=OrganizationInfo(id=org_id, name=org_name),
                     wordcloud=EmptyWordCloud(words=[WordItem(text="죄송합니다", value=100)]) # 워드 클라우드 데이터가 없는 경우에 사용(사실상 기본값)
                 )
-                return EmptyWordCloudResponse(data=empty_data)
+                return EmptyWordCloudResponse(success=True, data=empty_data)
 
             organization_info = OrganizationInfo(id=wordcloud_data[0]["organization_id"], name=wordcloud_data[0]["organization_name"])
             
@@ -234,6 +236,7 @@ class OrganizationService:
                 ))
             
             return WordCloudResponse(
+                success=True,
                 data=WordCloudData(
                     organization=organization_info,
                     wordclouds=wordclouds_by_year

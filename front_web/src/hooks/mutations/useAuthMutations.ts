@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { AxiosError } from 'axios';
+import { setAccessToken } from '@/lib/api/tokenManager';
 import { ErrorResponse } from '@/lib/types/base'; 
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -22,7 +23,8 @@ import {
  * 로그인 처리를 위한 useMutation 훅
  */
 export const useLoginMutation = () => {
-    const { login: setAuthContext } = useAuth();
+    //const { login: setAuthContext } = useAuth();
+    const { setUser } = useAuth(); 
     const router = useRouter();
 
     return useMutation({
@@ -30,12 +32,25 @@ export const useLoginMutation = () => {
         onSuccess: async (data) => {
             const accessToken = data.data.access_token;
             if (accessToken) {
-                // `AuthContext`는 토큰을 직접 관리하지 않으므로, getMyProfile만 호출
-                const profileResponse = await getMyProfile();
-                if (profileResponse.success) {
-                    // `AuthContext`의 login 함수를 호출하여 메모리에 토큰 저장 및 user 상태 업데이트
-                    setAuthContext(accessToken, profileResponse.data.user);
-                    router.push('/');
+                // 1. 토큰을 받은 즉시 tokenManager에 저장합니다.
+                setAccessToken(accessToken);
+
+                try {
+                    // 2. 이제 토큰이 저장되었으므로, getMyProfile은 성공적으로 토큰을 헤더에 추가합니다.
+                    const profileResponse = await getMyProfile();
+                    
+                    if (profileResponse.success) {
+                        // 3. 받아온 사용자 정보로 AuthContext의 user 상태를 업데이트합니다.
+                        setUser(profileResponse.data.user);
+                        
+                        // 4. 메인 페이지로 리디렉션합니다.
+                        router.push('/');
+                    }
+                } catch (profileError) {
+                    // getMyProfile 실패 시 (예: 토큰은 유효하나 사용자가 비활성 상태) 처리
+                    console.error("Failed to fetch profile after login:", profileError);
+                    alert("로그인은 성공했으나 프로필 정보를 가져오는 데 실패했습니다.");
+                    setAccessToken(null); // 저장했던 토큰 다시 비우기
                 }
             }
         },

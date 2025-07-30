@@ -1,4 +1,4 @@
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 import logging
@@ -614,24 +614,91 @@ class FeedRepository:
     #   original_text를 content로 반환 -> 삭제
     #   {pdf_file_path 반환}
     #   결과가 없는 경우 None 반환
+
+    # async def get_feed_detail(self, feed_id: int) -> Optional[Dict[str, Any]]:
+    #     try:
+    #         # 서브쿼리: 피드별 평균 별점 계산
+    #         rating_subquery = (
+    #             self.db.query(
+    #                 Rating.feed_id,
+    #                 func.avg(Rating.score).label('average_rating')
+    #             )
+    #             .group_by(Rating.feed_id)
+    #             .subquery()
+    #         )
+            
+    #         # 메인 쿼리: 피드 상세 정보 조회
+    #         query = (
+    #             self.db.query(
+    #                 Feed.id,
+    #                 Feed.title,
+    #                 #Feed.original_text.label('content'),
+    #                 Feed.source_url,
+    #                 Feed.pdf_file_path,
+    #                 Feed.published_date,
+    #                 Feed.view_count,
+    #                 Organization.id.label('organization_id'),
+    #                 Organization.name.label('organization_name'),
+    #                 Category.id.label('category_id'),
+    #                 Category.name.label('category_name'),
+    #                 rating_subquery.c.average_rating
+    #             )
+    #             .join(Organization, Feed.organization_id == Organization.id)
+    #             .join(Category, Feed.category_id == Category.id)
+    #             .outerjoin(rating_subquery, Feed.id == rating_subquery.c.feed_id)
+    #             .filter(
+    #                 and_(
+    #                     Feed.id == feed_id,
+    #                     Feed.is_active == True
+    #                 )
+    #             )
+    #         )
+            
+    #         result = query.first()
+            
+    #         if not result:
+    #             return None
+                
+    #         return {
+    #             'id': result.id,
+    #             'title': result.title,
+    #             #'content': result.content,
+    #             'source_url': result.source_url,
+    #             'pdf_file_path': result.pdf_file_path,
+    #             'published_date': result.published_date,
+    #             'view_count': result.view_count,
+    #             'average_rating': float(result.average_rating) if result.average_rating else 0.0,
+    #             'organization_id': result.organization_id,
+    #             'organization_name': result.organization_name,
+    #             'category_id': result.category_id,
+    #             'category_name': result.category_name
+    #         }
+            
+    #     except Exception as e:
+    #         logger.error(f"피드 상세 조회 중 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
+    #         return None
+
     async def get_feed_detail(self, feed_id: int) -> Optional[Dict[str, Any]]:
+        """
+        특정 피드의 상세 정보를 비동기적으로 조회합니다.
+        self.db는 AsyncSession 객체여야 합니다.
+        """
         try:
-            # 서브쿼리: 피드별 평균 별점 계산
+            # 서브쿼리: 피드별 평균 별점 계산 (select 구문 사용)
             rating_subquery = (
-                self.db.query(
+                select(
                     Rating.feed_id,
                     func.avg(Rating.score).label('average_rating')
                 )
                 .group_by(Rating.feed_id)
                 .subquery()
             )
-            
-            # 메인 쿼리: 피드 상세 정보 조회
+        
+            # 메인 쿼리: 피드 상세 정보 조회 (select 구문 사용)
             query = (
-                self.db.query(
+                select(
                     Feed.id,
                     Feed.title,
-                    #Feed.original_text.label('content'),
                     Feed.source_url,
                     Feed.pdf_file_path,
                     Feed.published_date,
@@ -645,39 +712,42 @@ class FeedRepository:
                 .join(Organization, Feed.organization_id == Organization.id)
                 .join(Category, Feed.category_id == Category.id)
                 .outerjoin(rating_subquery, Feed.id == rating_subquery.c.feed_id)
-                .filter(
+                .where(
                     and_(
                         Feed.id == feed_id,
                         Feed.is_active == True,
-                        Organization.is_active == True,
-                        Category.is_active == True
+                        Organization.is_active == True,  # 기관 활성화 체크 추가
+                        Category.is_active == True      # 카테고리 활성화 체크 추가
                     )
                 )
             )
-            
-            result = query.first()
-            
-            if not result:
+        
+            # 쿼리를 비동기적으로 실행
+            result = await self.db.execute(query)
+            # 첫 번째 결과 레코드를 가져옴
+            record = result.first()
+        
+            if not record:
                 return None
-                
-            return {
-                'id': result.id,
-                'title': result.title,
-                #'content': result.content,
-                'source_url': result.source_url,
-                'pdf_file_path': result.pdf_file_path,
-                'published_date': result.published_date,
-                'view_count': result.view_count,
-                'average_rating': float(result.average_rating) if result.average_rating else 0.0,
-                'organization_id': result.organization_id,
-                'organization_name': result.organization_name,
-                'category_id': result.category_id,
-                'category_name': result.category_name
-            }
             
+            return {
+                'id': record.id,
+                'title': record.title,
+                'source_url': record.source_url,
+                'pdf_file_path': record.pdf_file_path,
+                'published_date': record.published_date,
+                'view_count': record.view_count,
+                'average_rating': float(record.average_rating) if record.average_rating else 0.0,
+                'organization_id': record.organization_id,
+                'organization_name': record.organization_name,
+                'category_id': record.category_id,
+                'category_name': record.category_name
+            }
+        
         except Exception as e:
             logger.error(f"피드 상세 조회 중 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
             return None
+
 
     # 특정 피드의 조회수 증가 메서드
     # 입력: 
@@ -688,36 +758,74 @@ class FeedRepository:
     #   활성화된 피드의 조회수를 1 증가시킴
     #   피드가 존재하지 않거나 비활성화된 경우 False 반환
     #   예외 발생 시 롤백 후 False 반환
+
+    # async def increment_feed_view_count(self, feed_id: int) -> bool:
+    #     try:
+    #         result = (
+    #             self.db.query(Feed)
+    #             .filter(
+    #                 and_(
+    #                     Feed.id == feed_id,
+    #                     Feed.is_active == True
+    #                 )
+    #             )
+    #             .update(
+    #                 {Feed.view_count: Feed.view_count + 1},
+    #                 synchronize_session=False
+    #             )
+    #         )
+            
+    #         if result > 0:
+    #             self.db.commit()
+    #             logger.info(f"피드 조회수 증가 성공 - feed_id: {feed_id}")
+    #             return True
+    #         else:
+    #             logger.warning(f"피드 조회수 증가 실패 - 피드를 찾을 수 없음: feed_id: {feed_id}")
+    #             return False
+                
+    #     except Exception as e:
+    #         self.db.rollback()
+    #         logger.warning(f"피드 조회수 증가 중 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
+    #         return False
+    
+
     async def increment_feed_view_count(self, feed_id: int) -> bool:
+        """
+        피드의 조회수를 1 증가시킵니다. (비동기 방식)
+        """
         try:
-            result = (
-                self.db.query(Feed)
-                .filter(
+            # 1. 비동기용 UPDATE 구문(Statement) 생성
+            stmt = (
+                update(Feed)
+                .where(
                     and_(
                         Feed.id == feed_id,
                         Feed.is_active == True
                     )
                 )
-                .update(
-                    {Feed.view_count: Feed.view_count + 1},
-                    synchronize_session=False
-                )
+                .values(view_count=Feed.view_count + 1)
             )
-            
-            if result > 0:
-                self.db.commit()
+
+            # 2. 생성된 구문을 비동기 세션으로 실행
+            result = await self.db.execute(stmt)
+
+            # 3. 실제로 업데이트된 행(row)의 수를 확인
+            if result.rowcount > 0:
+                # 4. 성공 시 비동기로 commit
+                await self.db.commit()
                 logger.info(f"피드 조회수 증가 성공 - feed_id: {feed_id}")
                 return True
             else:
+                # 업데이트된 행이 없으면, 해당 ID의 활성 피드가 없다는 의미
                 logger.warning(f"피드 조회수 증가 실패 - 피드를 찾을 수 없음: feed_id: {feed_id}")
                 return False
                 
         except Exception as e:
-            self.db.rollback()
-            logger.warning(f"피드 조회수 증가 중 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
+            # 5. 예외 발생 시 비동기로 rollback
+            await self.db.rollback()
+            logger.error(f"피드 조회수 증가 중 DB 오류 발생 - feed_id: {feed_id}, error: {str(e)}")
             return False
-        
-    
+
 
     async def is_feed_exists(self, feed_id: int) -> bool:
         result = await self.db.execute(

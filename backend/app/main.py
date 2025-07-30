@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.F1_routers.v1.api import router as api_v1_router
+from app.F5_core.config import settings
+from app.F11_search.es_initializer import initialize_elasticsearch
 from app.F7_models import (
     bookmarks, categories, feeds, keywords, notices, organizations, rating_history, ratings, refresh_token, search_logs, sliders, static_page_versions, static_pages, token_security_event_logs, user_activities, user_interests, users, word_clouds
     )
@@ -25,8 +27,13 @@ if not settings.JWT_SECRET_KEY:
 # 앱 라이프사이클 컨텍스트 매니저: 시작 시 DB 테이블 생성
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
+    # DB 테이블 생성
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Elasticsearch 초기화 함수 호출
+    initialize_elasticsearch()
+    
     yield
     # 종료 시 추가 로직 필요하면 작성
 
@@ -52,7 +59,8 @@ app.add_middleware(
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
 
 # static 폴더 절대 경로
-STATIC_DIR = Path(__file__).resolve().parent / "static"
+# STATIC_DIR = Path(__file__).resolve().parent / "static"
+STATIC_DIR = "/app/static"
 
 # 정적 파일 전달(현재는 PDF)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

@@ -31,7 +31,7 @@ interface CategoryFilterParams extends PaginationParams {
 */
 export const getFeeds = async (params: PaginationParams): Promise<MainFeedListResponse> => {
     // 백엔드 라우터가 "/" 이므로, prefix인 "/feeds" 만으로 요청
-    const response = await apiClient.get<MainFeedListResponse>('/feeds', { params });
+    const response = await apiClient.get<MainFeedListResponse>('/feeds/', { params });
     return response.data;
 };
 
@@ -99,7 +99,8 @@ export const getPressReleases = async (name: string, params: PaginationParams): 
 * @returns Promise<FeedDetailResponse>
 */
 export const getFeedDetail = async (id: number): Promise<FeedDetailResponse> => {
-    const response = await apiClient.get<FeedDetailResponse>(`/feeds/${id}`);
+    // const response = await apiClient.get<FeedDetailResponse>(`/feeds/${id}`);
+    const response = await apiClient.get<FeedDetailResponse>(`/feeds/detail/${id}`);
     return response.data;
 };
 
@@ -110,7 +111,8 @@ export const getFeedDetail = async (id: number): Promise<FeedDetailResponse> => 
 * @returns Promise<RatingResponse>
 */
 export const postRating = async (id: number, score: number): Promise<RatingResponse> => {
-    const response = await apiClient.post<RatingResponse>(`/feeds/${id}/ratings`, { score });
+    // const response = await apiClient.post<RatingResponse>(`/feeds/${id}/ratings`, { score });
+    const response = await apiClient.post<RatingResponse>(`/feeds/detail/${id}/ratings`, { score });
     return response.data;
 };
 
@@ -121,6 +123,7 @@ export const postRating = async (id: number, score: number): Promise<RatingRespo
 */
 export const toggleBookmark = async (id: number): Promise<BookmarkResponse> => {
     // 요청 본문이 비어있으므로 빈 객체를 보냄(차라차라참참참 신기해)
-    const response = await apiClient.post<BookmarkResponse>(`/feeds/${id}/bookmark`, {});
+    // const response = await apiClient.post<BookmarkResponse>(`/feeds/${id}/bookmark`, {});
+    const response = await apiClient.post<BookmarkResponse>(`/feeds/detail/${id}/bookmark`, {});
     return response.data;
 };

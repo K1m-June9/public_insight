@@ -6,9 +6,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 class ImageConverter:
     def __init__(self, base_path: str, default_image_name: str = "default"):
-        self.image_base_path = Path(base_path)
+        #self.image_base_path = Path(base_path)
+        self.image_base_path = PROJECT_ROOT / base_path
         self.default_image_name = default_image_name
 
     # 이미지 파일을 base64로 변환하는 내부 메서드

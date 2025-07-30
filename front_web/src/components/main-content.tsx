@@ -49,7 +49,8 @@ export default function MainContent() {
     <div className="w-full px-4 py-8 md:px-6">
       <div className="flex flex-col lg:flex-row gap-8">
         {/* 좌측 컨텐츠 (45%) */}
-        <div className="w-full lg:w-[45%]">
+        {/*<div className="w-full lg:w-[45%]">*/}
+        <div className="w-full lg:w-[45%] overflow-y-auto" style={{ maxHeight: "calc(100vh - 16rem)" }}>
           <div className="space-y-8">
             {/* 2. 각 컴포넌트에 필요한 데이터를 props로 전달 */}
             <PieChart 
@@ -62,7 +63,8 @@ export default function MainContent() {
         </div>
 
         {/* 우측 컨텐츠 (55%) */}
-        <div className="w-full lg:w-[55%]">
+        {/*<div className="w-full lg:w-[55%]">*/}
+        <div className="w-full lg:w-[55%] overflow-y-auto" style={{ maxHeight: "calc(100vh - 16rem)" }}>
           <div>
             <Slider slides={slidersData?.data.sliders} />
             <FeedList /> {/* FeedList는 자체적으로 페이지네이션을 관리하므로 props가 필요 없을 수 있음 */}

@@ -13,7 +13,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.get(
-    "/",
+    "",
     response_model=SearchResponse,
     # [수정] API 문서에 실제 가능한 오류만 명시
     responses={

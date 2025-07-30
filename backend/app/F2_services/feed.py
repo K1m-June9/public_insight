@@ -624,6 +624,7 @@ class FeedService:
             
             # 1. pdf_url 생성
             pdf_url = f"{Settings.STATIC_FILES_URL}/feeds_pdf/{feed_data['pdf_file_path']}"
+            # pdf_url = f"{feed_data['pdf_file_path']}"
 
             # 2. 사용자별 정보 초기화
             is_bookmarked = None
@@ -653,7 +654,7 @@ class FeedService:
                 source_url=feed_data['source_url'],
                 # 수정된 스키마에 맞춰 데이터 전달
                 pdf_url=pdf_url,
-                is_bookmarked=is_bookmarked,
+                is_bookmarked=is_bookmarked, 
                 user_rating=user_rating
             )
             

@@ -48,7 +48,7 @@ export function Slider({ slides = [] }: SliderProps) {
               <div className="h-full">
                 <div className="relative h-[200px]">
                   {/* Base64 이미지 사용 */}
-                  <Image src={`data:image/jpeg;base64,${slide.image}`} alt={slide.title} fill className="object-cover" />
+                  <Image src={slide.image} alt={slide.title} fill className="object-cover" />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-bold mb-2 text-gray-900">{slide.title}</h3>

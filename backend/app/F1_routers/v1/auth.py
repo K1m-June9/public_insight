@@ -1,17 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Body, BackgroundTasks, status
 from fastapi.responses import JSONResponse
 import logging 
+from jose import JWTError
 
 from app.F2_services.session import SessionService
 from app.F2_services.auth import AuthService, auth_handler
 from app.F4_utils import device, cookie, client
 from app.F4_utils.email import EmailVerificationService, SendPasswordResetEmail
 from app.F5_core.redis import PasswordResetRedisService
-from app.F5_core.security import JWTBearer
+from app.F5_core.security import JWTBearer, AuthHandler
 from app.F5_core.config import settings
 from app.F5_core.dependencies import (
-    get_auth_service, get_email_verification_services,
-    get_password_reset_redis_service, get_session_service
+    get_auth_service, 
+    get_auth_handler,
+    get_email_verification_services,
+    get_password_reset_redis_service, 
+    get_session_service
 )
 from app.F6_schemas import base
 from app.F6_schemas.auth import (
@@ -140,62 +144,134 @@ async def refresh_token(
     )
 
 
+# # 로그아웃(현재 디바이스)
+# @router.post("/logout", response_model=None)
+# async def logout(
+#     request: Request,
+#     response: Response,
+#     auth_service: AuthService = Depends(get_auth_service),
+#     # token: str = Depends(JWTBearer()),
+# ):  
+#     # 1. 요청 본문에서 필요한 정보 추출
+#     refresh_token = request.cookies.get("refresh_token") or (
+#         (await request.json()).get("refresh_token") if request.method == "POST" else None)
+    
+#     # 2. devcie_id 추출
+#     device_info = device.extract_device_info(request)
+#     device_id = auth_handler.generate_device_fingerprint(
+#         device_info.get("user_agent"),
+#         device_info.get("ip_address")
+#     )
+
+
+#     # 3. 요청 상태에서 jti, user_id 추출
+#     jti = getattr(request.state, "jti", None)
+#     user_id = getattr(request.state, "user_id", None)
+
+
+#     # 4. 필수 정보 없을 경우 예외 처리
+#     if not (refresh_token and device_id and jti and user_id):
+#         error = base.ErrorResponse(
+#             error=base.ErrorDetail(
+#                 code="REFRESH_TOKEN_REQUIRED",
+#                 message="리프레시 토큰, device_id, jti 또는 user_id가 누락되었습니다",
+#                 details=None
+#             )
+#         )
+#         return JSONResponse(status_code=401, content=error.model_dump())
+
+
+#     # 5. 로그아웃 처리
+#     try:
+#         await auth_service.logout(
+#             jti=jti,
+#             user_id=user_id,
+#             refresh_token=refresh_token,
+#             device_id=device_id
+#         )
+#     except HTTPException as e:
+#         # 실패 시 쿠키 제거 후 예외 전달
+#         response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+#         raise e
+
+
+#     # 6. 성공 시 쿠키 제거 및 응답 반환
+#     response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+#     return base.SuccessResponse()
+
+####임시방편 ###### 리팩토링할때 수정할것
 # 로그아웃(현재 디바이스)
 @router.post("/logout", response_model=None)
 async def logout(
     request: Request,
     response: Response,
     auth_service: AuthService = Depends(get_auth_service),
-    token: str = Depends(JWTBearer()),
+    # ★★ 2. AuthHandler를 주입받아 토큰을 해독할 준비를 합니다. ★★
+    auth_handler: AuthHandler = Depends(get_auth_handler)
 ):  
-    # 1. 요청 본문에서 필요한 정보 추출
-    refresh_token = request.cookies.get("refresh_token") or (
-        (await request.json()).get("refresh_token") if request.method == "POST" else None)
+    # 1. 요청 본문에서 필요한 정보 추출 (수정 없음)
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        # 본문에서 찾는 로직은 HttpOnly 쿠키에서는 의미가 없으므로 단순화 가능
+        # 하지만 일단 그대로 둡니다.
+        try:
+            body = await request.json()
+            refresh_token = body.get("refresh_token")
+        except:
+            refresh_token = None
     
-    # 2. devcie_id 추출
+    # 2. devcie_id 추출 (수정 없음)
     device_info = device.extract_device_info(request)
     device_id = auth_handler.generate_device_fingerprint(
         device_info.get("user_agent"),
         device_info.get("ip_address")
     )
 
+    # ★★ 3. 문제가 되는 'request.state' 로직을 완전히 교체합니다. ★★
+    try:
+        if not refresh_token:
+            # 리프레시 토큰이 아예 없으면 처리 불가
+            raise JWTError("Refresh token not found.")
+            
+        # 리프레시 토큰을 직접 열어서 jti와 user_id를 꺼냅니다.
+        payload = auth_handler.decode_refresh_token(refresh_token)
+        jti = payload.get("jti")
+        user_id = payload.get("sub") # JWT 표준에서는 user_id를 'sub' 클레임에 담습니다.
 
-    # 3. 요청 상태에서 jti, user_id 추출
-    jti = getattr(request.state, "jti", None)
-    user_id = getattr(request.state, "user_id", None)
+    except JWTError as e:
+        # 토큰이 유효하지 않으면? 어차피 로그아웃 된 셈.
+        # 조용히 쿠키만 지우고 성공 처리합니다.
+        response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+        return base.SuccessResponse() # 또는 Response(status_code=204)
 
-
-    # 4. 필수 정보 없을 경우 예외 처리
+    # 4. 필수 정보 없을 경우 예외 처리 (수정 없음)
     if not (refresh_token and device_id and jti and user_id):
         error = base.ErrorResponse(
             error=base.ErrorDetail(
-                code="REFRESH_TOKEN_REQUIRED",
-                message="리프레시 토큰, device_id, jti 또는 user_id가 누락되었습니다",
+                code="INVALID_TOKEN_PAYLOAD", # 에러 코드를 더 명확하게
+                message="리프레시 토큰의 정보가 올바르지 않습니다.",
                 details=None
             )
         )
         return JSONResponse(status_code=401, content=error.model_dump())
 
-
-    # 5. 로그아웃 처리
+    # 5. 로그아웃 처리 (수정 없음)
     try:
+        # ★★ 4. user_id를 int 타입으로 변환해줍니다 (서비스가 int를 기대한다면) ★★
         await auth_service.logout(
             jti=jti,
-            user_id=user_id,
+            user_id=int(user_id),
             refresh_token=refresh_token,
             device_id=device_id
         )
     except HTTPException as e:
-        # 실패 시 쿠키 제거 후 예외 전달
+        # 실패 시 쿠키 제거 후 예외 전달 (수정 없음)
         response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
         raise e
 
-
-    # 6. 성공 시 쿠키 제거 및 응답 반환
+    # 6. 성공 시 쿠키 제거 및 응답 반환 (수정 없음)
     response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
     return base.SuccessResponse()
-
-
 
 
 # 회원가입 완료 버튼

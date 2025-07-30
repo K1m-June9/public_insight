@@ -75,7 +75,7 @@ export function PieChart({ chartData, latestFeeds }: PieChartProps) {
           cy={cy}
           innerRadius={innerRadius}
           // 활성화된 섹터만 더 크게 표시
-          outerRadius={isActive ? outerRadius + 10 : outerRadius}
+          outerRadius={isActive ? outerRadius + 35 : outerRadius}
           startAngle={startAngle}
           endAngle={endAngle}
           fill={fill}

@@ -26,7 +26,8 @@ const refreshAccessToken = async () => {
 export const apiClient = axios.create({
   // .env.local 파일에 NEXT_PUBLIC_API_URL을 설정
   // 예시: NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-    baseURL: process.env.NEXT_PUBLIC_API_URL,
+    //baseURL: process.env.NEXT_PUBLIC_API_URL,
+    baseURL: '/api/v1',
   // 다른 서버로 쿠키를 보내기 위한 설정
     withCredentials: true,
 });

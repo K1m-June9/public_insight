@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import jwt
+from jose import JWTError
 from passlib.context import CryptContext
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Request, HTTPException, status
@@ -102,6 +103,37 @@ class AuthHandler:
         ip = ip_address or ""   # IP 주소가 없으면 빈 문자열
         fingerprint_source = f"{ua}:{ip}"   # User-Agent와 IP를 ':'로 결합
         return hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest() # SHA-256 해시 반환
+    
+    # 임시방편코드 - 리팩토링할 때 우리 스타일로 맞춰놓을게
+    def decode_refresh_token(self, token: str) -> Dict[str, Any]:
+        """
+        JWT Refresh Token을 디코딩하여 payload를 반환합니다.
+        
+        이 함수는 토큰이 변조되지 않았는지(서명 검증)만 확인합니다.
+        만료 시간은 검증하지 않습니다. 왜냐하면 어차피 DB에서 존재 여부를
+        확인하여 최종 유효성을 판단할 것이기 때문입니다.
+        
+        실패 시 예외를 발생시킵니다.
+        """
+        try:
+            # 리프레시 토큰을 생성할 때 사용한 것과 동일한 비밀 키를 사용해야 합니다.
+            payload = jwt.decode(
+                token,
+                self._refresh_secret_key, # 리프레시 토큰용 비밀 키
+                algorithms=[self._algorithm],
+                # 만료 시간(exp) 검증은 하지 않음
+                options={"verify_exp": False, "verify_signature": True} 
+            )
+            return payload
+        except JWTError as e:
+            # 토큰이 깨졌거나, 서명이 위조되었거나, 형식이 잘못된 경우
+            logger.warning(f"Refresh token decoding failed: {e}")
+            raise JWTError("Invalid or malformed refresh token.") from e
+
+
+
+
+
 
 # JWTBearer 미들웨어
 # JWT 토큰을 Bearer 인증 헤더에서 검증하는 FastAPI 보안 클래스

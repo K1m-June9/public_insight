@@ -64,7 +64,8 @@ async def update_nickname(
     result = await user_service.update_nickname(
         current_user.user_id,
         current_user.email,
-        payload.nickname
+        payload.nickname,
+        current_user.role 
         )
 
     # 2. Service에서 에러 응답이 반환된 경우 처리

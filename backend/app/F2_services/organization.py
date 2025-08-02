@@ -5,7 +5,6 @@ from pathlib import Path
 from datetime import date
 
 from app.F3_repositories.organization import OrganizationRepository
-from app.F4_utils.image_converter import ImageConverter
 from app.F6_schemas.organization import (
     OrganizationListResponse, 
     OrganizationListData, 
@@ -31,17 +30,21 @@ from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, 
 logger = logging.getLogger(__name__)
 
 # 커스텀 예외 클래스
-class OrganizationServiceException(Exception):
-    def __init__(self, code: str, message: str, status_code: int):
-        self.code = code
-        self.message = message
-        self.status_code = status_code
-        super().__init__(message)
+# class OrganizationServiceException(Exception):
+#     def __init__(self, code: str, message: str, status_code: int):
+#         self.code = code
+#         self.message = message
+#         self.status_code = status_code
+#         super().__init__(message)
 
 class OrganizationService:
     def __init__(self, organization_repo: OrganizationRepository):
         self.organization_repo = organization_repo
-        self.icon_converter = ImageConverter(base_path=Settings.ICON_STORAGE_PATH)
+
+    def _create_icon_url(self, icon_path: str | None) -> str:
+        if not icon_path:
+            return ""
+        return f"{Settings.STATIC_FILES_URL}/organization_icon/{icon_path}"
 
     def _calculate_scaled_percentages(self, items: list, count_key: str, scale_to: float = 95.0) -> list:
         total_count = sum(item[count_key] for item in items)
@@ -176,13 +179,13 @@ class OrganizationService:
                     )
                 )
 
-            base64_icon = await self.icon_converter.to_base64(organization_data["icon_path"])
+            icon_url = self._create_icon_url(organization_data["icon_path"])
             
             organization_with_icon = OrganizationWithIcon(
                 id=organization_data["id"],
                 name=organization_data["name"],
                 website_url=organization_data["website_url"] or "",
-                icon=base64_icon
+                icon=icon_url
             )
             
             return OrganizationIconResponse(success=True, data=OrganizationIconData(organization=organization_with_icon))
@@ -191,8 +194,7 @@ class OrganizationService:
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR,
-                    #message=Message.ICON_UPLOADS_FAIL
-                    message = f"{org_name}:{e}"
+                    message=Message.ICON_UPLOADS_FAIL
                 )
             )
         

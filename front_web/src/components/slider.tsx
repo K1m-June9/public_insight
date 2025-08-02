@@ -17,6 +17,7 @@ export function Slider({ slides = [] }: SliderProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
 
   // 자동 슬라이드 기능
   useEffect(() => {
@@ -47,8 +48,8 @@ export function Slider({ slides = [] }: SliderProps) {
             <Link href={`/slider/${slide.id}`} key={slide.id} className="min-w-full h-full">
               <div className="h-full">
                 <div className="relative h-[200px]">
-                  {/* Base64 이미지 사용 */}
-                  <Image src={slide.image} alt={slide.title} fill className="object-cover" />
+                  {/* Base64 -> staticURL방식 */}
+                    <Image src={`${apiBaseUrl}${slide.imageUrl}`} alt={slide.title} fill className="object-cover" />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-bold mb-2 text-gray-900">{slide.title}</h3>

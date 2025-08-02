@@ -58,12 +58,21 @@ app.add_middleware(
 # 세션 미들웨어
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
 
-# static 폴더 절대 경로
-# STATIC_DIR = Path(__file__).resolve().parent / "static"
-STATIC_DIR = "/app/static"
+# # static 폴더 절대 경로
+# # STATIC_DIR = Path(__file__).resolve().parent / "static"
+# STATIC_DIR = "/app/static"
 
-# 정적 파일 전달(현재는 PDF)
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# # 정적 파일 전달(현재는 PDF)
+# app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+# config.py의 ENVIRONMENT 변수 값을 확인하여, 'production'일 때만 static 폴더를 마운트합니다.
+if settings.ENVIRONMENT == "production":
+    print("===== [INFO] Production environment detected. Mounting /static folder. =====")
+    STATIC_DIR = "/app/static"
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+else:
+    print(f"===== [INFO] {settings.ENVIRONMENT} environment detected. Skipping /static folder mount. =====")
 
 # JWT 인증 미들웨어
 app.add_middleware(

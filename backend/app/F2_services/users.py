@@ -1,5 +1,6 @@
 import math
 import logging
+from typing import Union
 
 from app.F2_services.session import SessionService
 from app.F3_repositories.users import UserRepository
@@ -12,7 +13,8 @@ from app.F6_schemas.base import (
     Message,
     PaginationInfo, 
     ErrorResponse, 
-    ErrorDetail
+    ErrorDetail,
+    UserRole
 )
 
 from app.F6_schemas.users import (
@@ -26,7 +28,7 @@ from app.F6_schemas.users import (
     UserRatingListData, 
     UserBookmarkListQuery, 
     UserBookmarkListResponse, 
-    UserBookmarkListData
+    UserBookmarkListData,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ class UserService:
         self.session_service = session_service
 
 
-    async def update_nickname(self, user_id: str, email: str, nickname: str) -> UserProfileResponse:
+    async def update_nickname(self, user_id: str, email: str, nickname: str, role: UserRole) -> Union[UserProfileResponse, ErrorResponse]:
         """
         nickname 변경
         - /me/nickname
@@ -74,7 +76,8 @@ class UserService:
                 user=UserProfile(
                     user_id=user_id,
                     nickname=nickname,
-                    email=email
+                    email=email,
+                    role=role
                 )
             )
 

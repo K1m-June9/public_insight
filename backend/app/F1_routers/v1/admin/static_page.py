@@ -12,14 +12,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(
     tags=["Admin-StaticPages"],
-    prefix="/static-pages"
+    prefix="/static-pages" #이게 이런 방법이 최선인지는 조금 더 확인해봐야 할 것 같음.
 )
 
 @router.get("", response_model=StaticPageListResponse)
 async def get_static_pages(
     admin_service: StaticPageAdminService = Depends(get_admin_static_page_service),
     # 💡 우선은 '활성 사용자'인지 확인하는 것으로 인증을 처리
-    # 추후 'ADMIN' 역할을 확인하는 의존성(verify_admin_user)으로 교체하는 것이 좋음
+    # 추후 'ADMIN' 역할을 확인하는 의존성(verify_admin_user)으로 교체할수도 있음
+    # 근데 middleware에서 admin_paths 사용중이어서 크게 상관 없을 것 같기도 함
     current_user: User = Depends(verify_active_user)
 ):
     """

@@ -42,7 +42,10 @@ class StaticPageAdminService:
                 page_items.append(item)
             
             # 3. 최종 응답 객체를 생성하여 반환
-            return StaticPageListResponse(data=page_items)
+            return StaticPageListResponse(
+                    success=True,
+                    data=page_items
+                    )
 
         except Exception as e:
             logger.error(f"Error in get_static_pages_list: {e}", exc_info=True)

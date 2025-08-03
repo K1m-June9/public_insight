@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAdminStaticPages } from '@/services/admin/staticPageService';
+import { getAdminStaticPages, getAdminStaticPageDetail } from '@/services/admin/staticPageService';
 
 /**
  * 관리자: 정적 페이지 목록 조회를 위한 쿼리 키
@@ -7,6 +7,8 @@ import { getAdminStaticPages } from '@/services/admin/staticPageService';
 export const adminStaticPageQueryKeys = {
   all: ['admin', 'static-pages'] as const,
   lists: () => [...adminStaticPageQueryKeys.all, 'list'] as const,
+  details: () => [...adminStaticPageQueryKeys.all, 'detail'] as const,
+  detail: (slug: string) => [...adminStaticPageQueryKeys.details(), slug] as const,
 };
 
 /**
@@ -23,5 +25,20 @@ export const useAdminStaticPagesQuery = (options?: { staleTime?: number }) => {
     // 관리자 페이지는 보통 관리자 본인만 사용하므로,
     // 창에 다시 포커스할 때마다 데이터를 새로고침할 필요가 없을 수 있음
     // refetchOnWindowFocus: false, // 필요 시 이 옵션을 추가할 수 있음
+  });
+};
+
+/**
+ * 관리자: 특정 slug를 가진 정적 페이지의 상세 정보를 조회하는 useQuery 훅
+ * 
+ * @param slug - 조회할 페이지의 slug
+ * @param options - useQuery에 전달할 추가 옵션 (enabled 등)
+ * @returns {data, isLoading, isError, ...}
+ */
+export const useAdminStaticPageDetailQuery = (slug: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: adminStaticPageQueryKeys.detail(slug),
+    queryFn: () => getAdminStaticPageDetail(slug),
+    enabled: options?.enabled ?? !!slug, // slug가 있을 때만 훅 활성화
   });
 };

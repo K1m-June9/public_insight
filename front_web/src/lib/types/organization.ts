@@ -79,7 +79,7 @@ export interface OrganizationWithIcon {
     id: number;
     name: string;
     website_url: string; //기관 웹사이트 url
-    icon: string;        // Base64 인코딩된 이미지 데이터
+    iconUrl: string;
 }
 
 export interface OrganizationIconData {

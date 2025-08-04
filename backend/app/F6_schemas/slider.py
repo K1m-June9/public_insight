@@ -13,7 +13,7 @@ class SliderListItem(BaseSchema):
     id: int
     title: str
     preview: str
-    image: str  # Base64 인코딩된 이미지 데이터
+    imageURL: str  # Base64 -> URL 방식으로 변경
     display_order: int
 
 class SliderListData(BaseModel):
@@ -33,7 +33,7 @@ class SliderDetail(BaseSchema):
     id: int
     title: str
     content: str  
-    image: str    # Base64 인코딩된 이미지 데이터
+    imageURL: str    # Base64 -> URL 방식으로 변경
     author: str
     tag: str
     created_at: datetime

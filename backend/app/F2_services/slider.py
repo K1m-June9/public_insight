@@ -3,7 +3,6 @@ from typing import Union
 import logging
 
 from app.F3_repositories.slider import SliderRepository
-from app.F4_utils.image_converter import ImageConverter
 from app.F6_schemas.slider import SliderListResponse, SliderListData, SliderListItem, SliderDetail, SliderDetailData, SliderDetailResponse
 from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, Settings
 
@@ -12,7 +11,15 @@ logger = logging.getLogger(__name__)
 class SliderService:
     def __init__(self, slider_repository: SliderRepository):
         self.slider_repository = slider_repository
-        self.image_converter = ImageConverter(base_path=Settings.SLIDER_STORAGE_PATH)
+        # image_converter 더이상 사용 안함(이미지 전송 방식 변경)
+
+    def _create_image_url(self, image_path: str | None) -> str:
+        """파일 경로를 완전한 웹 URL로 변환하는 헬퍼 함수"""
+        if not image_path:
+            # 기본 이미지가 필요하다면, 그 경로를 settings에서 가져올 수 있음
+            # return f"{Settings.STATIC_FILES_URL}/sliders/default.jpg"
+            return f"{Settings.STATIC_FILES_URL}/sliders/default.jpg"
+        return f"{Settings.STATIC_FILES_URL}/sliders/{image_path}"
 
     async def get_active_sliders_list(self) -> Union[SliderListResponse, ErrorResponse]:
         try:
@@ -20,14 +27,14 @@ class SliderService:
             
             slider_items = []
             for slider in sliders:
-                # 💡 이미지 변환 로직 위임
-                image_base64 = await self.image_converter.to_base64(slider.image_path)
+                # 이미지 전달 방식 변경
+                image_url = self._create_image_url(slider.image_path)
                 
                 slider_item = SliderListItem(
                     id=slider.id,
                     title=slider.title,
                     preview=slider.preview or "",
-                    image=image_base64,
+                    image=image_url,
                     display_order=slider.display_order
                 )
                 slider_items.append(slider_item)
@@ -66,13 +73,13 @@ class SliderService:
                     )
                 )
 
-            image_base64 = await self.image_converter.to_base64(slider.image_path)
+            image_url = self._create_image_url(slider.image_path)
             
             slider_detail = SliderDetail(
                 id=slider.id,
                 title=slider.title,
                 content=slider.content or "",
-                image=image_base64,
+                image=image_url,
                 author=slider.author,
                 tag=slider.tag,
                 created_at=slider.created_at

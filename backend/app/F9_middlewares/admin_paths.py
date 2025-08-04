@@ -5,6 +5,7 @@ admin_paths = {
     "/api/v1/admin": {UserRole.ADMIN}, 
     "/api/v1/moderate": {UserRole.ADMIN, UserRole.MODERATOR},
     # 필요에 따라 추가 경로와 역할 지정
+    "api/v1/admin/static-pages":{UserRole.ADMIN}, #관리자 정적 페이지 목록 조회
 }
 
 """

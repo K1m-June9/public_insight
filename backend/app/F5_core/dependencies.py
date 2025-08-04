@@ -12,6 +12,8 @@ from app.F2_services.feed import FeedService
 from app.F2_services.users import UserService
 from app.F2_services.notice import NoticeService
 
+from app.F2_services.admin.static_page import StaticPageAdminService
+
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
 from app.F3_repositories.session import SessionRepository
@@ -20,6 +22,8 @@ from app.F3_repositories.feed import FeedRepository
 from app.F3_repositories.users import UserRepository
 from app.F3_repositories.static_page import StaticPageRepository
 from app.F3_repositories.notice import NoticeRepository
+
+from app.F3_repositories.admin.static_page import StaticPageAdminRepository
 
 from app.F4_utils.email import EmailVerificationService
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
@@ -59,6 +63,10 @@ async def get_organization_service(db: AsyncSession = Depends(get_db)) -> Organi
 async def get_feed_service(db: AsyncSession = Depends(get_db)) -> FeedService:
     """피드 관련 서비스 의존성 주입용 함수"""
     return FeedService(FeedRepository(db))
+
+async def get_admin_static_page_service(db: AsyncSession = Depends(get_db)) -> StaticPageAdminService:
+    """관리자 정적 페이지 관련 의존성 주입용 함수"""
+    return StaticPageAdminService(StaticPageAdminRepository(db))
 
 async def get_user_service(
     db: AsyncSession = Depends(get_db),

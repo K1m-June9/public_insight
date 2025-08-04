@@ -6,7 +6,8 @@ admin_paths = {
     "/api/v1/moderate": {UserRole.ADMIN, UserRole.MODERATOR},
     # 필요에 따라 추가 경로와 역할 지정
 }
-
+admin_regex_paths = {
+}
 """
 [경로 지정 규칙]
 

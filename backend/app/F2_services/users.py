@@ -45,11 +45,21 @@ class UserService:
         nickname 변경
         - /me/nickname
         """
+        logger.debug(f"Service logic started. user_id='{user_id}', new_nickname='{nickname}'")
         try:
             # 1. 유효성 검사
             is_invalid = not validate_nickname(nickname)
             
             if is_invalid:
+
+                log_message = "Nickname validation failed"
+                log_extra = {
+                    "event":{"action":"update_nickname", "outcome":"failure"},
+                    "user":{"id":user_id},
+                    "error":{"attempted_nickname":nickname}
+                }
+                logger.warning(log_message, extra=log_extra)
+
                 return ErrorResponse(
                     error=ErrorDetail(
                         code=ErrorCode.VALIDATION_ERROR,
@@ -58,9 +68,19 @@ class UserService:
                 )
             
             # 2. 중복 검사(본인 제외)
+            logger.debug(f"Checking for nickname duplication, excluding self. nickname='{nickname}'")
             is_duplicate = await self.repo.is_nickname_exists(nickname, exclude_user_id=user_id)
 
             if is_duplicate:
+
+                log_message = "Duplicate nickname attempt"
+                log_extra = {
+                    "event": {"action": "update_nickname", "outcome": "failure"},
+                    "user": {"id": user_id},
+                    "error": {"type": "Duplicate Value", "reason": "Nickname already exists"},
+                    "data": {"attempted_nickname": nickname}
+                }
+                logging.warning(log_message, extra=log_extra)
                 return ErrorResponse(
                     error = ErrorDetail(
                         code=ErrorCode.DUPLICATE,
@@ -69,6 +89,7 @@ class UserService:
             )
         
             # 3. 닉네임 업데이트
+            logger.debug(f"Validation and duplication checks passed. Proceeding to update DB for user_id='{user_id}'.")
             await self.repo.update_nickname(user_id, nickname)
 
             # 4. 응답 데이터 구성
@@ -89,7 +110,17 @@ class UserService:
         
         except Exception as e:
             # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
-            logger.error(f"Error in update_nickname: {e}", exc_info=True)
+            logger.error(
+                f"An unexpected database or logic error occurred in update_nickname service for user_id='{user_id}'.", 
+                exc_info=True,
+                extra={
+                    # 에러 로그에도 일관된 ECS 구조를 추가하면 분석에 매우 유리합니다.
+                    "event": {"action": "update_nickname", "outcome": "failure"},
+                    "user": {"id": user_id},
+                    "error": {"type": e.__class__.__name__, "message": str(e)}
+                }
+            )
+            
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR,

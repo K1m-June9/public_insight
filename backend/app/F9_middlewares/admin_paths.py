@@ -7,7 +7,8 @@ admin_paths = {
     # 필요에 따라 추가 경로와 역할 지정
     "api/v1/admin/static-pages":{UserRole.ADMIN}, #관리자 정적 페이지 목록 조회
 }
-
+admin_regex_paths = {
+}
 """
 [경로 지정 규칙]
 

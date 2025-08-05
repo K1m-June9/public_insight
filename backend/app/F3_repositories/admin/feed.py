@@ -1,0 +1,108 @@
+from sqlalchemy import select, func, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional, Dict, Tuple, Any
+import logging
+
+from app.F7_models.categories import Category
+from app.F7_models.feeds import Feed
+from app.F7_models.organizations import Organization
+
+logger = logging.getLogger(__name__)
+
+class FeedAdminRepository:
+    """
+    관리자 기능 - 피드 관리 관련 데이터베이스 작업을 처리하는 클래스
+    """
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get_categories_by_organization(self, organization_id: int) -> List[Category]:
+        """
+        특정 기관에 속한 활성화된 카테고리 목록을 조회합니다.
+
+        Args:
+            organization_id (int): 조회할 기관의 ID
+
+        Returns:
+            List[Category]: Category ORM 객체들의 리스트
+        """
+        try:
+            stmt = (
+                select(Category)
+                .where(
+                    Category.organization_id == organization_id,
+                    Category.is_active == True
+                )
+                .order_by(Category.name.asc())
+            )
+            result = await self.db.execute(stmt)
+            categories = result.scalars().all()
+            return list(categories)
+        except Exception as e:
+            logger.error(f"Error getting categories for organization {organization_id}: {e}", exc_info=True)
+            return []
+        
+    async def get_feeds_list(
+        self,
+        page: int,
+        limit: int,
+        search: Optional[str] = None,
+        organization_id: Optional[int] = None,
+        category_id: Optional[int] = None,
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        관리자 페이지: 피드 목록을 페이지네이션, 검색, 필터링하여 조회
+
+        Args:
+            page (int): 페이지 번호
+            limit (int): 페이지당 항목 수
+            search (Optional[str]): 제목 검색어
+            organization_id (Optional[int]): 기관 ID 필터
+            category_id (Optional[int]): 카테고리 ID 필터
+
+        Returns:
+            Tuple[List[Dict[str, Any]], int]: (피드 목록, 전체 개수) 튜플
+        """
+        offset = (page - 1) * limit
+
+        # 기본 쿼리: Feed, Organization, Category 테이블을 JOIN
+        base_query = (
+            select(
+                Feed.id,
+                Feed.title,
+                Organization.name.label("organization_name"),
+                Category.name.label("category_name"),
+                Feed.is_active,
+                # DB에 저장될 Enum 타입의 이름을 가져오기 위해 .name 사용
+                #Feed.processing_status.name.label("processing_status"), #현재 Feed 테이블에 processing_status가 없으므로 나중에 마이너 업데이트를 통해 추가
+                Feed.view_count,
+                Feed.created_at,
+            )
+            .join(Organization, Feed.organization_id == Organization.id)
+            .join(Category, Feed.category_id == Category.id)
+        )
+
+        # 필터 조건들을 담을 리스트
+        filters = []
+        if search:
+            filters.append(Feed.title.ilike(f"%{search}%"))
+        if organization_id:
+            filters.append(Feed.organization_id == organization_id)
+        if category_id:
+            filters.append(Feed.category_id == category_id)
+
+        # 필터가 있으면 쿼리에 추가
+        if filters:
+            base_query = base_query.where(and_(*filters))
+
+        # 1. 전체 개수를 세는 쿼리
+        count_stmt = select(func.count()).select_from(base_query.alias())
+        total_result = await self.db.execute(count_stmt)
+        total_count = total_result.scalar_one()
+
+        # 2. 실제 데이터를 가져오는 쿼리 (정렬 및 페이지네이션 적용)
+        data_stmt = base_query.order_by(Feed.id.desc()).offset(offset).limit(limit)
+        data_result = await self.db.execute(data_stmt)
+        feeds = data_result.mappings().all() # .mappings()는 결과를 Dict처럼 사용할 수 있게 해줌
+
+        return list(feeds), total_count

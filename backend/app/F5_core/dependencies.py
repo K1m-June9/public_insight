@@ -13,6 +13,8 @@ from app.F2_services.users import UserService
 from app.F2_services.notice import NoticeService
 
 from app.F2_services.admin.static_page import StaticPageAdminService
+from app.F2_services.admin.feed import FeedAdminService
+from app.F2_services.admin.organization import OrganizationAdminService
 
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
@@ -24,6 +26,8 @@ from app.F3_repositories.static_page import StaticPageRepository
 from app.F3_repositories.notice import NoticeRepository
 
 from app.F3_repositories.admin.static_page import StaticPageAdminRepository
+from app.F3_repositories.admin.feed import FeedAdminRepository
+from app.F3_repositories.admin.organization import OrganizationAdminRepository
 
 from app.F4_utils.email import EmailVerificationService
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
@@ -68,14 +72,17 @@ async def get_admin_static_page_service(db: AsyncSession = Depends(get_db)) -> S
     """관리자 정적 페이지 관련 의존성 주입용 함수"""
     return StaticPageAdminService(StaticPageAdminRepository(db))
 
-async def get_user_service(
-    db: AsyncSession = Depends(get_db),
-    session_service: SessionService = Depends(get_session_service)
-    ) -> UserService:
-    """사용자 관련 서비스 의존성 주입용 함수"""
-    
-    user_repo = UserRepository(db)
+async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
+    """관리자 피드 관련 의존성 주입용 함수"""
+    return FeedAdminService(FeedAdminRepository(db))
 
+async def get_admin_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationAdminService:
+    """관리자 기관/카테고리 관련 의존성 주입용 함수"""
+    return OrganizationAdminService(OrganizationAdminRepository(db))
+
+async def get_user_service(db: AsyncSession = Depends(get_db),session_service: SessionService = Depends(get_session_service)) -> UserService:
+    """사용자 관련 서비스 의존성 주입용 함수"""    
+    user_repo = UserRepository(db)
     return UserService(repo=user_repo, session_service=session_service)
 
 async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeService:

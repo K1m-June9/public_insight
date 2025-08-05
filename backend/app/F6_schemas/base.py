@@ -527,7 +527,7 @@ class Settings:
     STATIC_FILES_URL = "/static"
 
     # 처리 시간
-    ESTIMATED_PROCESSING_TIME = 5  # 분
+    ESTIMATED_PROCESSING_TIME = 20  # 분
     PROCESSING_TIMEOUT = 30  # 분
 
     # 검색 설정

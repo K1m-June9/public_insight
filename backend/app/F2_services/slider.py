@@ -34,7 +34,7 @@ class SliderService:
                     id=slider.id,
                     title=slider.title,
                     preview=slider.preview or "",
-                    image=image_url,
+                    imageURL=image_url,
                     display_order=slider.display_order
                 )
                 slider_items.append(slider_item)
@@ -79,7 +79,7 @@ class SliderService:
                 id=slider.id,
                 title=slider.title,
                 content=slider.content or "",
-                image=image_url,
+                imageURL=image_url,
                 author=slider.author,
                 tag=slider.tag,
                 created_at=slider.created_at

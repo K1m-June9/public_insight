@@ -42,8 +42,7 @@ class Settings(BaseSettings):
     # 환경 설정
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "DEBUG"
-    LOG_FILE: Optional[str] = None
-    DEBUG: bool
+    DEBUG: bool = False
     IS_LOCAL: bool = False
 
     @property

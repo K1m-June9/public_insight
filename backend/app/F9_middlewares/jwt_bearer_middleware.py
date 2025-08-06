@@ -7,7 +7,6 @@ import re
 
 from app.F5_core.security import auth_handler
 from app.F5_core.redis import RedisManager
-from app.F5_core.logger import log_token_event
 from app.F7_models.users import UserRole, UserStatus
 
 logger = logging.getLogger(__name__)
@@ -29,11 +28,13 @@ class JWTBearerMiddleware(BaseHTTPMiddleware):
         exempt_paths: Optional[Set[str]] = None,
         exempt_regex_paths: Optional[List[str]] = None,
         admin_paths: Optional[Dict[str, Set[UserRole]]] = None,
+        admin_regex_paths: Optional[List[str]] = None
     ):
         super().__init__(app)
         self.exempt_paths = exempt_paths or set()   # 인증 예외 경로들
         self.exempt_regex_paths = [re.compile(p) for p in (exempt_regex_paths or [])]
         self.admin_paths = admin_paths or {}        # 관리자 전용 경로와 권한 매핑
+        self.admin_regex_paths = [re.compile(p) for p in (admin_regex_paths or [])]
 
     async def dispatch(self, request: Request, call_next):
         # 1) 정적 경로 예외

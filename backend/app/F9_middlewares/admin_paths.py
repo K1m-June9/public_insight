@@ -12,7 +12,8 @@ admin_paths = {
 
 admin_regex_paths = {
 }
-
+admin_regex_paths = {
+}
 """
 [경로 지정 규칙]
 

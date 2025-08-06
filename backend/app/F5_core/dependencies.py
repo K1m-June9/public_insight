@@ -32,6 +32,7 @@ from app.F3_repositories.admin.organization import OrganizationAdminRepository
 from app.F4_utils.email import EmailVerificationService
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
 from app.F5_core.security import AuthHandler
+from app.F6_schemas.base import UserRole
 from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
 
@@ -93,20 +94,63 @@ async def get_auth_handler() -> AuthHandler:
 
 
 
+# async def verify_active_user(
+#     request: Request,
+#     db: AsyncSession = Depends(get_db),
+# ) -> User:
+#     """요청에 인증된 사용자가 활성 상태인지 검증하는 함수(Redis 캐시 사용)"""
+    
+#     user_id = getattr(request.state, "user_id", None)
+#     if not user_id:
+#         # user_id가 없으면 안 된 상태
+#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+#     # 1. Redis 캐시 조회 시도
+#     cached = await RedisCacheService.get_cached_user_info(user_id)
+
+#     if cached:
+#         required_fields = ("user_id", "nickname", "email", "status", "role")
+#         if not all(field in cached and cached[field] is not None for field in required_fields):
+#             cached = None
+
+#     if cached:
+#         # 캐시가 존재하면 상태만 검사
+#         if cached.get("status") != UserStatus.ACTIVE.value:
+#             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
+    
+    
+#     # 2. 캐시가 없으면 DB 조회
+#     auth_repo = AuthRepository(db)
+#     user = await auth_repo.get_user_by_user_id(user_id)
+#     if not user:
+#         # DB에 해당 사용자 없음
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+#     if user.status != UserStatus.ACTIVE:
+#         # 사용자 상태가 활성 상태가 아님(예: 차단, 비활성)
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
+
+#     # 3. DB 조회 후 Redis 캐시에 저장
+#     await RedisCacheService.cache_user_info(user)
+
+#     return user
+
+
 async def verify_active_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """요청에 인증된 사용자가 활성 상태인지 검증하는 함수(Redis 캐시 사용)"""
+    """요청에 인증된 사용자가 활성 상태인지 검증하고, request.state에 사용자 정보를 저장합니다."""
     
+    # JWT 미들웨어에서 user_id를 전달받았다고 가정합니다.
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
-        # user_id가 없으면 안 된 상태
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     # 1. Redis 캐시 조회 시도
     cached = await RedisCacheService.get_cached_user_info(user_id)
 
+    # 캐시 데이터 유효성 검사 (선택사항이지만 좋은 습관)
     if cached:
         required_fields = ("user_id", "nickname", "email", "status", "role")
         if not all(field in cached and cached[field] is not None for field in required_fields):
@@ -116,23 +160,37 @@ async def verify_active_user(
         # 캐시가 존재하면 상태만 검사
         if cached.get("status") != UserStatus.ACTIVE.value:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
-    
+        
+        # 캐시된 데이터로 User 객체를 생성하여 일관성을 유지
+        user = User(
+            user_id=cached.get("user_id"),
+            nickname=cached.get("nickname"),
+            email=cached.get("email"),
+            status=UserStatus(cached.get("status")),
+            role=UserRole(cached.get("role"))
+        )
+        
+        # request.state에 저장하고 반환
+        request.state.user = user
+        return user
     
     # 2. 캐시가 없으면 DB 조회
     auth_repo = AuthRepository(db)
     user = await auth_repo.get_user_by_user_id(user_id)
+    
     if not user:
-        # DB에 해당 사용자 없음
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     if user.status != UserStatus.ACTIVE:
-        # 사용자 상태가 활성 상태가 아님(예: 차단, 비활성)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
 
     # 3. DB 조회 후 Redis 캐시에 저장
     await RedisCacheService.cache_user_info(user)
 
+    # request.state에 저장하고 반환
+    request.state.user = user
     return user
+
 
 #   새로운 선택적 인증 함수 추가
 #   로직 자체는 verify_active_user와 동일

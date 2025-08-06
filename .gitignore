@@ -10,6 +10,6 @@ cookies.txt
 .env
 
 esdata/
-esdata_ha/
 esdata_su/
+esdata_ha/
 nginx_dev/

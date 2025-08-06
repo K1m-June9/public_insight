@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Trash2, FileText, Clock, CheckCircle, XCircle } from "lucide-react";
-
+import { EditFeedModal } from "@/components/admin/EditFeedModal";
 // Utils
 import { formatDate } from "@/lib/utils/date";
 
@@ -71,12 +71,17 @@ const StatusBadge = ({ status }: { status: FeedStatus }) => {
 
 // 메인 컴포넌트
 export default function FeedManagement() {
-  const { params, localSearch, setLocalSearch, updateFilters } = useFeedFilters();
+  const { params, updateFilters } = useFeedFilters();
+  const [localSearch, setLocalSearch] = useState(params.search || "");
+  const [editingFeedId, setEditingFeedId] = useState<number | null>(null);
   
   // --- 💡 1. 실제 데이터 페칭으로 교체 ---
   const { data: feedsData, isLoading, isError } = useAdminFeedsListQuery(params);
   const { data: organizationsData } = useAdminSimpleOrganizationListQuery();
-  const { data: categoriesData } = useAdminOrganizationCategoriesQuery(params.organization_id || null);
+
+  // 수정 모달에서 사용할 기관 ID를 상태로 관리
+  const [modalOrganizationId, setModalOrganizationId] = useState<number | null>(null);
+  const { data: categoriesData } = useAdminOrganizationCategoriesQuery(modalOrganizationId);
   
   const feeds = feedsData?.data.feeds || [];
   const pagination = feedsData?.data.pagination;
@@ -86,6 +91,12 @@ export default function FeedManagement() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     updateFilters({ search: localSearch || undefined });
+  };
+
+  const handleEditClick = (feedId: number, orgId: number) => {
+    // 수정 모달을 열고, 카테고리 조회를 위해 기관 ID 설정
+    setModalOrganizationId(orgId);
+    setEditingFeedId(feedId);
   };
   
   return (
@@ -153,7 +164,12 @@ export default function FeedManagement() {
                         <TableCell><StatusBadge status={feed.status} /></TableCell>
                         <TableCell>{feed.view_count.toLocaleString()}</TableCell>
                         <TableCell>{formatDate(feed.created_at)}</TableCell>
-                        <TableCell><Button size="sm" variant="outline">{/* <Edit className="h-3 w-3" /> */}</Button></TableCell>
+                        <TableCell>
+                          {/* 💡 수정 버튼 클릭 시 handleEditClick 호출 */}
+                          <Button size="sm" variant="outline" onClick={() => handleEditClick(feed.id, feed.organization_id)}>
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
                     </TableRow>
                 ))}
               </TableBody>
@@ -170,6 +186,14 @@ export default function FeedManagement() {
           )}
         </CardContent>
       </Card>
+      {/* 💡 수정 모달 컴포넌트 렌더링 */}
+      <EditFeedModal
+        feedId={editingFeedId}
+        onClose={() => setEditingFeedId(null)}
+        organizations={organizations}
+        categories={categories}
+        onOrganizationChange={setModalOrganizationId}
+      />
       
       {/* 생성/수정/비활성화 모달은 다음 단계에서 구현 */}
     </div>

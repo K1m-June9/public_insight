@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAdminFeedsList, getAdminOrganizationCategories } from '@/services/admin/feedService';
+import { getAdminFeedsList, getAdminOrganizationCategories, getAdminFeedDetail } from '@/services/admin/feedService';
 import { AdminFeedListParams } from '@/lib/types/admin/feed';
 
 /**
@@ -9,6 +9,8 @@ export const adminFeedQueryKeys = {
   all: ['admin', 'feeds'] as const,
   lists: () => [...adminFeedQueryKeys.all, 'list'] as const,
   list: (params: AdminFeedListParams) => [...adminFeedQueryKeys.lists(), params] as const,
+  details: () => [...adminFeedQueryKeys.all, 'detail'] as const,
+  detail: (id: number) => [...adminFeedQueryKeys.details(), id] as const,
   categories: () => [...adminFeedQueryKeys.all, 'categories'] as const,
   categoryList: (orgId: number) => [...adminFeedQueryKeys.categories(), orgId] as const,
 };
@@ -37,8 +39,24 @@ export const useAdminOrganizationCategoriesQuery = (organizationId: number | nul
   return useQuery({
     queryKey: adminFeedQueryKeys.categoryList(organizationId!), // non-null assertion '!' 사용
     queryFn: () => getAdminOrganizationCategories(organizationId!),
-    // 💡 organizationId가 null이 아닐 때만 쿼리를 실행합니다.
+    // 💡 organizationId가 null이 아닐 때만 쿼리를 실행
     enabled: organizationId !== null && organizationId > 0,
     staleTime: 1000 * 60 * 5, // 카테고리 목록은 자주 바뀌지 않으므로 5분간 캐시 유지
+  });
+};
+
+/**
+ * 관리자: ID로 특정 피드의 상세 정보를 조회하는 useQuery 훅
+ * 
+ * @param feedId - 조회할 피드의 ID
+ * @param options - useQuery에 전달할 추가 옵션
+ * @returns {data, isLoading, ...}
+ */
+export const useAdminFeedDetailQuery = (feedId: number | null, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: adminFeedQueryKeys.detail(feedId!),
+    queryFn: () => getAdminFeedDetail(feedId!),
+    // 💡 feedId가 있을 때만 쿼리를 실행
+    enabled: !!feedId && (options?.enabled ?? true),
   });
 };

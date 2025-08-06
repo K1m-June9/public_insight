@@ -3,8 +3,21 @@ import math
 from typing import Union
 
 from app.F3_repositories.admin.feed import FeedAdminRepository
-from app.F6_schemas.admin.feed import OrganizationCategoriesResponse, OrganizationCategory, FeedListResponse, FeedListItem, FeedStatus, FeedListData
-from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, PaginationInfo
+from app.F6_schemas.admin.feed import (
+    OrganizationCategoriesResponse, 
+    OrganizationCategory, 
+    FeedListResponse, 
+    FeedListItem, 
+    FeedStatus, 
+    FeedListData,
+    FeedDetailResponse,
+    FeedDetail,
+    FeedUpdateRequest,
+    FeedUpdateResult,
+    FeedUpdateResponse,
+    ContentType
+    )
+from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, PaginationInfo, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +106,7 @@ class FeedAdminService:
                     FeedListItem(
                         id=feed["id"],
                         title=feed["title"],
+                        organization_id=feed["organization_id"],
                         organization_name=feed["organization_name"],
                         category_name=feed["category_name"],
                         status=FeedStatus.ACTIVE if feed["is_active"] else FeedStatus.INACTIVE,
@@ -115,3 +129,86 @@ class FeedAdminService:
                         message=Message.INTERNAL_ERROR
                         )
                     )
+            
+    async def get_feed_detail(self, feed_id: int) -> Union[FeedDetailResponse, ErrorResponse]:
+        """
+        관리자: 특정 피드의 상세 정보를 조회 (PDF/텍스트 분기 처리)
+        """
+        try:
+            feed_data = await self.repo.get_feed_by_id(feed_id)
+
+            if not feed_data:
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.NOT_FOUND, 
+                        message=Message.FEED_NOT_FOUND
+                        )
+                    )
+            
+            pdf_url = None
+            # DB에서 가져온 content_type이 'pdf'이고, 경로가 존재할 때만 URL 생성
+            # feed_data는 딕셔너리이므로 .get()을 사용하여 안전하게 접근
+            if feed_data.get("content_type") == ContentType.PDF and feed_data.get("pdf_file_path"):
+                pdf_url = f"{Settings.STATIC_FILES_URL}/feeds_pdf/{feed_data['pdf_file_path']}"
+            
+            # Repository에서 받은 딕셔너리를 Pydantic 모델로 변환
+            # **feed_data를 사용하면 feed_data의 모든 키-값을 FeedDetail의 인자로 전달
+            feed_detail = FeedDetail(**feed_data, pdf_url=pdf_url)
+            
+            return FeedDetailResponse(
+                success=True,
+                data=feed_detail
+                )
+            
+        except Exception as e:
+            logger.error(f"Error in get_feed_detail for feed_id {feed_id}: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR, 
+                    message=Message.INTERNAL_ERROR
+                    )
+                )
+
+    async def update_feed(self, feed_id: int, request: FeedUpdateRequest) -> Union[FeedUpdateResponse, ErrorResponse]:
+        """
+        관리자: 특정 피드의 정보를 수정합니다.
+        (이 함수는 다음 단계에서 라우터와 함께 수정합니다.)
+        """
+        try:
+            # Pydantic 모델을 DB 업데이트용 딕셔너리로 변환
+            update_data = request.model_dump(exclude_unset=True)
+
+            success = await self.repo.update_feed(feed_id, update_data)
+
+            if not success:
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.NOT_FOUND, 
+                        message=Message.FEED_NOT_FOUND
+                        )
+                    )
+
+            updated_feed_data = await self.repo.get_feed_by_id(feed_id)
+            if not updated_feed_data:
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.INTERNAL_ERROR, 
+                        message=Message.FAILED_FETCH_UPDATE_DATA
+                        )
+                    )
+
+            update_result = FeedUpdateResult(**updated_feed_data)
+            
+            return FeedUpdateResponse(
+                success=True, 
+                data=update_result
+                )
+
+        except Exception as e:
+            logger.error(f"Error in update_feed for feed_id {feed_id}: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR, 
+                    message=Message.INTERNAL_ERROR
+                    )
+                )

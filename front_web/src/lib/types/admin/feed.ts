@@ -13,12 +13,19 @@ export enum ProcessingStatus {
   FAILED = "failed",
 }
 
+// 콘텐츠 타입 Enum (백엔드와 동일하게)
+export enum ContentType {
+  PDF = "pdf",
+  TEXT = "text",
+}
+
 /**
  * 관리자: 피드 목록의 각 항목에 대한 타입
  */
 export interface AdminFeedListItem {
   id: number;
   title: string;
+  organization_id: number;
   organization_name: string;
   category_name: string;
   status: FeedStatus;
@@ -62,3 +69,57 @@ export interface AdminOrganizationCategory {
  * 관리자: 기관별 카테고리 조회 API의 응답 타입
  */
 export type AdminOrganizationCategoriesResponse = DataResponse<AdminOrganizationCategory[]>;
+
+/**
+ * 관리자: 피드 상세 정보 타입
+ */
+export interface AdminFeedDetail {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  category_id: number;
+  category_name: string;
+  title: string;
+  summary: string | null;
+  original_text: string | null;
+  source_url: string;
+  published_date: string;
+  is_active: boolean;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+  content_type: ContentType;
+  pdf_url: string | null;
+}
+/**
+ * 관리자: 피드 상세 조회 API의 응답 타입
+ */
+export type AdminFeedDetailResponse = DataResponse<AdminFeedDetail>;
+
+/**
+ * 관리자: 피드 수정 요청 시 Body 타입
+ */
+export interface AdminFeedUpdateRequest {
+  title: string;
+  organization_id: number;
+  category_id: number;
+  summary: string | null;
+  original_text: string | null;
+  source_url: string;
+  is_active: boolean;
+}
+
+/**
+ * 관리자: 피드 수정 응답 결과 타입
+ */
+export interface AdminFeedUpdateResult {
+  id: number;
+  title: string;
+  organization_name: string;
+  category_name: string;
+  updated_at: string;
+}
+/**
+ * 관리자: 피드 수정 API의 응답 타입
+ */
+export type AdminFeedUpdateResponse = DataResponse<AdminFeedUpdateResult>;

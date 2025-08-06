@@ -34,6 +34,7 @@ class FeedListItem(BaseSchema):
     """피드 목록 항목"""
     id: int
     title: str
+    organization_id: int
     organization_name: str
     category_name: str
     status: FeedStatus
@@ -51,14 +52,18 @@ class FeedDetail(BaseSchema):
     title: str
     summary: Optional[str]
     original_text: Optional[str]
-    pdf_file_path: Optional[str]
+    # pdf_file_path: Optional[str] # 아래 pdf_url로 대체
     source_url: str
     published_date: datetime
     is_active: bool
-    #processing_status: ProcessingStatus
+    # processing_status는 나중에 추가
     view_count: int
     created_at: datetime
     updated_at: datetime
+    
+    # --- 💡 새로운 필드 추가 및 수정 💡 ---
+    content_type: ContentType # "pdf" 또는 "text"
+    pdf_url: Optional[str] = None # PDF 타입일 때만 값이 있음
 
 class FeedCreateResult(BaseSchema):
     """피드 생성 결과"""

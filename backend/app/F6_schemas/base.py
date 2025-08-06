@@ -393,6 +393,7 @@ class Message:
     # ErrorCode.INVALID_PARAMETER
     INVALID_PARAMETER = "잘못된 파라미터입니다"
     LOGIN_FAILED = "아이디 또는 비밀번호가 올바르지 않습니다"
+    FAILED_FETCH_UPDATE_DATA = "Failed to fetch updated feed data."
     
     # ErrorCode.VALIDATION_ERROR
     INVALID_URL = "유효하지 않은 URL 형식입니다."

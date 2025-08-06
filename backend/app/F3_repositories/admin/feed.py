@@ -1,10 +1,10 @@
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Dict, Tuple, Any
 import logging
 
 from app.F7_models.categories import Category
-from app.F7_models.feeds import Feed
+from app.F7_models.feeds import Feed, ProcessingStatusEnum
 from app.F7_models.organizations import Organization
 
 logger = logging.getLogger(__name__)
@@ -70,6 +70,7 @@ class FeedAdminRepository:
             select(
                 Feed.id,
                 Feed.title,
+                Feed.organization_id,
                 Organization.name.label("organization_name"),
                 Category.name.label("category_name"),
                 Feed.is_active,
@@ -106,3 +107,47 @@ class FeedAdminRepository:
         feeds = data_result.mappings().all() # .mappings()는 결과를 Dict처럼 사용할 수 있게 해줌
 
         return list(feeds), total_count
+    
+    async def get_feed_by_id(self, feed_id: int) -> Optional[Dict[str, Any]]:
+        """
+        관리자: ID로 특정 피드의 상세 정보를 조회 (기관/카테고리 이름 포함)
+        """
+        stmt = (
+            select(
+                Feed,
+                Organization.name.label("organization_name"),
+                Category.name.label("category_name")
+            )
+            .join(Organization, Feed.organization_id == Organization.id)
+            .join(Category, Feed.category_id == Category.id)
+            .where(Feed.id == feed_id)
+        )
+        result = await self.db.execute(stmt)
+        row = result.first()
+        if row:
+            feed_obj = row[0] # Feed ORM 객체
+            # ORM 객체를 딕셔너리로 변환하고, JOIN된 이름들을 추가
+            feed_dict = {c.name: getattr(feed_obj, c.name) for c in feed_obj.__table__.columns}
+            feed_dict["organization_name"] = row.organization_name
+            feed_dict["category_name"] = row.category_name
+            return feed_dict
+        return None
+
+    async def update_feed(self, feed_id: int, update_data: Dict[str, Any]) -> bool:
+        """
+        관리자: 특정 피드의 정보를 수정
+        """
+        try:
+            stmt = (
+                update(Feed)
+                .where(Feed.id == feed_id)
+                .values(**update_data)
+            )
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+            # affected_rows가 0보다 크면 업데이트 성공
+            return result.rowcount > 0
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error updating feed {feed_id}: {e}", exc_info=True)
+            return False

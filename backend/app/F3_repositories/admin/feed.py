@@ -267,3 +267,22 @@ class FeedAdminRepository:
             await self.db.rollback()
             logger.error(f"Error deleting feed {feed_id} permanently: {e}", exc_info=True)
             return False
+        
+    async def deactivate_feed(self, feed_id: int) -> bool:
+        """
+        관리자: 특정 피드를 비활성화 상태(is_active=False)로 변경
+        updated_at은 모델 설정에 따라 자동으로 갱신
+        """
+        try:
+            stmt = (
+                update(Feed)
+                .where(Feed.id == feed_id)
+                .values(is_active=False)
+            )
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+            return result.rowcount > 0 # 업데이트된 행이 있으면 True 반환
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error deactivating feed {feed_id}: {e}", exc_info=True)
+            return False

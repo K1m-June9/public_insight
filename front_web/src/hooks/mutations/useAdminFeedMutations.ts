@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateAdminFeed, createAdminFeed, deleteAdminFeed } from '@/services/admin/feedService';
+import { updateAdminFeed, createAdminFeed, deleteAdminFeed, deactivateAdminFeed } from '@/services/admin/feedService';
 import { AdminFeedUpdateRequest } from '@/lib/types/admin/feed';
 import { adminFeedQueryKeys } from '@/hooks/queries/useAdminFeedQueries';
 import { AxiosError } from 'axios';
@@ -65,6 +65,28 @@ export const useDeleteAdminFeedMutation = () => {
     },
     onError: (error: AxiosError<ErrorResponse>) => {
       const message = error.response?.data?.error?.message || '피드 삭제 중 오류가 발생했습니다.';
+      alert(message);
+    }
+  });
+};
+
+export const useDeactivateAdminFeedMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => deactivateAdminFeed(id),
+    
+    onSuccess: () => {
+      alert('피드가 비활성화되었습니다.');
+
+      // 비활성화 성공 시, 활성화된 피드 목록과 비활성화된 피드 목록
+      // 두 쿼리를 모두 무효화하여 양쪽 목록이 모두 갱신되도록 gka
+      queryClient.invalidateQueries({ queryKey: adminFeedQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: adminFeedQueryKeys.deactivatedLists() });
+    },
+    
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error.response?.data?.error?.message || '피드 비활성화 중 오류가 발생했습니다.';
       alert(message);
     }
   });

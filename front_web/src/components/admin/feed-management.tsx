@@ -7,6 +7,7 @@ import Link from "next/link";
 // Hooks
 import { useAdminFeedsListQuery, useAdminOrganizationCategoriesQuery } from "@/hooks/queries/useAdminFeedQueries";
 import { useAdminSimpleOrganizationListQuery } from "@/hooks/queries/useAdminOrganizationQueries"; 
+import { useDeactivateAdminFeedMutation } from "@/hooks/mutations/useAdminFeedMutations";
 
 // Types
 import { AdminFeedListParams, FeedStatus } from "@/lib/types/admin/feed";
@@ -85,6 +86,8 @@ export default function FeedManagement() {
   // 수정 모달에서 사용할 기관 ID를 상태로 관리
   const [modalOrganizationId, setModalOrganizationId] = useState<number | null>(null);
   const { data: categoriesData } = useAdminOrganizationCategoriesQuery(modalOrganizationId);
+
+  const { mutate: deactivateFeed, isPending: isDeactivating } = useDeactivateAdminFeedMutation();
   
   const feeds = feedsData?.data.feeds || [];
   const pagination = feedsData?.data.pagination;
@@ -100,6 +103,12 @@ export default function FeedManagement() {
     // 수정 모달을 열고, 카테고리 조회를 위해 기관 ID 설정
     setModalOrganizationId(orgId);
     setEditingFeedId(feedId);
+  };
+
+  const handleDeactivate = (feedId: number) => {
+    if (confirm("이 피드를 비활성화하시겠습니까? 비활성화된 피드 관리에서 다시 복구하거나 영구 삭제할 수 있습니다.")) {
+        deactivateFeed(feedId);
+    }
   };
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -179,6 +188,10 @@ export default function FeedManagement() {
                           {/* 수정 버튼 클릭 시 handleEditClick 호출 */}
                           <Button size="sm" variant="outline" onClick={() => handleEditClick(feed.id, feed.organization_id)}>
                             <Edit className="h-3 w-3" />
+                          </Button>
+                           {/* 💡 2. 비활성화 버튼에 핸들러와 로딩 상태 연결 */}
+                          <Button size="sm" variant="outline" onClick={() => handleDeactivate(feed.id)} disabled={isDeactivating}>
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </TableCell>
                     </TableRow>

@@ -17,7 +17,8 @@ from app.F6_schemas.admin.feed import (
     FeedCreateResponse,
     DeactivatedFeedListRequest,
     DeactivatedFeedListResponse,
-    FeedDeleteResponse
+    FeedDeleteResponse,
+    FeedDeactivateResponse
     )
 from app.F6_schemas.base import ErrorResponse, ErrorCode, PaginationQuery
 from app.F7_models.users import User
@@ -175,6 +176,23 @@ async def delete_feed(
     관리자: 특정 피드를 데이터베이스에서 완전히 삭제
     """
     result = await admin_service.delete_feed_permanently(id)
+
+    if isinstance(result, ErrorResponse):
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result
+
+@router.patch("/{id}/deactivate", response_model=FeedDeactivateResponse)
+async def deactivate_feed(
+    id: int,
+    admin_service: FeedAdminService = Depends(get_admin_feed_service),
+    current_user: User = Depends(verify_active_user)
+):
+    """
+    관리자: 특정 피드를 비활성화(소프트 삭제)
+    """
+    result = await admin_service.deactivate_feed(id)
 
     if isinstance(result, ErrorResponse):
         status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500

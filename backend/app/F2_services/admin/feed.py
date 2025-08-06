@@ -30,6 +30,7 @@ from app.F6_schemas.admin.feed import (
     DeactivatedFeedListData, 
     DeactivatedFeedItem,
     FeedDeleteResponse,
+    FeedDeactivateResponse,
     get_estimated_completion_time
     )
 from app.F7_models.feeds import ProcessingStatusEnum
@@ -418,6 +419,33 @@ class FeedAdminService:
 
         except Exception as e:
             logger.error(f"Error in delete_feed_permanently for feed_id {feed_id}: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR, 
+                    message=Message.INTERNAL_ERROR
+                    )
+                )
+        
+    async def deactivate_feed(self, feed_id: int) -> Union[FeedDeactivateResponse, ErrorResponse]:
+        """
+        관리자: 특정 피드를 비활성화(소프트 삭제)
+        """
+        try:
+            success = await self.repo.deactivate_feed(feed_id)
+
+            if not success:
+                # 비활성화할 피드를 찾지 못한 경우
+                return ErrorResponse(
+                    error=ErrorDetail(
+                        code=ErrorCode.NOT_FOUND, 
+                        message=Message.FEED_NOT_FOUND
+                        )
+                    )
+            
+            return FeedDeactivateResponse() # 성공 메시지는 스키마 기본값 사용
+
+        except Exception as e:
+            logger.error(f"Error in deactivate_feed for feed_id {feed_id}: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR, 

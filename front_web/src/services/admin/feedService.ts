@@ -92,3 +92,14 @@ export const deleteAdminFeed = async (id: number): Promise<BaseResponse> => {
     const response = await apiClient.delete<BaseResponse>(`/admin/feeds/${id}`);
     return response.data;
 };
+
+/**
+ * 관리자: 특정 피드를 비활성화(소프트 삭제)
+ * @param id - 비활성화할 피드의 ID
+ * @returns Promise<BaseResponse>
+ */
+export const deactivateAdminFeed = async (id: number): Promise<BaseResponse> => {
+    // PATCH 요청 시 body가 필요 없으므로 빈 객체를 보냄
+    const response = await apiClient.patch<BaseResponse>(`/admin/feeds/${id}/deactivate`, {});
+    return response.data;
+};

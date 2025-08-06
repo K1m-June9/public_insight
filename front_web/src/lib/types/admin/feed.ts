@@ -137,3 +137,35 @@ export interface AdminFeedCreateResult {
  * 관리자: 피드 생성 API의 응답 타입
  */
 export type AdminFeedCreateResponse = DataResponse<AdminFeedCreateResult>;
+
+/**
+ * 관리자: 비활성화된 피드 항목 타입
+ */
+export interface AdminDeactivatedFeedItem {
+  id: number;
+  title: string;
+  organization_name: string;
+  category_name: string;
+  deactivated_at: string;
+}
+
+/**
+ * 관리자: 비활성화된 피드 목록 데이터 구조
+ */
+export interface AdminDeactivatedFeedListData {
+  feeds: AdminDeactivatedFeedItem[];
+  pagination: PaginationInfo;
+}
+
+/**
+ * 관리자: 비활성화된 피드 목록 조회 API의 응답 타입
+ */
+export type AdminDeactivatedFeedListResponse = DataResponse<AdminDeactivatedFeedListData>;
+
+/**
+ * 관리자: 비활성화된 피드 목록 조회 API 요청 시 사용할 파라미터 타입
+ */
+export interface AdminDeactivatedFeedListParams {
+  page?: number;
+  limit?: number;
+}

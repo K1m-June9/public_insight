@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateAdminFeed, createAdminFeed } from '@/services/admin/feedService';
+import { updateAdminFeed, createAdminFeed, deleteAdminFeed } from '@/services/admin/feedService';
 import { AdminFeedUpdateRequest } from '@/lib/types/admin/feed';
 import { adminFeedQueryKeys } from '@/hooks/queries/useAdminFeedQueries';
 import { AxiosError } from 'axios';
@@ -48,6 +48,23 @@ export const useCreateAdminFeedMutation = () => {
     
     onError: (error: AxiosError<ErrorResponse>) => {
       const message = error.response?.data?.error?.message || '피드 생성 중 오류가 발생했습니다.';
+      alert(message);
+    }
+  });
+};
+
+export const useDeleteAdminFeedMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => deleteAdminFeed(id),
+    onSuccess: () => {
+      alert('피드가 완전히 삭제되었습니다.');
+      // 비활성화된 피드 목록 쿼리를 무효화하여 자동 갱신
+      queryClient.invalidateQueries({ queryKey: adminFeedQueryKeys.deactivatedLists() });
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error.response?.data?.error?.message || '피드 삭제 중 오류가 발생했습니다.';
       alert(message);
     }
   });

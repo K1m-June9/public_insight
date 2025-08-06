@@ -2,6 +2,7 @@ import logging
 import math
 import uuid
 import shutil
+import os
 from typing import Union, Optional
 from fastapi import BackgroundTasks, UploadFile
 from pathlib import Path
@@ -25,6 +26,10 @@ from app.F6_schemas.admin.feed import (
     FeedCreateResponse, 
     FeedCreateResult,
     ProcessingStatus,
+    DeactivatedFeedListResponse, 
+    DeactivatedFeedListData, 
+    DeactivatedFeedItem,
+    FeedDeleteResponse,
     get_estimated_completion_time
     )
 from app.F7_models.feeds import ProcessingStatusEnum
@@ -337,6 +342,82 @@ class FeedAdminService:
 
         except Exception as e:
             logger.error(f"Error in create_feed initial request: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR, 
+                    message=Message.INTERNAL_ERROR
+                    )
+                )
+        
+    async def get_deactivated_feeds_list(
+        self, page: int, limit: int
+    ) -> Union[DeactivatedFeedListResponse, ErrorResponse]:
+        """
+        관리자: 비활성화된 피드 목록을 페이지네이션하여 조회
+        """
+        try:
+            feeds, total_count = await self.repo.get_deactivated_feeds_list(page=page, limit=limit)
+
+            total_pages = math.ceil(total_count / limit) if total_count > 0 else 0
+            
+            pagination_info = PaginationInfo(
+                current_page=page, total_pages=total_pages, total_count=total_count,
+                limit=limit, has_next=page < total_pages, has_previous=page > 1
+            )
+
+            feed_items = [
+                DeactivatedFeedItem(
+                    id=feed["id"],
+                    title=feed["title"],
+                    organization_name=feed["organization_name"],
+                    category_name=feed["category_name"],
+                    deactivated_at=feed["deactivated_at"]
+                ) for feed in feeds
+            ]
+
+            response_data = DeactivatedFeedListData(feeds=feed_items, pagination=pagination_info)
+            return DeactivatedFeedListResponse(
+                success=True, 
+                data=response_data
+                )
+
+        except Exception as e:
+            logger.error(f"Error in get_deactivated_feeds_list: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR, 
+                    message=Message.INTERNAL_ERROR
+                    )
+                )
+        
+    async def delete_feed_permanently(self, feed_id: int) -> Union[FeedDeleteResponse, ErrorResponse]:
+        """
+        관리자: 특정 피드를 DB와 파일 시스템에서 완전히 삭제
+        """
+        try:
+            # 1. Repository를 통해 DB에서 피드를 삭제하고, 삭제할 파일 경로를 받아옴
+            pdf_path_to_delete = await self.repo.delete_feed_permanently(feed_id)
+
+            if pdf_path_to_delete is False: # False는 삭제 실패를 의미
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.FEED_NOT_FOUND))
+
+            # 2. 실제 PDF 파일이 있다면, 파일 시스템에서도 삭제
+            if pdf_path_to_delete:
+                try:
+                    # settings.PDF_STORAGE_PATH = "static/feeds_pdf"
+                    full_file_path = Path(Settings.PDF_STORAGE_PATH) / pdf_path_to_delete
+                    if full_file_path.is_file():
+                        os.remove(full_file_path)
+                        logger.info(f"Successfully deleted PDF file: {full_file_path}")
+                except Exception as file_e:
+                    # 파일 삭제에 실패하더라도 DB 삭제는 이미 완료되었으므로,
+                    # 에러를 로깅만 하고 무시하여 사용자에게는 성공 응답을 보냄
+                    logger.error(f"Failed to delete PDF file {full_file_path}: {file_e}", exc_info=True)
+            
+            return FeedDeleteResponse() # 성공 메시지는 스키마 기본값 사용
+
+        except Exception as e:
+            logger.error(f"Error in delete_feed_permanently for feed_id {feed_id}: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR, 

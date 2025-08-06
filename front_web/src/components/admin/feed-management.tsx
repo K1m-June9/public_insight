@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Trash2, FileText, Clock, CheckCircle, XCircle } from "lucide-react";
 import { EditFeedModal } from "@/components/admin/EditFeedModal";
 import { CreateFeedModal } from "@/components/admin/CreateFeedModal";
+import { DeactivatedFeedsModal } from "@/components/admin/DeactivatedFeedsModal";
+
 // Utils
 import { formatDate } from "@/lib/utils/date";
 
@@ -101,6 +103,7 @@ export default function FeedManagement() {
   };
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDeactivatedModalOpen, setIsDeactivatedModalOpen] = useState(false);
   
   return (
     <div className="space-y-6">
@@ -136,7 +139,11 @@ export default function FeedManagement() {
           <div className="flex justify-between items-center mb-6">
              <div className="text-sm text-gray-600">총 {pagination?.total_count || 0}개의 피드</div>
              <div className="flex gap-2">
-                <Button variant="outline">{/* <Trash2 className="h-4 w-4 mr-2" /> */}비활성화 관리</Button>
+                {/* 💡 3. 비활성화 모달을 여는 버튼 */}
+                <Button variant="outline" onClick={() => setIsDeactivatedModalOpen(true)}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  비활성화 관리
+                </Button>
                 {/* 💡 생성 모달을 여는 버튼 */}
                 <Button onClick={() => setIsCreateModalOpen(true)}><Plus className="h-4 w-4 mr-2" />새 피드 생성</Button>
              </div>
@@ -205,7 +212,11 @@ export default function FeedManagement() {
         onOrganizationChange={setModalOrganizationId}
       />
       
-      {/* 생성/수정/비활성화 모달은 다음 단계에서 구현 */}
+      {/* 💡 4. 비활성화 모달 컴포넌트 렌더링 */}
+      <DeactivatedFeedsModal 
+        isOpen={isDeactivatedModalOpen}
+        onClose={() => setIsDeactivatedModalOpen(false)}
+      />
     </div>
   );
 }

@@ -6,8 +6,12 @@ import {
     AdminFeedDetailResponse,
     AdminFeedUpdateResponse,
     AdminFeedUpdateRequest,
-    AdminFeedCreateResponse
+    AdminFeedCreateResponse,
+    AdminDeactivatedFeedListResponse,
+    AdminDeactivatedFeedListParams
 } from '@/lib/types/admin/feed';
+
+import { BaseResponse } from '@/lib/types/base';
 
 /**
  * 관리자: 필터링 및 페이지네이션을 적용하여 피드 목록을 조회
@@ -55,16 +59,36 @@ export const updateAdminFeed = async (
 };
 
 /**
- * 관리자: 새로운 피드를 생성합니다. (multipart/form-data)
+ * 관리자: 새로운 피드를 생성 (multipart/form-data)
  * @param formData - 제목, ID, 파일 등을 포함하는 FormData 객체
  * @returns Promise<AdminFeedCreateResponse>
  */
 export const createAdminFeed = async (formData: FormData): Promise<AdminFeedCreateResponse> => {
     const response = await apiClient.post<AdminFeedCreateResponse>('/admin/feeds', formData, {
         headers: {
-            // axios가 FormData를 보낼 때 Content-Type을 자동으로 설정하도록 합니다.
+            // axios가 FormData를 보낼 때 Content-Type을 자동으로 설정하도록 함.
             'Content-Type': 'multipart/form-data',
         },
     });
+    return response.data;
+};
+
+/**
+ * 관리자: 비활성화된 피드 목록을 조회
+ * @param params - 페이지네이션 파라미터
+ * @returns Promise<AdminDeactivatedFeedListResponse>
+ */
+export const getAdminDeactivatedFeeds = async (params: AdminDeactivatedFeedListParams): Promise<AdminDeactivatedFeedListResponse> => {
+    const response = await apiClient.get<AdminDeactivatedFeedListResponse>('/admin/feeds/deactivated', { params });
+    return response.data;
+};
+
+/**
+ * 관리자: 특정 피드를 완전히 삭제
+ * @param id - 삭제할 피드의 ID
+ * @returns Promise<BaseResponse>
+ */
+export const deleteAdminFeed = async (id: number): Promise<BaseResponse> => {
+    const response = await apiClient.delete<BaseResponse>(`/admin/feeds/${id}`);
     return response.data;
 };

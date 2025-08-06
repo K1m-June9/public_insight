@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAdminFeedsList, getAdminOrganizationCategories, getAdminFeedDetail } from '@/services/admin/feedService';
-import { AdminFeedListParams } from '@/lib/types/admin/feed';
+import { getAdminFeedsList, getAdminOrganizationCategories, getAdminFeedDetail, getAdminDeactivatedFeeds } from '@/services/admin/feedService';
+import { AdminFeedListParams, AdminDeactivatedFeedListParams } from '@/lib/types/admin/feed';
 
 /**
  * 관리자: 피드 관련 쿼리 키
@@ -13,6 +13,8 @@ export const adminFeedQueryKeys = {
   detail: (id: number) => [...adminFeedQueryKeys.details(), id] as const,
   categories: () => [...adminFeedQueryKeys.all, 'categories'] as const,
   categoryList: (orgId: number) => [...adminFeedQueryKeys.categories(), orgId] as const,
+  deactivatedLists: () => [...adminFeedQueryKeys.all, 'deactivated-list'] as const,
+  deactivatedList: (params: any) => [...adminFeedQueryKeys.deactivatedLists(), params] as const,
 };
 
 /**
@@ -58,5 +60,13 @@ export const useAdminFeedDetailQuery = (feedId: number | null, options?: { enabl
     queryFn: () => getAdminFeedDetail(feedId!),
     // 💡 feedId가 있을 때만 쿼리를 실행
     enabled: !!feedId && (options?.enabled ?? true),
+  });
+};
+
+export const useAdminDeactivatedFeedsQuery = (params: AdminDeactivatedFeedListParams) => {
+  return useQuery({
+    queryKey: adminFeedQueryKeys.deactivatedList(params),
+    queryFn: () => getAdminDeactivatedFeeds(params),
+    placeholderData: (previousData) => previousData,
   });
 };

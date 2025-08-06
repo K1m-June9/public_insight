@@ -1,4 +1,4 @@
-from sqlalchemy import select, func, and_, update
+from sqlalchemy import select, func, and_, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Dict, Tuple, Any
 import logging
@@ -18,7 +18,7 @@ class FeedAdminRepository:
 
     async def get_categories_by_organization(self, organization_id: int) -> List[Category]:
         """
-        특정 기관에 속한 활성화된 카테고리 목록을 조회합니다.
+        특정 기관에 속한 활성화된 카테고리 목록을 조회
 
         Args:
             organization_id (int): 조회할 기관의 ID
@@ -207,4 +207,63 @@ class FeedAdminRepository:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Error updating feed after processing for feed_id {feed_id}: {e}", exc_info=True)
+            return False
+        
+    async def get_deactivated_feeds_list(
+        self,
+        page: int,
+        limit: int
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        관리자 페이지: 비활성화된 피드 목록을 페이지네이션하여 조회
+        """
+        offset = (page - 1) * limit
+        
+        # is_active = False 조건만 다름
+        base_query = (
+            select(
+                Feed.id,
+                Feed.title,
+                Organization.name.label("organization_name"),
+                Category.name.label("category_name"),
+                Feed.updated_at.label("deactivated_at") # is_active가 False로 변경된 시점
+            )
+            .join(Organization, Feed.organization_id == Organization.id)
+            .join(Category, Feed.category_id == Category.id)
+            .where(Feed.is_active == False)
+        )
+
+        count_stmt = select(func.count()).select_from(base_query.alias())
+        total_result = await self.db.execute(count_stmt)
+        total_count = total_result.scalar_one()
+
+        data_stmt = base_query.order_by(Feed.updated_at.desc()).offset(offset).limit(limit)
+        data_result = await self.db.execute(data_stmt)
+        feeds = data_result.mappings().all()
+
+        return list(feeds), total_count
+    
+    async def delete_feed_permanently(self, feed_id: int) -> bool:
+        """
+        관리자: 특정 피드를 데이터베이스에서 완전히 삭제
+        Feed 모델의 cascade 설정에 따라 연관된 bookmarks, ratings도 함께 삭제
+        """
+        try:
+            # 먼저 삭제할 피드 객체를 가져옵니다 (파일 경로 확인을 위해).
+            feed_to_delete = await self.db.get(Feed, feed_id)
+            if not feed_to_delete:
+                return False # 삭제할 대상이 없음
+
+            # 실제 파일 경로를 반환값으로 전달하기 위해 저장
+            pdf_path_to_delete = feed_to_delete.pdf_file_path
+
+            await self.db.delete(feed_to_delete)
+            await self.db.commit()
+            
+            # 서비스 레이어에 삭제할 파일 경로를 반환
+            return pdf_path_to_delete
+        
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error deleting feed {feed_id} permanently: {e}", exc_info=True)
             return False

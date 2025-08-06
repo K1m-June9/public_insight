@@ -123,3 +123,17 @@ export interface AdminFeedUpdateResult {
  * 관리자: 피드 수정 API의 응답 타입
  */
 export type AdminFeedUpdateResponse = DataResponse<AdminFeedUpdateResult>;
+
+/**
+ * 관리자: 피드 생성 결과 타입
+ */
+export interface AdminFeedCreateResult {
+  id: number;
+  title: string;
+  processing_status: ProcessingStatus;
+  estimated_completion: string;
+}
+/**
+ * 관리자: 피드 생성 API의 응답 타입
+ */
+export type AdminFeedCreateResponse = DataResponse<AdminFeedCreateResult>;

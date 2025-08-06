@@ -5,7 +5,8 @@ import {
     AdminOrganizationCategoriesResponse,
     AdminFeedDetailResponse,
     AdminFeedUpdateResponse,
-    AdminFeedUpdateRequest
+    AdminFeedUpdateRequest,
+    AdminFeedCreateResponse
 } from '@/lib/types/admin/feed';
 
 /**
@@ -50,5 +51,20 @@ export const updateAdminFeed = async (
     payload: AdminFeedUpdateRequest
 ): Promise<AdminFeedUpdateResponse> => {
     const response = await apiClient.put<AdminFeedUpdateResponse>(`/admin/feeds/${id}`, payload);
+    return response.data;
+};
+
+/**
+ * 관리자: 새로운 피드를 생성합니다. (multipart/form-data)
+ * @param formData - 제목, ID, 파일 등을 포함하는 FormData 객체
+ * @returns Promise<AdminFeedCreateResponse>
+ */
+export const createAdminFeed = async (formData: FormData): Promise<AdminFeedCreateResponse> => {
+    const response = await apiClient.post<AdminFeedCreateResponse>('/admin/feeds', formData, {
+        headers: {
+            // axios가 FormData를 보낼 때 Content-Type을 자동으로 설정하도록 합니다.
+            'Content-Type': 'multipart/form-data',
+        },
+    });
     return response.data;
 };

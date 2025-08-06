@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Trash2, FileText, Clock, CheckCircle, XCircle } from "lucide-react";
 import { EditFeedModal } from "@/components/admin/EditFeedModal";
+import { CreateFeedModal } from "@/components/admin/CreateFeedModal";
 // Utils
 import { formatDate } from "@/lib/utils/date";
 
@@ -98,6 +99,8 @@ export default function FeedManagement() {
     setModalOrganizationId(orgId);
     setEditingFeedId(feedId);
   };
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   return (
     <div className="space-y-6">
@@ -134,7 +137,8 @@ export default function FeedManagement() {
              <div className="text-sm text-gray-600">총 {pagination?.total_count || 0}개의 피드</div>
              <div className="flex gap-2">
                 <Button variant="outline">{/* <Trash2 className="h-4 w-4 mr-2" /> */}비활성화 관리</Button>
-                <Button>{/* <Plus className="h-4 w-4 mr-2" /> */}새 피드 생성</Button>
+                {/* 💡 생성 모달을 여는 버튼 */}
+                <Button onClick={() => setIsCreateModalOpen(true)}><Plus className="h-4 w-4 mr-2" />새 피드 생성</Button>
              </div>
           </div>
 
@@ -165,7 +169,7 @@ export default function FeedManagement() {
                         <TableCell>{feed.view_count.toLocaleString()}</TableCell>
                         <TableCell>{formatDate(feed.created_at)}</TableCell>
                         <TableCell>
-                          {/* 💡 수정 버튼 클릭 시 handleEditClick 호출 */}
+                          {/* 수정 버튼 클릭 시 handleEditClick 호출 */}
                           <Button size="sm" variant="outline" onClick={() => handleEditClick(feed.id, feed.organization_id)}>
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -186,6 +190,12 @@ export default function FeedManagement() {
           )}
         </CardContent>
       </Card>
+      {/* 💡 생성 모달 컴포넌트 렌더링 */}
+      <CreateFeedModal 
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        />
+
       {/* 💡 수정 모달 컴포넌트 렌더링 */}
       <EditFeedModal
         feedId={editingFeedId}

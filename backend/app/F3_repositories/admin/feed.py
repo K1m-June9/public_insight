@@ -151,3 +151,60 @@ class FeedAdminRepository:
             await self.db.rollback()
             logger.error(f"Error updating feed {feed_id}: {e}", exc_info=True)
             return False
+        
+    async def create_initial_feed(self, initial_data: Dict[str, Any]) -> Feed:
+        """
+        피드 생성 요청 시, 처리에 필요한 기본 정보만으로 피드 레코드를 먼저 생성
+        processing_status는 기본값인 'processing'으로 설정
+
+        Args:
+            initial_data (Dict[str, Any]): title, organization_id 등 초기 데이터
+
+        Returns:
+            Feed: 생성된 Feed ORM 객체 (ID 포함)
+        """
+        new_feed = Feed(**initial_data)
+        self.db.add(new_feed)
+        await self.db.commit()
+        await self.db.refresh(new_feed)
+        return new_feed
+
+    async def update_feed_after_processing(
+        self,
+        feed_id: int,
+        summary: str,
+        file_path: Optional[str],
+        status: ProcessingStatusEnum
+    ) -> bool:
+        """
+        백그라운드 처리 완료 후, 피드 정보를 최종 업데이트
+
+        Args:
+            feed_id (int): 업데이트할 피드의 ID
+            summary (str): 생성된 요약문
+            file_path (Optional[str]): 저장된 파일 경로 (PDF인 경우)
+            status (ProcessingStatusEnum): 최종 처리 상태 ('completed' 또는 'failed')
+
+        Returns:
+            bool: 업데이트 성공 여부
+        """
+        try:
+            update_values = {
+                "summary": summary,
+                "processing_status": status
+            }
+            if file_path:
+                update_values["pdf_file_path"] = file_path
+
+            stmt = (
+                update(Feed)
+                .where(Feed.id == feed_id)
+                .values(**update_values)
+            )
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+            return result.rowcount > 0
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error updating feed after processing for feed_id {feed_id}: {e}", exc_info=True)
+            return False

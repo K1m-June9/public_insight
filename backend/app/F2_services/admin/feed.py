@@ -1,8 +1,13 @@
 import logging
 import math
-from typing import Union
+import uuid
+import shutil
+from typing import Union, Optional
+from fastapi import BackgroundTasks, UploadFile
+from pathlib import Path
 
 from app.F3_repositories.admin.feed import FeedAdminRepository
+from app.F4_utils.summarizer import TextSummarizer
 from app.F6_schemas.admin.feed import (
     OrganizationCategoriesResponse, 
     OrganizationCategory, 
@@ -15,11 +20,26 @@ from app.F6_schemas.admin.feed import (
     FeedUpdateRequest,
     FeedUpdateResult,
     FeedUpdateResponse,
-    ContentType
+    ContentType,
+    FeedCreateRequest, 
+    FeedCreateResponse, 
+    FeedCreateResult,
+    ProcessingStatus,
+    get_estimated_completion_time
     )
+from app.F7_models.feeds import ProcessingStatusEnum
 from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, PaginationInfo, Settings
 
 logger = logging.getLogger(__name__)
+
+# TextSummarizer 인스턴스를 서비스 외부에서 초기화 (싱글톤 패턴)
+# 앱이 시작될 때 한 번만 모델을 로드하여 메모리 효율을 높임
+try:
+    summarizer = TextSummarizer()
+    logger.info("TextSummarizer model loaded successfully.")
+except Exception as e:
+    summarizer = None
+    logger.error(f"Failed to load TextSummarizer model: {e}", exc_info=True)
 
 class FeedAdminService:
     """
@@ -206,6 +226,117 @@ class FeedAdminService:
 
         except Exception as e:
             logger.error(f"Error in update_feed for feed_id {feed_id}: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR, 
+                    message=Message.INTERNAL_ERROR
+                    )
+                )
+        
+    async def _process_feed_content_task(
+        self,
+        feed_id: int,
+        content_type: ContentType,
+        original_text: str | None,
+        pdf_file: UploadFile | None,
+    ):
+        """
+        [백그라운드 실행] PDF 저장, 텍스트 추출, NLP 요약을 수행하는 실제 작업 함수
+        """
+        summary = ""
+        saved_file_path = None
+        final_status = ProcessingStatusEnum.FAILED # 기본 상태를 실패로 설정
+
+        try:
+            logger.info(f"Starting background processing for feed_id: {feed_id}")
+            if not summarizer:
+                raise Exception("TextSummarizer is not available.")
+
+            input_data = None
+            if content_type == ContentType.PDF and pdf_file:
+                # 1. PDF 파일 저장
+                # 파일 저장 경로 (static/feeds_pdf/{UUID}.pdf)
+                pdf_storage_dir = Path(Settings.PDF_STORAGE_PATH)
+                pdf_storage_dir.mkdir(parents=True, exist_ok=True)
+                
+                file_extension = Path(pdf_file.filename).suffix
+                file_name = f"{uuid.uuid4()}{file_extension}"
+                saved_file_path = pdf_storage_dir / file_name
+                
+                with open(saved_file_path, "wb") as buffer:
+                    shutil.copyfileobj(pdf_file.file, buffer)
+                
+                input_data = saved_file_path
+                logger.info(f"PDF file saved for feed_id {feed_id} at {saved_file_path}")
+
+            elif content_type == ContentType.TEXT and original_text:
+                input_data = original_text
+            
+            else:
+                raise ValueError("Invalid content type or missing data.")
+
+            # 2. NLP 요약 생성
+            summary = summarizer.summarize(input_data)
+            logger.info(f"Summarization successful for feed_id {feed_id}")
+            final_status = ProcessingStatusEnum.COMPLETED
+
+        except Exception as e:
+            logger.error(f"Background processing failed for feed_id {feed_id}: {e}", exc_info=True)
+            summary = f"요약 생성에 실패했습니다. 오류: {str(e)}"
+            # final_status는 FAILED 그대로 유지
+
+        finally:
+            # 3. DB에 최종 결과 업데이트
+            db_file_path = Path(saved_file_path).name if saved_file_path else None
+            await self.repo.update_feed_after_processing(
+                feed_id=feed_id,
+                summary=summary,
+                file_path=db_file_path,
+                status=final_status
+            )
+            logger.info(f"Finished background processing for feed_id {feed_id} with status {final_status.name}")
+
+
+    async def create_feed(
+        self,
+        request_data: FeedCreateRequest,
+        pdf_file: Optional[UploadFile],
+        tasks: BackgroundTasks,
+    ) -> Union[FeedCreateResponse, ErrorResponse]:
+        """
+        관리자: 새로운 피드 생성을 요청받고, 백그라운드 작업을 등록
+        """
+        try:
+            # 1. DB에 저장할 초기 데이터 구성
+            initial_data = request_data.model_dump()
+            
+            # 2. Repository를 통해 DB에 초기 레코드 생성
+            new_feed = await self.repo.create_initial_feed(initial_data)
+            
+            # 3. 백그라운드 작업 등록
+            tasks.add_task(
+                self._process_feed_content_task,
+                feed_id=new_feed.id,
+                content_type=request_data.content_type,
+                original_text=request_data.original_text,
+                pdf_file=pdf_file
+            )
+
+            # 4. 클라이언트에게 즉시 응답할 데이터 생성
+            create_result = FeedCreateResult(
+                id=new_feed.id,
+                title=new_feed.title,
+                processing_status=ProcessingStatus.PROCESSING, # 스키마 Enum 사용
+                estimated_completion=get_estimated_completion_time()
+            )
+
+            return FeedCreateResponse(
+                success=True, 
+                data=create_result
+                )
+
+        except Exception as e:
+            logger.error(f"Error in create_feed initial request: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR, 

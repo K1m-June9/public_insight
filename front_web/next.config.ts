@@ -8,10 +8,10 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '8001',
-        pathname: '/static/**', // /static/으로 시작하는 모든 경로 허용
+        protocol: process.env.NEXT_PUBLIC_IMAGE_PROTOCOL,
+        hostname: process.env.NEXT_PUBLIC_IMAGE_HOSTNAME,
+        port: process.env.NEXT_PUBLIC_IMAGE_PORT || '', // port는 비어있을 수 있으므로 기본값 설정
+        pathname: process.env.NEXT_PUBLIC_IMAGE_PATHNAME,
       },
     ],
   },

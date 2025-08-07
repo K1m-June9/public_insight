@@ -21,8 +21,8 @@ class Organization(Base):
     # 기관 이미지 파일의 저장 경로 (최대 1000자)
     icon_path = Column(String(1000))
 
-    # 기관 활성화 상태 (기본값: True)
-    is_active = Column(Boolean, default=True, nullable=False)
+    # 기관 활성화 상태 (기본값: True -> False로 변경)
+    is_active = Column(Boolean, default=False, nullable=False)
 
     # 기관 등록 일시 (자동 설정)
     created_at = Column(DateTime, nullable=False, default=func.current_timestamp())

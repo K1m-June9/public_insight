@@ -1,9 +1,11 @@
 import logging
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, subqueryload
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+
+from app.F6_schemas.base import Settings
 
 from app.F7_models.organizations import Organization
 from app.F7_models.categories import Category
@@ -91,3 +93,132 @@ class OrganizationAdminRepository:
             logger.error(f"Error getting organizations with categories: {e}", exc_info=True)
             return []
         
+    async def create_organization(self, name: str, description: Optional[str], website_url: Optional[str]) -> Organization:
+        """
+        새로운 기관과 기본 '보도자료' 카테고리를 생성
+        is_active의 기본값은 모델 정의(default=False)를 따름
+
+        Args:
+            name (str): 기관명
+            description (Optional[str]): 기관 설명
+            website_url (Optional[str]): 웹사이트 URL
+
+        Returns:
+            Organization: 생성된 Organization ORM 객체
+        """
+        try:
+            # 1. 새로운 Organization 객체 생성
+            new_organization = Organization(
+                name=name,
+                description=description,
+                website_url=website_url
+            )
+
+            # 2. 기본 '보도자료' 카테고리 생성 및 연결
+            # Settings.PROTECTED_CATEGORY_NAME = "보도자료"
+            default_category = Category(
+                name=Settings.PROTECTED_CATEGORY_NAME,
+                organization=new_organization
+            )
+            
+            self.db.add(new_organization)
+            # 카테고리는 관계에 의해 자동으로 함께 추가
+            
+            await self.db.commit()
+            await self.db.refresh(new_organization)
+            
+            # 관계 로드를 위해 Eager Loading 옵션과 함께 다시 조회할 수도 있지만,
+            # 지금은 생성된 객체만 반환해도 충분
+            return new_organization
+            
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error creating organization '{name}': {e}", exc_info=True)
+            raise # 서비스 레이어에서 처리하도록 예외를 다시 발생시킴
+
+    async def create_category(self, name: str, description: Optional[str], organization_id: int, is_active: bool) -> Category:
+        """
+        새로운 카테고리를 생성
+        """
+        try:
+            new_category = Category(
+                name=name,
+                description=description,
+                organization_id=organization_id,
+                is_active=is_active
+            )
+            self.db.add(new_category)
+            await self.db.commit()
+            await self.db.refresh(new_category, attribute_names=['organization']) # 'organization' 관계 로드
+            return new_category
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error creating category '{name}' for org_id {organization_id}: {e}", exc_info=True)
+            raise
+
+    async def update_organization(self, org_id: int, update_data: Dict[str, Any]) -> bool:
+        """
+        특정 기관의 정보를 수정
+        """
+        try:
+            stmt = (
+                update(Organization)
+                .where(Organization.id == org_id)
+                .values(**update_data)
+            )
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+            return result.rowcount > 0
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error updating organization {org_id}: {e}", exc_info=True)
+            return False
+        
+    async def get_category_by_id(self, cat_id: int) -> Optional[Category]:
+        """
+        ID로 특정 카테고리를 조회 (기관 정보 포함)
+        """
+        stmt = select(Category).options(selectinload(Category.organization)).where(Category.id == cat_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def update_category(self, cat_id: int, update_data: Dict[str, Any]) -> bool:
+        """
+        특정 카테고리의 정보를 수정
+        """
+        try:
+            stmt = update(Category).where(Category.id == cat_id).values(**update_data)
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+            return result.rowcount > 0
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error updating category {cat_id}: {e}", exc_info=True)
+            return False
+        
+    async def get_organization_by_id(self, org_id: int) -> Optional[Organization]:
+        """
+        ID로 특정 기관의 ORM 객체를 조회
+        """
+        result = await self.db.execute(
+            select(Organization).where(Organization.id == org_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_feed_count_for_organization(self, org_id: int) -> int:
+        """
+        특정 기관에 속한 피드의 총 개수를 계산
+        """
+        result = await self.db.execute(
+            select(func.count(Feed.id)).where(Feed.organization_id == org_id)
+        )
+        return result.scalar_one()
+
+    async def get_feed_count_for_category(self, cat_id: int) -> int:
+        """
+        특정 카테고리에 속한 피드의 총 개수를 계산
+        """
+        result = await self.db.execute(
+            select(func.count(Feed.id)).where(Feed.category_id == cat_id)
+        )
+        return result.scalar_one()

@@ -222,3 +222,38 @@ class OrganizationAdminRepository:
             select(func.count(Feed.id)).where(Feed.category_id == cat_id)
         )
         return result.scalar_one()
+    
+    async def delete_organization(self, org_id: int) -> bool:
+        """
+        특정 기관을 삭제
+        Organization 모델의 cascade 설정에 따라 연관된 categories도 함께 삭제
+        """
+        try:
+            # 먼저 삭제할 객체를 가져옵니다.
+            org_to_delete = await self.db.get(Organization, org_id)
+            if not org_to_delete:
+                return False
+
+            await self.db.delete(org_to_delete)
+            await self.db.commit()
+            return True
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error deleting organization {org_id}: {e}", exc_info=True)
+            return False
+        
+    async def delete_category(self, cat_id: int) -> bool:
+        """
+        특정 카테고리를 삭제
+        """
+        try:
+            category_to_delete = await self.db.get(Category, cat_id)
+            if not category_to_delete:
+                return False
+            await self.db.delete(category_to_delete)
+            await self.db.commit()
+            return True
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error deleting category {cat_id}: {e}", exc_info=True)
+            return False

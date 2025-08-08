@@ -17,7 +17,9 @@ from app.F6_schemas.admin.organization import (
     CategoryDetailResponse,
     CategoryUpdateResponse,
     CategoryUpdateRequest,
-    OrganizationDetailResponse
+    OrganizationDetailResponse,
+    OrganizationDeleteResponse,
+    CategoryDeleteResponse
     )
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 from app.F7_models.users import User
@@ -164,5 +166,41 @@ async def get_organization_detail(
     result = await admin_service.get_organization_detail(id)
     if isinstance(result, ErrorResponse):
         status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    return result
+
+@router.delete("/{id}", response_model=OrganizationDeleteResponse)
+async def delete_organization(
+    id: int,
+    admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
+    current_user: User = Depends(verify_active_user)
+):
+    """
+    관리자: 특정 기관을 삭제
+    """
+    result = await admin_service.delete_organization(id)
+    if isinstance(result, ErrorResponse):
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    return result
+
+@router.delete("/categories/{id}", response_model=CategoryDeleteResponse)
+async def delete_category(
+    id: int,
+    admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
+    current_user: User = Depends(verify_active_user)
+):
+    """
+    관리자: 특정 카테고리를 삭제
+    보도자료는 삭제 불가
+    """
+    result = await admin_service.delete_category(id)
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.NOT_FOUND:
+            status_code = 404
+        elif result.error.code == ErrorCode.FORBIDDEN:
+            status_code = 403
+        else:
+            status_code = 500
         return JSONResponse(status_code=status_code, content=result.model_dump())
     return result

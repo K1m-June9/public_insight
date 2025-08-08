@@ -19,9 +19,11 @@ from app.F6_schemas.admin.organization import (
     CategoryDetail,
     CategoryUpdateResponse,
     CategoryUpdateRequest,
-    OrganizationDetailResponse
+    OrganizationDetailResponse,
+    OrganizationDeleteResponse,
+    CategoryDeleteResponse
 )
-from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message
+from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -304,4 +306,51 @@ class OrganizationAdminService:
             return OrganizationDetailResponse(data=org_detail)
         except Exception as e:
             logger.error(f"Error in get_organization_detail for org_id {org_id}: {e}", exc_info=True)
+            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
+        
+    async def delete_organization(self, org_id: int) -> Union[OrganizationDeleteResponse, ErrorResponse]:
+        """
+        관리자: 특정 기관을 삭제
+        """
+        try:
+            # TODO: 기관 아이콘 파일 삭제 로직 추가 (필요 시)
+            # org = await self.repo.get_organization_by_id(org_id)
+            # if org and org.icon_path:
+            #     # 파일 시스템에서 org.icon_path에 해당하는 파일 삭제
+            
+            success = await self.repo.delete_organization(org_id)
+
+            if not success:
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.ORGANIZATION_NOT_FOUND))
+            
+            return OrganizationDeleteResponse()
+
+        except Exception as e:
+            logger.error(f"Error in delete_organization for org_id {org_id}: {e}", exc_info=True)
+            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
+        
+    async def delete_category(self, cat_id: int) -> Union[CategoryDeleteResponse, ErrorResponse]:
+        """
+        관리자: 특정 카테고리를 삭제
+        '보도자료' 카테고리는 삭제불가
+        """
+        try:
+            # 1. 삭제하려는 카테고리가 '보도자료'인지 확인
+            category_to_delete = await self.repo.get_category_by_id(cat_id)
+            if not category_to_delete:
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.CATEGORY_NOT_FOUND))
+
+            if category_to_delete.name == Settings.PROTECTED_CATEGORY_NAME:
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.FORBIDDEN, message=Message.PROTECTED_CATEGORY_DELETE_ERROR))
+
+            # 2. Repository를 통해 삭제 실행
+            success = await self.repo.delete_category(cat_id)
+
+            if not success: # repo에서 False를 반환한 경우 (거의 발생 안 함)
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.CATEGORY_NOT_FOUND))
+            
+            return CategoryDeleteResponse()
+            
+        except Exception as e:
+            logger.error(f"Error in delete_category for cat_id {cat_id}: {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))

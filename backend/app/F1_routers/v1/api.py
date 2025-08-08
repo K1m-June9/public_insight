@@ -10,7 +10,7 @@ from .notice import router as notice_router
 from .search import router as search_router
 
 from .admin import static_page as admin_static_page_router
-
+from .admin import users as admin_users_router
 # 메인 API 라우터 설정
 router = APIRouter()
 
@@ -40,6 +40,9 @@ router.include_router(search_router, prefix="/search")
 
 # 💡 admin API 그룹을 /admin prefix로 연결합니다.
 router.include_router(admin_static_page_router.router, prefix="/admin")
+
+# 💡 admin API 그룹을 /admin prefix로 연결합니다.
+router.include_router(admin_users_router.router, prefix="/admin")
 
 # 미들웨어와 verify_active_user 동작 테스트
 router.include_router(test_router, prefix="/test")

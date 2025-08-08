@@ -6,14 +6,16 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
 import logging
+import json
+import sys
 import ecs_logging 
 import uvicorn 
 
 # --- 설정 및 초기화 관련 모듈을 먼저 import ---
 from app.F5_core.config import settings 
 from app.F11_search.es_initializer import initialize_elasticsearch
+from app.F11_search.ES1_client import es_async, es_sync
 from app.F8_database.connection import engine, Base 
 
 # --- 라우터 및 미들웨어 관련 모듈 import ---
@@ -32,6 +34,32 @@ from app.F7_models import (
 # ==================================
 # 1. 로깅 설정 함수
 # ==================================
+class DevFormatter(logging.Formatter):
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+
+    FORMATS = {
+        logging.DEBUG: grey + "%(asctime)s - %(name)s - %(levelname)s - %(message)s" + reset,
+        logging.INFO: grey + "%(asctime)s - %(name)s - %(levelname)s - %(message)s" + reset,
+        logging.WARNING: yellow + "%(asctime)s - %(name)s - %(levelname)s - %(message)s" + reset,
+        logging.ERROR: red + "%(asctime)s - %(name)s - %(levelname)s - %(message)s" + reset,
+        logging.CRITICAL: bold_red + "%(asctime)s - %(name)s - %(levelname)s - %(message)s" + reset,
+    }
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S")
+        formatted_message = formatter.format(record)
+        
+        # extra에 json_fields가 있으면, 그 내용을 JSON으로 변환하여 추가
+        if hasattr(record, 'json_fields') and record.json_fields:
+            extra_data = json.dumps(record.json_fields, indent=2, ensure_ascii=False)
+            formatted_message += f"\n--- EXTRA CONTEXT ---\n{extra_data}\n---------------------"
+            
+        return formatted_message
+
 def configure_logging():
     """애플리케이션의 모든 로거를 설정"""
 
@@ -41,24 +69,22 @@ def configure_logging():
         root_logger.handlers.clear()
     
     # 핸들러 및 포맷터 설정
-    handler = logging.StreamHandler()
+    handler = logging.StreamHandler(sys.stdout)
 
     # 환경에 따라 포맷터를 다르게 설정
     if settings.ENVIRONMENT == 'production':
         # 운영환경: ECS JSON 포맷터(분석 및 중앙화 로그 수집용)
         formatter = ecs_logging.StdlibFormatter()
         # 운영환경에서는 Uvicorn 로거가 INFO를 찍도로 설정
-        uvicorn_logger = logging.getLogger("uvicorn")
-        uvicorn_logger.setLevel(logging.INFO)
+        # uvicorn_logger = logging.getLogger("uvicorn")
+        # uvicorn_logger.setLevel(logging.INFO)
 
     else:
         # 개발환경: 사람이 읽기 좋은 텍스트 포맷터(터미널에서 디버깅용)
-        formatter = logging.Formatter(
-            "%(levelname)s: [%(name)s] %(message)s"
-        )
+        formatter = DevFormatter()
         # 개발환경에서는 Uvicorn 로거가 DEBUG를 찍도록 설정
-        uvicorn_logger = logging.getLogger("uvicorn")
-        uvicorn_logger.setLevel(logging.DEBUG)
+        # uvicorn_logger = logging.getLogger("uvicorn")
+        # uvicorn_logger.setLevel(logging.DEBUG)
 
     handler.setFormatter(formatter)
 
@@ -66,6 +92,11 @@ def configure_logging():
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
     root_logger.addHandler(handler)
     root_logger.setLevel(log_level)
+
+    # uvicorn, sqlalchemy 등 라이브러리 로그 레벨을 조정
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 
 # ==================================
@@ -88,6 +119,15 @@ async def app_lifespan(app: FastAPI):
     # Elasticsearch 초기화 함수 호출
     initialize_elasticsearch()
     
+    # 시작 시 비동기 클라이언트 연결 상태 확인
+    try:
+        if await es_async.ping():
+            logger.info("Successfully pinged Elasticsearch with async client.")
+        else:
+            logger.warning("Could not ping Elasticsearch with async client.")
+    except Exception as e:
+        logger.error(f"Async Elasticsearch ping failed on startup: {e}")
+    
     yield
     # 종료 시 추가 로직 필요하면 작성
 
@@ -97,16 +137,22 @@ async def app_lifespan(app: FastAPI):
     # await email_redis.close()
     # await token_redis.close()
 
+    # 비동기 Elasticsearch 클라이언트 연결 종료
+    if es_async:
+        await es_async.close()
+        logger.info("Async Elasticsearch connection closed.")
 
-"""
-앱 종료시 같이 redis 닫아주기
-@app.on_event("shutdown")
-async def shutdown_event():
-    await client_redis.close()
-    await email_redis.close()
-    await token_redis.close()
+    # 동기 Elasticsearch 클라이언트 연결 종료
+    if es_sync:
+        es_sync.close()
+        logger.info("Sync Elasticsearch connection closed.")
 
-"""
+    # await client_redis.close()
+    # await email_redis.close()
+    # await token_redis.close()
+
+    logger.info("Application shutdown sequence finished.")
+
 
 # ==================================
 # 3. 애플리케이션 팩토리 함수
@@ -147,7 +193,8 @@ def create_app() -> FastAPI:
 
     # 세션 미들웨어
     app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET_KEY)
-
+    app.add_middleware(LoggingMiddleware)
+    
     # JWT 인증 미들웨어
     app.add_middleware(
         JWTBearerMiddleware,

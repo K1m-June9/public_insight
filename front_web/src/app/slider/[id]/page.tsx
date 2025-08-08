@@ -22,7 +22,7 @@ export default function SliderDetailPage() {
   });
   
   // 3. 훅에서 반환된 데이터 구조에 맞게 slider 변수를 할당
-  const slider = sliderData?.data.slider;
+  const slider = sliderData?.data?.slider;
 
   // 뒤로 가기
   const goBack = () => {

@@ -393,6 +393,7 @@ class Message:
     # ErrorCode.INVALID_PARAMETER
     INVALID_PARAMETER = "잘못된 파라미터입니다"
     LOGIN_FAILED = "아이디 또는 비밀번호가 올바르지 않습니다"
+    FAILED_FETCH_UPDATE_DATA = "Failed to fetch updated feed data."
     
     # ErrorCode.VALIDATION_ERROR
     INVALID_URL = "유효하지 않은 URL 형식입니다."
@@ -527,7 +528,7 @@ class Settings:
     STATIC_FILES_URL = "/static"
 
     # 처리 시간
-    ESTIMATED_PROCESSING_TIME = 5  # 분
+    ESTIMATED_PROCESSING_TIME = 20  # 분
     PROCESSING_TIMEOUT = 30  # 분
 
     # 검색 설정

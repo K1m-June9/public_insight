@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Plus, Edit, Trash2, Building2, FolderOpen } from "lucide-react";
-import { OrganizationModal } from "./OrganizationModal";
-import { CategoryModal } from "./CategoryModal";
-import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { OrganizationModal } from "@/components/admin/OrganizationModal";
+import { CategoryModal } from "@/components/admin/CategoryModal";
+import { DeleteConfirmModal } from "@/components/admin/DeleteConfirmModal";
 
 // Types
 import { AdminOrganizationWithCategories, AdminCategoryItem } from "@/lib/types/admin/organization";

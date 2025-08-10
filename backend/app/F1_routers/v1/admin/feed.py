@@ -119,7 +119,7 @@ async def create_feed(
     current_user: User = Depends(verify_active_user)
 ):
     """
-    관리자: 새로운 피드를 생성합니다. (비동기 처리)
+    관리자: 새로운 피드를 생성. (비동기 처리)
     NLP 요약 등 시간이 오래 걸리는 작업은 백그라운드에서 처리
     """
     # 1. Form 데이터로 받은 값들을 Pydantic 스키마 객체로 변환

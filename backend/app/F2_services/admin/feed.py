@@ -197,8 +197,8 @@ class FeedAdminService:
 
     async def update_feed(self, feed_id: int, request: FeedUpdateRequest) -> Union[FeedUpdateResponse, ErrorResponse]:
         """
-        관리자: 특정 피드의 정보를 수정합니다.
-        (이 함수는 다음 단계에서 라우터와 함께 수정합니다.)
+        관리자: 특정 피드의 정보를 수정
+        (이 함수는 다음 단계에서 라우터와 함께 수정)
         """
         try:
             # Pydantic 모델을 DB 업데이트용 딕셔너리로 변환

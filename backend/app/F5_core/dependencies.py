@@ -1,4 +1,5 @@
 from fastapi import Depends, Request, HTTPException, status
+from elasticsearch import AsyncElasticsearch
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
@@ -13,8 +14,10 @@ from app.F2_services.users import UserService
 from app.F2_services.notice import NoticeService
 
 from app.F2_services.admin.static_page import StaticPageAdminService
+from app.F2_services.admin.users import UsersAdminService
 from app.F2_services.admin.feed import FeedAdminService
 from app.F2_services.admin.organization import OrganizationAdminService
+
 
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
@@ -26,6 +29,8 @@ from app.F3_repositories.static_page import StaticPageRepository
 from app.F3_repositories.notice import NoticeRepository
 
 from app.F3_repositories.admin.static_page import StaticPageAdminRepository
+from app.F3_repositories.admin.users import UsersAdminRepository
+from app.F3_repositories.admin.activity_log import UsersActivityRepository
 from app.F3_repositories.admin.feed import FeedAdminRepository
 from app.F3_repositories.admin.organization import OrganizationAdminRepository
 
@@ -35,7 +40,11 @@ from app.F5_core.security import AuthHandler
 from app.F6_schemas.base import UserRole
 from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
+from app.F11_search.ES1_client import es_async
 
+def get_es_client() -> AsyncElasticsearch:
+    """ES 클라이언트를 반환하는 의존성 함수"""
+    return es_async
 
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     """인증 의존성 주입용 함수"""
@@ -72,6 +81,24 @@ async def get_feed_service(db: AsyncSession = Depends(get_db)) -> FeedService:
 async def get_admin_static_page_service(db: AsyncSession = Depends(get_db)) -> StaticPageAdminService:
     """관리자 정적 페이지 관련 의존성 주입용 함수"""
     return StaticPageAdminService(StaticPageAdminRepository(db))
+
+
+async def get_admin_users_service(
+    db: AsyncSession = Depends(get_db),
+    es: AsyncElasticsearch = Depends(get_es_client)
+) -> UsersAdminService:
+    """관리자 유저(관리) 관련 의존성 주입용 함수"""
+    user_repo = UsersAdminRepository(db=db)
+    activity_repo = UsersActivityRepository(es=es)
+    return UsersAdminService(user_repo=user_repo, activity_repo=activity_repo)
+
+async def get_user_service(
+    db: AsyncSession = Depends(get_db),
+    session_service: SessionService = Depends(get_session_service)
+    ) -> UserService:
+    """사용자 관련 서비스 의존성 주입용 함수"""
+    
+    user_repo = UserRepository(db)
 
 async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
     """관리자 피드 관련 의존성 주입용 함수"""

@@ -12,7 +12,28 @@ admin_paths = {
 
 admin_regex_paths = {
 }
+
 admin_regex_paths = {
+    # --- 사용자 관리 (User Management) ---
+
+    # [목록] GET /api/v1/admin/users
+    # '?' 쿼리 파라미터가 붙을 수 있으므로, 경로 끝($)을 명시하는 것이 안전합니다.
+    r"^/api/v1/admin/users/?$": {UserRole.ADMIN},
+
+    # [상세] GET /api/v1/admin/users/{user_id}
+    # user_id는 문자열이므로, 슬래시(/)를 제외한 모든 문자를 허용합니다. ([^/]+)
+    r"^/api/v1/admin/users/[^/]+/?$": {UserRole.ADMIN},
+    
+    # [역할 변경] PATCH /api/v1/admin/users/{id}/role
+    # id는 숫자이므로, 숫자가 1번 이상 반복됨을 의미하는 \d+를 사용합니다.
+    r"^/api/v1/admin/users/\d+/role/?$": {UserRole.ADMIN},
+    
+    # [상태 변경] PATCH /api/v1/admin/users/{id}/status
+    r"^/api/v1/admin/users/\d+/status/?$": {UserRole.ADMIN},
+
+    # [활동 로그 조회] GET /api/v1/admin/users/{user_id}/activities
+    r"^/api/v1/admin/users/[^/]+/activities/?$": {UserRole.ADMIN},
+
 }
 """
 [경로 지정 규칙]

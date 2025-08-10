@@ -49,7 +49,10 @@ export function Slider({ slides = [] }: SliderProps) {
               <div className="h-full">
                 <div className="relative h-[200px]">
                   {/* Base64 -> staticURL방식 */}
+                  {slide.imageUrl && (
                     <Image src={`${apiBaseUrl}${slide.imageUrl}`} alt={slide.title} fill className="object-cover" />
+                  )}
+
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-bold mb-2 text-gray-900">{slide.title}</h3>

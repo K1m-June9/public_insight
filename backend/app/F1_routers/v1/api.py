@@ -10,8 +10,10 @@ from .notice import router as notice_router
 from .search import router as search_router
 
 from .admin import static_page as admin_static_page_router
+from .admin import users as admin_users_router
 from .admin import feed as admin_feed_router
 from .admin import organization as admin_organization_router
+
 
 # 메인 API 라우터 설정
 router = APIRouter()
@@ -45,6 +47,7 @@ router.include_router(search_router, prefix="/search")
 router.include_router(admin_static_page_router.router, prefix="/admin")
 router.include_router(admin_feed_router.router, prefix="/admin")
 router.include_router(admin_organization_router.router, prefix="/admin")
+router.include_router(admin_users_router.router, prefix="/admin")
 
 #======================================================================
 # 미들웨어와 verify_active_user 동작 테스트

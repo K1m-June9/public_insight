@@ -1,60 +1,59 @@
-// 파일 위치: components/admin/organization-management.tsx
-
 "use client";
 
-import React, { useState } from "react";
-// 💡 Hooks
-import { useAdminOrganizationsListQuery } from "@/hooks/queries/useAdminOrganizationQueries";
+import React, {useState} from "react";
+import { useAdminOrganizationsListQuery, useAdminSimpleOrganizationListQuery } from "@/hooks/queries/useAdminOrganizationQueries";
+import { useDeleteOrganizationMutation, useDeleteCategoryMutation } from "@/hooks/mutations/useAdminOrganizationMutations";
 
-// 💡 UI Components
+// UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Plus, Edit, Trash2, Building2, FolderOpen } from "lucide-react";
-// ... (향후 사용할 모달 관련 컴포넌트들)
+import { OrganizationModal } from "./OrganizationModal";
+import { CategoryModal } from "./CategoryModal";
+import { DeleteConfirmModal } from "./DeleteConfirmModal";
 
-// 💡 Types
-import { AdminOrganizationWithCategories } from "@/lib/types/admin/organization";
-
+// Types
+import { AdminOrganizationWithCategories, AdminCategoryItem } from "@/lib/types/admin/organization";
 
 export default function OrganizationManagement() {
-  // 1. 실제 데이터 로딩을 위한 훅 호출
   const { data: orgData, isLoading, isError } = useAdminOrganizationsListQuery();
-  const organizations = orgData?.data || [];
+  const { data: simpleOrgsData } = useAdminSimpleOrganizationListQuery(); // 모달 전달용
   
+  // 모달 상태 관리
+  const [modalState, setModalState] = useState<{ type: 'org' | 'cat' | null; data: any | null }>({ type: null, data: null });
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "org" | "category"; id: number; name: string } | null>(null);
   const [expandedOrgs, setExpandedOrgs] = useState<Set<number>>(new Set());
 
-  // 모달 관련 상태 (다음 기능 개발 시 사용)
-  const [orgModalOpen, setOrgModalOpen] = useState(false);
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  // 뮤테이션 훅
+  const { mutate: deleteOrg, isPending: isDeletingOrg } = useDeleteOrganizationMutation();
+  const { mutate: deleteCat, isPending: isDeletingCat } = useDeleteCategoryMutation();
 
-  // 기관 토글 함수
+  const organizations = orgData?.data || [];
+  const simpleOrganizations = simpleOrgsData?.data || [];
+
   const toggleOrganization = (orgId: number) => {
     const newExpanded = new Set(expandedOrgs);
-    if (newExpanded.has(orgId)) {
-      newExpanded.delete(orgId);
-    } else {
-      newExpanded.add(orgId);
-    }
+    if (newExpanded.has(orgId)) newExpanded.delete(orgId);
+    else newExpanded.add(orgId);
     setExpandedOrgs(newExpanded);
+  };
+  
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    const action = deleteTarget.type === 'org' ? deleteOrg : deleteCat;
+    action(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
   };
 
   const renderContent = () => {
-    if (isLoading) {
-      return <div className="text-center p-6">기관 목록을 불러오는 중...</div>;
-    }
-    if (isError) {
-      return <div className="text-center p-6 text-red-500">데이터를 불러오는 중 오류가 발생했습니다.</div>;
-    }
-    if (organizations.length === 0) {
-      return <div className="text-center p-6 text-gray-500">등록된 기관이 없습니다.</div>;
-    }
+    if (isLoading) return <div className="text-center p-6">기관 목록을 불러오는 중...</div>;
+    if (isError) return <div className="text-center p-6 text-red-500">데이터를 불러오는 중 오류가 발생했습니다.</div>;
+    if (organizations.length === 0) return <div className="text-center p-6 text-gray-500">등록된 기관이 없습니다.</div>;
 
     return (
       <div className="space-y-4">
         {organizations.map((org: AdminOrganizationWithCategories) => (
           <div key={org.id} className="border rounded-lg">
-            {/* 기관 헤더 */}
             <div className="p-4 bg-gray-50 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Button variant="ghost" size="sm" onClick={() => toggleOrganization(org.id)}>
@@ -70,14 +69,17 @@ export default function OrganizationManagement() {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm">{/* <Edit className="w-4 h-4" /> */ "수정"}</Button>
-                <Button variant="outline" size="sm">{/* <Trash2 className="w-4 h-4" /> */ "삭제"}</Button>
+                <Button variant="outline" size="sm" onClick={() => setModalState({ type: 'org', data: org })}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDeleteTarget({ type: 'org', id: org.id, name: org.name })}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </div>
-            {/* 카테고리 목록 */}
             {expandedOrgs.has(org.id) && (
               <div className="p-4 space-y-2">
-                {org.categories.map((category) => (
+                {org.categories.map((category: AdminCategoryItem) => (
                   <div key={category.id} className="flex items-center justify-between p-3 bg-white border rounded">
                     <div className="flex items-center space-x-3">
                       <FolderOpen className="w-4 h-4 text-gray-400" />
@@ -90,8 +92,14 @@ export default function OrganizationManagement() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">{/* <Edit className="w-4 h-4" /> */ "수정"}</Button>
-                      {category.name !== "보도자료" && <Button variant="outline" size="sm">{/* <Trash2 className="w-4 h-4" /> */ "삭제"}</Button>}
+                      <Button variant="outline" size="sm" onClick={() => setModalState({ type: 'cat', data: category })}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      {category.name !== "보도자료" && (
+                        <Button variant="outline" size="sm" onClick={() => setDeleteTarget({ type: 'category', id: category.id, name: category.name })}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -108,8 +116,8 @@ export default function OrganizationManagement() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">기관/카테고리 관리</h2>
         <div className="space-x-2">
-          <Button>{/* <Plus className="w-4 h-4 mr-2" /> */}기관 추가</Button>
-          <Button variant="outline">{/* <Plus className="w-4 h-4 mr-2" /> */}카테고리 추가</Button>
+          <Button onClick={() => setModalState({ type: 'org', data: null })}><Plus className="w-4 h-4 mr-2" />기관 추가</Button>
+          <Button variant="outline" onClick={() => setModalState({ type: 'cat', data: null })}><Plus className="w-4 h-4 mr-2" />카테고리 추가</Button>
         </div>
       </div>
       <Card>
@@ -117,8 +125,17 @@ export default function OrganizationManagement() {
           {renderContent()}
         </CardContent>
       </Card>
-      
-      {/* TODO: 생성/수정/삭제 모달 */}
+
+      {modalState.type === 'org' && <OrganizationModal editingOrg={modalState.data} onClose={() => setModalState({ type: null, data: null })} />}
+      {modalState.type === 'cat' && <CategoryModal editingCategory={modalState.data} organizations={simpleOrganizations} onClose={() => setModalState({ type: null, data: null })} />}
+      <DeleteConfirmModal 
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        targetName={deleteTarget?.name || ''}
+        itemType={deleteTarget?.type === 'org' ? '기관' : '카테고리'}
+        isPending={isDeletingOrg || isDeletingCat}
+      />
     </div>
   );
 }

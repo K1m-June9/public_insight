@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAdminSimpleOrganizationList, getAdminOrganizationsList } from '@/services/admin/organizationService';
+import { getAdminSimpleOrganizationList, getAdminOrganizationsList, getAdminOrganizationDetail, getAdminCategoryDetail } from '@/services/admin/organizationService';
 
 /**
  * 관리자: 기관 관련 쿼리 키
@@ -9,6 +9,10 @@ export const adminOrganizationQueryKeys = {
   lists: () => [...adminOrganizationQueryKeys.all, 'list'] as const,
   simpleList: () => [...adminOrganizationQueryKeys.lists(), 'simple'] as const,
   fullList: () => [...adminOrganizationQueryKeys.lists(), 'full'] as const,
+  details: () => [...adminOrganizationQueryKeys.all, 'detail'] as const,
+  detail: (id: number) => [...adminOrganizationQueryKeys.details(), id] as const,
+  categoryDetails: () => [...adminOrganizationQueryKeys.all, 'category-detail'] as const,
+  categoryDetail: (id: number) => [...adminOrganizationQueryKeys.categoryDetails(), id] as const,
 };
 
 /**
@@ -31,4 +35,26 @@ export const useAdminOrganizationsListQuery = () => {
     queryFn: getAdminOrganizationsList,
     staleTime: 1000 * 60 * 5, // 5분
   });
+};
+
+/**
+ * 관리자: 특정 기관의 상세 정보를 조회하는 useQuery 훅
+ */
+export const useAdminOrganizationDetailQuery = (id: number | null) => {
+    return useQuery({
+        queryKey: adminOrganizationQueryKeys.detail(id!),
+        queryFn: () => getAdminOrganizationDetail(id!),
+        enabled: !!id,
+    });
+};
+
+/**
+ * 관리자: 특정 카테고리의 상세 정보를 조회하는 useQuery 훅
+ */
+export const useAdminCategoryDetailQuery = (id: number | null) => {
+    return useQuery({
+        queryKey: adminOrganizationQueryKeys.categoryDetail(id!),
+        queryFn: () => getAdminCategoryDetail(id!),
+        enabled: !!id,
+    });
 };

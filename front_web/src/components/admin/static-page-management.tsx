@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Edit } from "lucide-react";
 import { formatDate } from "@/lib/utils/date";
-import { EditStaticPageModal } from "./EditStaticPageModal";
+import { EditStaticPageModal } from "@/components/admin/EditStaticPageModal";
 
 export default function StaticPageManagement() {
   const { data: pagesData, isLoading, isError } = useAdminStaticPagesQuery();

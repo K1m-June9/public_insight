@@ -6,6 +6,11 @@ admin_paths = {
     "/api/v1/moderate": {UserRole.ADMIN, UserRole.MODERATOR},
     # 필요에 따라 추가 경로와 역할 지정
     "api/v1/admin/static-pages":{UserRole.ADMIN}, #관리자 정적 페이지 목록 조회
+    "api/v1/admin/feeds":{UserRole.ADMIN}, #피드 관리 페이지 목록 조회
+    "api/v1/admin/organization/list":{UserRole.ADMIN}, #원래 계획에 없던 거(관리자 피드 조회 시 기관 및 카테고리 확인을 위한)
+}
+
+admin_regex_paths = {
 }
 
 admin_regex_paths = {

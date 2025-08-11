@@ -15,6 +15,7 @@ from app.F2_services.notice import NoticeService
 
 from app.F2_services.admin.static_page import StaticPageAdminService
 from app.F2_services.admin.users import UsersAdminService
+from app.F2_services.admin.slider import SliderAdminService
 
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
@@ -25,9 +26,11 @@ from app.F3_repositories.users import UserRepository
 from app.F3_repositories.static_page import StaticPageRepository
 from app.F3_repositories.notice import NoticeRepository
 
+
 from app.F3_repositories.admin.static_page import StaticPageAdminRepository
 from app.F3_repositories.admin.users import UsersAdminRepository
 from app.F3_repositories.admin.activity_log import UsersActivityRepository
+from app.F3_repositories.admin.slider import SliderAdminRepository
 
 from app.F4_utils.email import EmailVerificationService
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
@@ -77,8 +80,8 @@ async def get_admin_static_page_service(db: AsyncSession = Depends(get_db)) -> S
     """관리자 정적 페이지 관련 의존성 주입용 함수"""
     return StaticPageAdminService(StaticPageAdminRepository(db))
 
-# async def get_admin_users_service(db: AsyncSession = Depends(get_db)) -> UsersAdminService:
-#     return UsersAdminService(UsersAdminRepository(db))
+async def get_admin_slider_service(db: AsyncSession = Depends(get_db)) -> SliderAdminService:
+    return SliderAdminService(SliderAdminRepository(db))
 
 async def get_admin_users_service(
     db: AsyncSession = Depends(get_db),

@@ -31,6 +31,7 @@ class MainFeedItem(BaseSchema):
     published_date: datetime
     view_count: int
     average_rating: float
+    bookmark_count: int
 
 class MainFeedListData(BaseModel):
     """메인 페이지 피드 목록 데이터"""

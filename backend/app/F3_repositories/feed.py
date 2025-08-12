@@ -354,10 +354,14 @@ class FeedRepository:
             Feed.id,
             Feed.title,
             Feed.view_count,
+            Organization.name.label('organization_name'),
             func.avg(Rating.score).label('average_rating'),
             func.count(Bookmark.id).label('bookmark_count')
         ).select_from(
-            Feed.__table__.outerjoin(
+            Feed.__table__.join(
+                Organization.__table__,
+                Feed.organization_id == Organization.id
+            ).outerjoin(
                 Rating.__table__,
                 Feed.id == Rating.feed_id
             ).outerjoin(
@@ -365,9 +369,10 @@ class FeedRepository:
                 Feed.id == Bookmark.feed_id
             )
         ).where(
-            Feed.is_active == True
+            Feed.is_active == True,
+            Organization.is_active == True
         ).group_by(
-            Feed.id, Feed.title, Feed.view_count
+            Feed.id, Feed.title, Feed.view_count, Organization.name
         ).order_by(
             Feed.view_count.desc(),
             Feed.id.desc()
@@ -386,6 +391,7 @@ class FeedRepository:
             feed_dict = {
                 'id': row.id,
                 'title': row.title,
+                'organization_name': row.organization_name,
                 'average_rating': float(row.average_rating) if row.average_rating else 0.0,
                 'view_count': row.view_count,
                 'bookmark_count': row.bookmark_count
@@ -410,10 +416,14 @@ class FeedRepository:
             Feed.id,
             Feed.title,
             Feed.view_count,
+            Organization.name.label('organization_name'),
             func.avg(Rating.score).label('average_rating'),
             func.count(Bookmark.id).label('bookmark_count')
         ).select_from(
             Feed.__table__.join(
+                Organization.__table__,
+                Feed.organization_id == Organization.id
+            ).outerjoin(
                 Rating.__table__,
                 Feed.id == Rating.feed_id
             ).outerjoin(
@@ -421,9 +431,10 @@ class FeedRepository:
                 Feed.id == Bookmark.feed_id
             )
         ).where(
-            Feed.is_active == True
+            Feed.is_active == True,
+            Organization.is_active == True
         ).group_by(
-            Feed.id, Feed.title, Feed.view_count
+            Feed.id, Feed.title, Feed.view_count, Organization.name
         ).order_by(
             func.avg(Rating.score).desc(),
             Feed.id.desc()
@@ -442,6 +453,7 @@ class FeedRepository:
             feed_dict = {
                 'id': row.id,
                 'title': row.title,
+                'organization_name': row.organization_name,
                 'average_rating': float(row.average_rating),
                 'view_count': row.view_count,
                 'bookmark_count': row.bookmark_count
@@ -465,19 +477,24 @@ class FeedRepository:
         query = select(
             Feed.id,
             Feed.title,
+            Organization.name.label('organization_name'),
             Feed.view_count,
             func.avg(Rating.score).label('average_rating'),
             func.count(Bookmark.id).label('bookmark_count')
         ).select_from(
             Feed.__table__.join(
-                Bookmark.__table__,
-                Feed.id == Bookmark.feed_id
+                Organization.__table__,
+                Feed.organization_id == Organization.id
             ).outerjoin(
                 Rating.__table__,
                 Feed.id == Rating.feed_id
+            ).outerjoin(
+                Bookmark.__table__,
+                Feed.id == Bookmark.feed_id
             )
         ).where(
-            Feed.is_active == True
+            Feed.is_active == True,
+            Organization.is_active == True
         ).group_by(
             Feed.id, Feed.title, Feed.view_count
         ).order_by(
@@ -498,6 +515,7 @@ class FeedRepository:
             feed_dict = {
                 'id': row.id,
                 'title': row.title,
+                'organization_name': row.organization_name,
                 'average_rating': float(row.average_rating) if row.average_rating else 0.0,
                 'view_count': row.view_count,
                 'bookmark_count': row.bookmark_count

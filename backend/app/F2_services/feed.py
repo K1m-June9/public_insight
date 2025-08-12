@@ -446,6 +446,7 @@ class FeedService:
                 feed_item = Top5FeedItem(
                     id=feed['id'],
                     title=feed['title'],
+                    organization=feed['organization_name'], 
                     average_rating=feed['average_rating'] if feed['average_rating'] is not None else 0.0,
                     view_count=feed['view_count'],
                     bookmark_count=feed['bookmark_count']
@@ -458,6 +459,7 @@ class FeedService:
                 feed_item = Top5FeedItem(
                     id=feed['id'],
                     title=feed['title'],
+                    organization=feed['organization_name'], 
                     average_rating=feed['average_rating'],  # 별점 기준이므로 항상 값 존재
                     view_count=feed['view_count'],
                     bookmark_count=feed['bookmark_count']
@@ -470,6 +472,7 @@ class FeedService:
                 feed_item = Top5FeedItem(
                     id=feed['id'],
                     title=feed['title'],
+                    organization=feed['organization_name'], 
                     average_rating=feed['average_rating'] if feed['average_rating'] is not None else 0.0,
                     view_count=feed['view_count'],
                     bookmark_count=feed['bookmark_count']

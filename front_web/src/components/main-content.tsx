@@ -1,7 +1,7 @@
 "use client";
 
 import { PieChart } from "@/components/OrganizationList";
-import { TopFeeds } from "@/components/top-feeds";
+import { TopFeeds } from "@/components/TopFeeds";
 import { Notices } from "@/components/notices";
 import { Slider } from "@/components/slider";
 import { FeedList } from "@/components/feed-list";

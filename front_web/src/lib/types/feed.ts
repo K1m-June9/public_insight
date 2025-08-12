@@ -97,6 +97,7 @@ export type OrganizationLatestFeedResponse = DataResponse<OrganizationLatestFeed
 export interface Top5FeedItem {
     id: number;
     title: string;
+    organization: string;
     average_rating: number;
     view_count: number;
     bookmark_count: number;

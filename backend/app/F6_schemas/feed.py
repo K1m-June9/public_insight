@@ -132,6 +132,7 @@ class Top5FeedItem(BaseSchema):
     average_rating: float
     view_count: int
     bookmark_count: int
+    organization: str
 
 class Top5FeedData(BaseModel):
     """TOP5 피드 데이터"""

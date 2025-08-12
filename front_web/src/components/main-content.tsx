@@ -1,6 +1,6 @@
 "use client";
 
-import { PieChart } from "@/components/pie-chart";
+import { PieChart } from "@/components/OrganizationList";
 import { TopFeeds } from "@/components/top-feeds";
 import { Notices } from "@/components/notices";
 import { Slider } from "@/components/slider";

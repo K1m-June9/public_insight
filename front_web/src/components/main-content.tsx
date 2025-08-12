@@ -2,7 +2,7 @@
 
 import { PieChart } from "@/components/OrganizationList";
 import { TopFeeds } from "@/components/TopFeeds";
-import { Notices } from "@/components/notices";
+import { Notices } from "@/components/Notices";
 import { Slider } from "@/components/slider";
 import { FeedList } from "@/components/feed-list";
 

@@ -11,6 +11,7 @@ from .search import router as search_router
 
 from .admin import static_page as admin_static_page_router
 from .admin import users as admin_users_router
+from .admin import slider as admin_slider_router
 from .admin import feed as admin_feed_router
 from .admin import organization as admin_organization_router
 
@@ -48,6 +49,8 @@ router.include_router(admin_static_page_router.router, prefix="/admin")
 router.include_router(admin_feed_router.router, prefix="/admin")
 router.include_router(admin_organization_router.router, prefix="/admin")
 router.include_router(admin_users_router.router, prefix="/admin")
+router.include_router(admin_slider_router.router, prefix="/admin")
+
 
 #======================================================================
 # 미들웨어와 verify_active_user 동작 테스트

@@ -30,6 +30,7 @@ export interface CategoryItem {
     id: number;
     name: string;
     percentage: number;
+    feed_count: number;
 }
 
 export interface OrganizationCategoryData {

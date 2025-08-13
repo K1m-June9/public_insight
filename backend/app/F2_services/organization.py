@@ -142,9 +142,15 @@ class OrganizationService:
                         message=Message.CATEGORY_FEED_NOT_FOUND
                     )
                 )
-
-            category_items = [CategoryItem(id=cat["category_id"], name=cat["category_name"], percentage=cat["percentage"]) for cat in processed_cats]
-            category_items.append(CategoryItem(id=999, name="기타", percentage=5.0))
+            
+            #기관 페이지 수정으로 인한 feed_count를 추가하여 전달
+            category_items = [CategoryItem(
+                id=cat["category_id"], 
+                name=cat["category_name"], 
+                percentage=cat["percentage"],
+                feed_count=cat["feed_count"]
+                ) for cat in processed_cats]
+            category_items.append(CategoryItem(id=999, name="기타", percentage=5.0, feed_count=0)) #아 이거 기타 언제 제대로 바꿔야하는데 아직 미정 시발ㅋㅋ
 
             total_percentage = sum(item.percentage for item in category_items)
             response_data = OrganizationCategoryData(organization=organization_info, categories=category_items, total_percentage=round(total_percentage, 1))

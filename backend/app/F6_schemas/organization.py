@@ -37,6 +37,7 @@ class CategoryItem(BaseSchema):
     id: int
     name: str
     percentage: float
+    feed_count: int
 
 class OrganizationCategoryData(BaseModel):
     """기관별 카테고리 데이터"""

@@ -41,11 +41,12 @@ export const getOrganizationIcon = async (name: string): Promise<OrganizationIco
 };
 
 /**
-* 특정 기관의 워드클라우드 데이터를 조회
-* @param name - 기관명
-* @returns Promise<WordCloudResponse>
-*/
+ * 특정 기관의 워드클라우드 데이터를 조회합니다. (수정됨)
+ * @param name - 기관명
+ * @returns Promise<WordCloudResponse>
+ */
 export const getOrganizationWordCloud = async (name: string): Promise<WordCloudResponse> => {
+    // 💡 API 엔드포인트도 새로운 경로로 변경
     const response = await apiClient.get<WordCloudResponse>(`/organizations/${name}/wordcloud`);
     return response.data;
 };

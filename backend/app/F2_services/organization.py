@@ -3,6 +3,7 @@ import logging
 from typing import Union
 from pathlib import Path
 from datetime import date
+import random
 
 from app.F3_repositories.organization import OrganizationRepository
 from app.F6_schemas.organization import (
@@ -16,14 +17,9 @@ from app.F6_schemas.organization import (
     OrganizationIconData,
     OrganizationWithIcon,
     OrganizationIconResponse,
-    WordCloudByYear,
+    WordCloudKeywordItem,
     WordCloudData,
-    WordCloudPeriod,
-    WordItem,
     WordCloudResponse,
-    EmptyWordCloud,
-    EmptyWordCloudData,
-    EmptyWordCloudResponse,
     OrganizationStats, 
     OrganizationSummaryData, 
     OrganizationSummaryResponse
@@ -31,6 +27,8 @@ from app.F6_schemas.organization import (
 from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, Settings
 
 logger = logging.getLogger(__name__)
+
+WORDCLOUD_COLORS = ["#1e40af", "#3b82f6", "#60a5fa", "#93c5fd", "#dbeafe"]
 
 # 커스텀 예외 클래스
 # class OrganizationServiceException(Exception):
@@ -207,61 +205,6 @@ class OrganizationService:
                 )
             )
         
-
-    # 기관 워드클라우드 조회 메서드
-    # 입력: 
-    #   org_name - 조회할 기관의 이름 (str)
-    # 반환: 
-    #   WordCloudResponse - 성공 시 연도별 워드클라우드 데이터
-    #   EmptyWordCloudResponse - 데이터 없는 경우 기본 워드클라우드
-    # 설명: 
-    #   특정 기관의 최근 2개년 워드클라우드 데이터를 조회하여 스키마에 맞게 변환
-    #   Repository에서 JSON 형태의 cloud_data를 WordItem 리스트로 변환
-    #   value는 반올림 처리하여 int 타입으로 변환
-    #   데이터가 없는 경우 "죄송합니다" 기본 워드클라우드 반환
-    async def get_organization_wordcloud(self, org_name: str) -> Union[WordCloudResponse, EmptyWordCloudResponse, ErrorResponse]:
-        try:
-            wordcloud_data = await self.organization_repo.get_organization_wordclouds_by_name(org_name, date.today())
-            
-            # 워드클라우드 데이터가 없는 경우 (EmptyWordCloudResponse 반환)
-            if not wordcloud_data:
-                org = await self.organization_repo.get_organization_by_name(org_name)
-                org_id = org['id'] if org else 0
-                
-                empty_data = EmptyWordCloudData(
-                    organization=OrganizationInfo(id=org_id, name=org_name),
-                    wordcloud=EmptyWordCloud(words=[WordItem(text="죄송합니다", value=100)]) # 워드 클라우드 데이터가 없는 경우에 사용(사실상 기본값)
-                )
-                return EmptyWordCloudResponse(success=True, data=empty_data)
-
-            organization_info = OrganizationInfo(id=wordcloud_data[0]["organization_id"], name=wordcloud_data[0]["organization_name"])
-            
-            wordclouds_by_year = []
-            for item in wordcloud_data:
-                word_items = [WordItem(text=d["text"], value=round(d["value"])) for d in item["cloud_data"]]
-                wordclouds_by_year.append(WordCloudByYear(
-                    year=item["period_start"].year,
-                    words=word_items,
-                    period=WordCloudPeriod(start_date=item["period_start"], end_date=item["period_end"]),
-                    generated_at=item["created_at"]
-                ))
-            
-            return WordCloudResponse(
-                success=True,
-                data=WordCloudData(
-                    organization=organization_info,
-                    wordclouds=wordclouds_by_year
-                )
-            )
-        except Exception as e:
-            logger.error(f"Error in get_organization_wordcloud for {org_name}: {e}", exc_info=True)
-            return ErrorResponse(
-                error=ErrorDetail(
-                    code=ErrorCode.INTERNAL_ERROR,
-                    message=Message.INTERNAL_ERROR
-                )
-            )
-        
     async def get_organization_summary(self, org_name: str) -> Union[OrganizationSummaryResponse, ErrorResponse]:
         """
         기관 상세 페이지 헤더에 필요한 요약 정보와 통계를 제공
@@ -293,3 +236,68 @@ class OrganizationService:
         except Exception as e:
             logger.error(f"Error in get_organization_summary for {org_name}: {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
+        
+    async def get_organization_wordcloud(self, org_name: str) -> Union[WordCloudResponse, ErrorResponse]:
+        """
+        기관별 주요 키워드(워드클라우드용) 데이터를 조회
+        score에 따라 글자 크기와 굵기를 동적으로 계산하고, 색상은 랜덤으로 할당
+        """
+        try:
+            # 1. 리포지토리에서 상위 14개 키워드 객체 목록을 가져옴
+            keywords = await self.organization_repo.get_top_keywords_by_org_name(org_name, limit=14)
+
+            # 기관 정보 조회를 위해, 키워드가 없더라도 기관 자체는 있는지 확인
+            org_info_data = await self.organization_repo.get_organization_by_name(org_name)
+            if not org_info_data:
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.ORGANIZATION_NOT_FOUND))
+            
+            organization_info = OrganizationInfo(id=org_info_data['id'], name=org_info_data['name'])
+
+            # 2. 키워드 목록을 WordCloudKeywordItem 스키마로 변환
+            keyword_items = []
+            if keywords:
+                # 점수 범위를 계산하여 글자 크기/굵기를 정규화하기 위함
+                scores = [k.score for k in keywords]
+                min_score, max_score = min(scores), max(scores)
+
+                for keyword in keywords:
+                    # 점수(score)를 UI 속성(size, weight)으로 변환
+                    size = self._calculate_font_size(keyword.score, min_score, max_score)
+                    weight = 600 if keyword.score >= (max_score * 0.7) else 500
+
+                    keyword_item = WordCloudKeywordItem(
+                        text=keyword.keyword,
+                        size=size,
+                        color=random.choice(WORDCLOUD_COLORS), # 색상 랜덤 할당
+                        weight=weight
+                    )
+                    keyword_items.append(keyword_item)
+            
+            # 3. 최종 응답 데이터 구성
+            response_data = WordCloudData(
+                organization=organization_info,
+                keywords=keyword_items
+            )
+            
+            return WordCloudResponse(success=True, data=response_data)
+
+        except Exception as e:
+            logger.error(f"Error in get_organization_wordcloud for {org_name}: {e}", exc_info=True)
+            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
+
+    # --- 💡 3. 동적 계산을 위한 헬퍼 함수 추가 💡 ---
+    def _calculate_font_size(self, score: float, min_score: float, max_score: float) -> int:
+        """점수를 기반으로 10px ~ 32px 사이의 폰트 크기를 계산"""
+        if max_score == min_score: # 모든 점수가 같을 경우 중간 크기 반환
+            return 21
+        
+        # min-max normalization (점수를 0~1 사이 값으로 정규화)
+        normalized_score = (score - min_score) / (max_score - min_score)
+        
+        # 폰트 크기 범위 설정
+        min_font_size = 10
+        max_font_size = 32
+        
+        # 정규화된 점수를 폰트 크기 범위에 맞게 스케일링
+        font_size = min_font_size + normalized_score * (max_font_size - min_font_size)
+        return round(font_size)

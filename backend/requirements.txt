@@ -31,8 +31,6 @@ ecdsa==0.19.1
 email_validator==2.2.0
 etelemetry==0.3.1
 exceptiongroup==1.3.0
-elasticsearch==8.14.0
-ecs_logging==2.2.0
 fastapi==0.115.13
 filelock==3.18.0
 fitz==0.0.1.dev2
@@ -149,6 +147,7 @@ SQLAlchemy==2.0.41
 ssh-import-id==5.11
 starlette==0.46.2
 sympy==1.14.0
+tenacity==9.1.2
 tokenizers==0.21.4
 tomli==2.2.1
 torch==2.7.1

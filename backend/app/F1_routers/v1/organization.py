@@ -5,7 +5,7 @@ from typing import Union
 from fastapi.responses import JSONResponse
 from app.F2_services.organization import OrganizationService
 from app.F5_core.dependencies import get_organization_service
-from app.F6_schemas.organization import OrganizationListResponse, OrganizationCategoryResponse, OrganizationIconResponse, WordCloudResponse, EmptyWordCloudResponse
+from app.F6_schemas.organization import OrganizationListResponse, OrganizationCategoryResponse, OrganizationIconResponse, WordCloudResponse, EmptyWordCloudResponse, OrganizationSummaryResponse
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,19 @@ async def get_organizations(org_service: OrganizationService = Depends(get_organ
     if isinstance(result, ErrorResponse):
         return JSONResponse(status_code=500, content=result.model_dump())
     
+    return result
+
+@router.get("/{name}/summary", response_model=OrganizationSummaryResponse)
+async def get_organization_summary(name: str, org_service: OrganizationService = Depends(get_organization_service)):
+    """
+    기관 상세 페이지 헤더 요약 정보 조회
+    
+    기관의 기본 정보(이름, 설명)와 통합 통계(총 문서 수, 총 조회수, 평균 만족도)를 제공
+    """
+    result = await org_service.get_organization_summary(name)
+    if isinstance(result, ErrorResponse):
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
     return result
     
 @router.get("/{name}/categories", response_model=OrganizationCategoryResponse)

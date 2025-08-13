@@ -87,3 +87,24 @@ export interface OrganizationIconData {
 }
 
 export type OrganizationIconResponse = DataResponse<OrganizationIconData>;
+
+// ============================================================================
+// 기관 헤더 전용
+// ============================================================================
+export interface OrganizationStats {
+  documents: number;
+  views: number;
+  satisfaction: number;
+}
+
+// 백엔드의 OrganizationSummaryData 스키마에 해당
+export interface OrganizationSummaryData {
+  id: number;
+  name: string;
+  description: string;
+  website_url?: string;
+  stats: OrganizationStats;
+}
+
+// 백엔드의 OrganizationSummaryResponse 스키마에 해당
+export type OrganizationSummaryResponse = DataResponse<OrganizationSummaryData>;

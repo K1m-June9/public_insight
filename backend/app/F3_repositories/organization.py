@@ -9,6 +9,8 @@ from app.F7_models.organizations import Organization
 from app.F7_models.categories import Category
 from app.F7_models.feeds import Feed
 from app.F7_models.word_clouds import WordCloud
+from app.F7_models.bookmarks import Bookmark
+from app.F7_models.ratings import Rating
 
 logger = logging.getLogger(__name__)
 
@@ -144,3 +146,67 @@ class OrganizationRepository:
         )
         result = await self.db.execute(query)
         return [row._asdict() for row in result.all()]
+    
+
+    async def get_organization_summary_by_name(self, org_name: str) -> Optional[Dict[str, Any]]:
+        """
+        특정 기관의 요약 정보와 통계를 조회
+        (기관 정보 + 총 문서 수 + 총 조회수 + 평균 별점)
+        
+        Args:
+            org_name (str): 조회할 기관의 이름
+        
+        Returns:
+            Optional[Dict[str, Any]]: 기관 요약 정보 딕셔너리 또는 None
+        """
+        try:
+            # 1. 서브쿼리: 해당 기관에 속한 모든 피드의 평균 별점을 계산
+            #    COALESCE를 사용하여 평점이 없는 경우 0.0을 반환
+            avg_rating_subquery = (
+                select(
+                    func.coalesce(func.avg(Rating.score), 0.0).label('average_satisfaction')
+                )
+                .select_from(Feed)
+                .join(Rating, Feed.id == Rating.feed_id)
+                .join(Organization, Feed.organization_id == Organization.id)
+                .where(Organization.name == org_name, Feed.is_active == True)
+            ).scalar_subquery()
+
+            # 2. 메인 쿼리: 기관 정보와 나머지 통계를 집계
+            query = (
+                select(
+                    Organization.id,
+                    Organization.name,
+                    Organization.description,
+                    Organization.website_url,
+                    func.count(Feed.id).label('total_documents'),
+                    func.coalesce(func.sum(Feed.view_count), 0).label('total_views'),
+                    avg_rating_subquery.label('average_satisfaction')
+                )
+                .select_from(Organization)
+                .outerjoin(Feed, and_(Organization.id == Feed.organization_id, Feed.is_active == True))
+                .where(
+                    Organization.name == org_name,
+                    Organization.is_active == True
+                )
+                .group_by(
+                    Organization.id,
+                    Organization.name,
+                    Organization.description,
+                    Organization.website_url
+                )
+            )
+
+            result = await self.db.execute(query)
+            row = result.first()
+
+            if not row:
+                return None
+
+            return row._asdict()
+
+        except Exception as e:
+            logger.error(f"Error getting organization summary for '{org_name}': {e}", exc_info=True)
+            # 리포지토리에서는 예외를 다시 발생시켜 서비스 레이어에서 처리할수도 있음
+            # 지금은 None을 반환하여 서비스에서 처리
+            return None

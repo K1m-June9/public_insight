@@ -123,3 +123,24 @@ class EmptyWordCloudResponse(BaseResponse):
 class OrganizationPathParams(BaseModel):
     """기관명 경로 파라미터"""
     organization_name: str = Field(..., min_length=1, description="기관명 (URL 디코딩 필요)")
+
+
+# ============================================================================
+# 7. UI 개편하면서 새로 만든 기관 페이지 헤더를 위한 스키마
+# ============================================================================
+# 파일 위치: backend/app/F6_schemas/organization.py
+
+class OrganizationStats(BaseModel):
+    documents: int
+    views: int
+    satisfaction: float
+
+class OrganizationSummaryData(BaseSchema):
+    id: int
+    name: str
+    description: str
+    website_url: Optional[str] = None # 웹사이트 URL도 함께 보내주면 유용하지만 쓸까말까쓸까말까쓸래말래쓸래말래
+    stats: OrganizationStats
+
+class OrganizationSummaryResponse(BaseSchema):
+    data: OrganizationSummaryData

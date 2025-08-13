@@ -23,7 +23,10 @@ from app.F6_schemas.organization import (
     WordCloudResponse,
     EmptyWordCloud,
     EmptyWordCloudData,
-    EmptyWordCloudResponse
+    EmptyWordCloudResponse,
+    OrganizationStats, 
+    OrganizationSummaryData, 
+    OrganizationSummaryResponse
     )
 from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message, Settings
 
@@ -252,3 +255,35 @@ class OrganizationService:
                     message=Message.INTERNAL_ERROR
                 )
             )
+        
+    async def get_organization_summary(self, org_name: str) -> Union[OrganizationSummaryResponse, ErrorResponse]:
+        """
+        기관 상세 페이지 헤더에 필요한 요약 정보와 통계를 제공
+        """
+        try:
+            summary_data = await self.organization_repo.get_organization_summary_by_name(org_name)
+
+            if not summary_data:
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.ORGANIZATION_NOT_FOUND))
+
+            # 통계 데이터 객체 생성
+            stats = OrganizationStats(
+                documents=summary_data['total_documents'],
+                views=summary_data['total_views'],
+                satisfaction=float(summary_data['average_satisfaction'])
+            )
+            
+            # 최종 응답 데이터 객체 생성
+            response_data = OrganizationSummaryData(
+                id=summary_data['id'],
+                name=summary_data['name'],
+                description=summary_data['description'] or "",
+                website_url=summary_data['website_url'],
+                stats=stats
+            )
+
+            return OrganizationSummaryResponse(success=True, data=response_data)
+
+        except Exception as e:
+            logger.error(f"Error in get_organization_summary for {org_name}: {e}", exc_info=True)
+            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))

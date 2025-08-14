@@ -215,7 +215,8 @@ class FeedService:
                         summary=feed_data['summary'],
                         published_date=feed_data['published_date'],
                         view_count=feed_data['view_count'],
-                        average_rating=average_rating
+                        average_rating=average_rating,
+                        bookmark_count=feed_data['bookmark_count']
                     )
                     feeds_list.append(feed_item)
             

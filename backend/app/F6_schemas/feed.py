@@ -60,6 +60,7 @@ class OrganizationFeedItem(BaseSchema):
     published_date: datetime
     view_count: int
     average_rating: float
+    bookmark_count: int
 
 class FeedFilter(BaseModel):
     """피드 필터 정보"""

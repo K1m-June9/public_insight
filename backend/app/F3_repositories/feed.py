@@ -112,7 +112,8 @@ class FeedRepository:
             Organization.name.label('organization_name'),
             Feed.category_id,
             Category.name.label('category_name'),
-            func.avg(Rating.score).label('average_rating')
+            func.avg(Rating.score).label('average_rating'),
+            func.count(Bookmark.id).label('bookmark_count')
         ).select_from(
             # 피드 테이블을 기준으로 JOIN 수행
             Feed.__table__.join(
@@ -124,6 +125,9 @@ class FeedRepository:
             ).outerjoin(
                 Rating.__table__, 
                 Feed.id == Rating.feed_id
+            ).outerjoin(
+            Bookmark.__table__,
+            Feed.id == Bookmark.feed_id
             )
         ).where(
             # 활성화된 피드만 조회
@@ -170,7 +174,8 @@ class FeedRepository:
                 'organization_name': row.organization_name,
                 'category_id': row.category_id,
                 'category_name': row.category_name,
-                'average_rating': float(row.average_rating) if row.average_rating is not None else None
+                'average_rating': float(row.average_rating) if row.average_rating is not None else None,
+                'bookmark_count': row.bookmark_count
             }
             feeds_data.append(feed_dict)
         

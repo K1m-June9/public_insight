@@ -44,6 +44,7 @@ export interface OrganizationFeedItem {
     published_date: string;
     view_count: number;
     average_rating: number;
+    bookmark_count: number;
 }
 
 export interface FeedFilter {

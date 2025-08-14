@@ -4,14 +4,10 @@ from pathlib import Path
 from fastapi import UploadFile, BackgroundTasks
 
 import uuid
-import math
 import logging
-import asyncio
-import base64
 import os 
 
 from app.F3_repositories.admin.slider import SliderAdminRepository
-from app.F3_repositories.admin.activity_log import UsersActivityRepository 
 from app.F5_core.config import settings
 from app.F6_schemas.admin.slider import (
     SliderListResponse,
@@ -22,8 +18,6 @@ from app.F6_schemas.admin.slider import (
     SliderCreateResponse,
     SliderUpdateRequest,
     SliderUpdateResponse,
-    SliderStatusUpdateRequest,
-    SliderStatus,
     SliderStatusUpdateResponse,
     SliderStatusUpdateResponseData,
     SliderDeleteResponse,
@@ -36,11 +30,7 @@ from app.F6_schemas.base import (
     ErrorCode, 
     Message, 
     Settings,
-    PaginatedResponse, 
-    PaginationQuery,
-    PaginationInfo,
 )
-from app.F7_models.users import User
 
 logger = logging.getLogger(__name__)
 

@@ -386,7 +386,6 @@ class Message:
     INVALID_CONTENT_TYPE = "PDF 파일 또는 텍스트 중 하나만 제공해야 합니다."
     EMPTY_CONTENT_ERROR = "콘텐츠가 비어있습니다."
 
-
     # ErrorCode.UNAUTHORIZED
     UNAUTHORIZED = "인증이 필요합니다"
     

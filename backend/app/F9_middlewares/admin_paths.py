@@ -14,8 +14,8 @@ admin_regex_paths = {
 }
 
 admin_regex_paths = {
-    # --- 사용자 관리 (User Management) ---
 
+    # --- 사용자 관리 (User Management) ---
     # [목록] GET /api/v1/admin/users
     # '?' 쿼리 파라미터가 붙을 수 있으므로, 경로 끝($)을 명시하는 것이 안전합니다.
     r"^/api/v1/admin/users/?$": {UserRole.ADMIN},
@@ -34,7 +34,38 @@ admin_regex_paths = {
     # [활동 로그 조회] GET /api/v1/admin/users/{user_id}/activities
     r"^/api/v1/admin/users/[^/]+/activities/?$": {UserRole.ADMIN},
 
+
+    # --- 슬라이더 관리(Slider Management) ---
+    # [목록] GET /api/v1/admin/sliders
+    # [생성] POST /api/v1/admin/sliders
+    # 목록 조회(GET)와 생성(POST)은 동일한 경로를 사용하므로 하나의 규칙으로 처리 가능
+    r"^/api/v1/admin/slider/?$": {UserRole.ADMIN},
+    
+    # [상세] GET /api/v1/admin/sliders/{id}
+    # [수정] PATCH /api/v1/admin/sliders/{id}
+    # [삭제] DELETE /api/v1/admin/sliders/{id}
+    # id는 숫자(\d+)이므로, 위 3개 API를 하나의 규칙으로 처리 가능
+    r"^/api/v1/admin/slider/\d+/?$": {UserRole.ADMIN},
+
+    # --- 공지사항 관리 (Notice Management) ---
+    
+    # [목록] GET /api/v1/admin/notices
+    # [생성] POST /api/v1/admin/notices
+    # 목록 조회(GET)와 생성(POST)은 동일한 경로를 사용하므로 하나의 규칙으로 처리
+    r"^/api/v1/admin/notices/?$": {UserRole.ADMIN},
+    
+    # [상세] GET    /api/v1/admin/notices/{id}
+    # [수정] PUT    /api/v1/admin/notices/{id}
+    # [삭제] DELETE /api/v1/admin/notices/{id}
+    # id는 숫자(\d+)이므로, 위 3개 API를 하나의 규칙으로 처리
+    r"^/api/v1/admin/notices/\d+/?$": {UserRole.ADMIN},
+
+
+    # --- 대시보드 관리 (Dashboard Management) ---
+    # [조회] GET    /api/v1/admin/dashboard
+    r"^/api/v1/admin/dashboard/?$": {UserRole.ADMIN},
 }
+
 """
 [경로 지정 규칙]
 

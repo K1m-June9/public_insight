@@ -82,6 +82,13 @@ class RegisterSuccessResponse(base.SuccessResponse):
     message: str = "회원가입이 완료되었습니다"
 
 
+class LoginResponse(BaseModel):
+    """
+    로그인 성공 시 반환되는 표준 토큰 스키마.
+    Swagger UI와의 호환성을 위해 단순한 구조를 가짐.
+    """
+    access_token: str
+    token_type: str
 
 # =================================
 # 5. 중복 및 규칙 검사 관련 스키마

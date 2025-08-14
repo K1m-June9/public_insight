@@ -14,6 +14,8 @@ from .admin import users as admin_users_router
 from .admin import slider as admin_slider_router
 from .admin import feed as admin_feed_router
 from .admin import organization as admin_organization_router
+from .admin import notices as admin_notices_router
+from .admin import dashboard as admin_dashboard_router
 
 
 # 메인 API 라우터 설정
@@ -50,7 +52,8 @@ router.include_router(admin_feed_router.router, prefix="/admin")
 router.include_router(admin_organization_router.router, prefix="/admin")
 router.include_router(admin_users_router.router, prefix="/admin")
 router.include_router(admin_slider_router.router, prefix="/admin")
-
+router.include_router(admin_notices_router.router, prefix="/admin")
+router.include_router(admin_dashboard_router.router, prefix="/admin")
 
 #======================================================================
 # 미들웨어와 verify_active_user 동작 테스트

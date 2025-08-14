@@ -18,7 +18,8 @@ from app.F2_services.admin.users import UsersAdminService
 from app.F2_services.admin.slider import SliderAdminService
 from app.F2_services.admin.feed import FeedAdminService
 from app.F2_services.admin.organization import OrganizationAdminService
-
+from app.F2_services.admin.notices import NoticesAdminService
+from app.F2_services.admin.dashboard import DashboardAdminService
 
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
@@ -36,6 +37,9 @@ from app.F3_repositories.admin.activity_log import UsersActivityRepository
 from app.F3_repositories.admin.slider import SliderAdminRepository
 from app.F3_repositories.admin.feed import FeedAdminRepository
 from app.F3_repositories.admin.organization import OrganizationAdminRepository
+from app.F3_repositories.admin.notices import NoticesAdminRepository
+from app.F3_repositories.admin.dashboard import DashboardAdminRepository
+from app.F3_repositories.admin.dashboard_activity import DashboardActivityRepository
 
 from app.F4_utils.email import EmailVerificationService
 from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
@@ -45,6 +49,7 @@ from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
 from app.F11_search.ES1_client import es_async
 
+# --- 일반 ---
 def get_es_client() -> AsyncElasticsearch:
     """ES 클라이언트를 반환하는 의존성 함수"""
     return es_async
@@ -81,23 +86,6 @@ async def get_feed_service(db: AsyncSession = Depends(get_db)) -> FeedService:
     """피드 관련 서비스 의존성 주입용 함수"""
     return FeedService(FeedRepository(db))
 
-async def get_admin_static_page_service(db: AsyncSession = Depends(get_db)) -> StaticPageAdminService:
-    """관리자 정적 페이지 관련 의존성 주입용 함수"""
-    return StaticPageAdminService(StaticPageAdminRepository(db))
-
-async def get_admin_slider_service(db: AsyncSession = Depends(get_db)) -> SliderAdminService:
-    return SliderAdminService(SliderAdminRepository(db))
-
-
-async def get_admin_users_service(
-    db: AsyncSession = Depends(get_db),
-    es: AsyncElasticsearch = Depends(get_es_client)
-) -> UsersAdminService:
-    """관리자 유저(관리) 관련 의존성 주입용 함수"""
-    user_repo = UsersAdminRepository(db=db)
-    activity_repo = UsersActivityRepository(es=es)
-    return UsersAdminService(user_repo=user_repo, activity_repo=activity_repo)
-
 async def get_user_service(
     db: AsyncSession = Depends(get_db),
     session_service: SessionService = Depends(get_session_service)
@@ -105,14 +93,6 @@ async def get_user_service(
     """사용자 관련 서비스 의존성 주입용 함수"""
     
     user_repo = UserRepository(db)
-
-async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
-    """관리자 피드 관련 의존성 주입용 함수"""
-    return FeedAdminService(FeedAdminRepository(db))
-
-async def get_admin_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationAdminService:
-    """관리자 기관/카테고리 관련 의존성 주입용 함수"""
-    return OrganizationAdminService(OrganizationAdminRepository(db))
 
 async def get_user_service(db: AsyncSession = Depends(get_db),session_service: SessionService = Depends(get_session_service)) -> UserService:
     """사용자 관련 서비스 의존성 주입용 함수"""    
@@ -124,6 +104,48 @@ async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeServic
 
 async def get_auth_handler() -> AuthHandler:
     return AuthHandler()
+
+
+# --- 관리자 ---
+async def get_admin_static_page_service(db: AsyncSession = Depends(get_db)) -> StaticPageAdminService:
+    """관리자 정적 페이지 관련 의존성 주입용 함수"""
+    return StaticPageAdminService(StaticPageAdminRepository(db))
+
+async def get_admin_slider_service(db: AsyncSession = Depends(get_db)) -> SliderAdminService:
+    return SliderAdminService(SliderAdminRepository(db))
+
+async def get_admin_users_service(
+    db: AsyncSession = Depends(get_db),
+    es: AsyncElasticsearch = Depends(get_es_client)
+) -> UsersAdminService:
+    """관리자 유저(관리) 관련 의존성 주입용 함수"""
+    user_repo = UsersAdminRepository(db=db)
+    activity_repo = UsersActivityRepository(es=es)
+    return UsersAdminService(user_repo=user_repo, activity_repo=activity_repo)
+
+async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
+    """관리자 피드 관련 의존성 주입용 함수"""
+    return FeedAdminService(FeedAdminRepository(db))
+
+async def get_admin_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationAdminService:
+    """관리자 기관/카테고리 관련 의존성 주입용 함수"""
+    return OrganizationAdminService(OrganizationAdminRepository(db))
+
+async def get_admin_notices_service(db: AsyncSession=Depends(get_db)) -> NoticesAdminService:
+    """관리자 공지사항 관련 의존성 주입용 함수"""
+    return NoticesAdminService(NoticesAdminRepository(db))
+
+
+async def get_admin_dashboard_service(
+        db: AsyncSession=Depends(get_db),
+        es: AsyncElasticsearch = Depends(get_es_client)
+) -> DashboardAdminService:
+    """관리자 대시보드 관련 의존성 주입용 함수"""
+    dash_repo = DashboardAdminRepository(db=db)
+    es_repo = DashboardActivityRepository(es=es)
+    return DashboardAdminService(dash_repo=dash_repo, es_repo=es_repo)
+
+
 
 
 
@@ -169,8 +191,18 @@ async def get_auth_handler() -> AuthHandler:
 #     return user
 
 
+
+#####################################################
+# swaggerUI를 위해 수정된 상태
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
 async def verify_active_user(
     request: Request,
+    # 수정된 부분
+    token: str = Depends(oauth2_scheme),
+    
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """요청에 인증된 사용자가 활성 상태인지 검증하고, request.state에 사용자 정보를 저장합니다."""
@@ -178,7 +210,11 @@ async def verify_active_user(
     # JWT 미들웨어에서 user_id를 전달받았다고 가정합니다.
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}, # 401 응답 표준 헤더 추가
+        )
 
     # 1. Redis 캐시 조회 시도
     cached = await RedisCacheService.get_cached_user_info(user_id)

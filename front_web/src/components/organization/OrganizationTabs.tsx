@@ -38,7 +38,7 @@ export default function OrganizationTabs({
         </TabsTrigger>
       </TabsList>
       
-      {/* 3. 각 TabsContent 안에 우리가 이전에 만든 컴포넌트들을 배치합니다. */}
+      {/* 3. 각 TabsContent 안에 우리가 이전에 만든 컴포넌트들을 배치 */}
       <TabsContent value="policy" className="mt-6">
         <OrganizationFeedList 
           organizationName={organizationName} 

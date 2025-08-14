@@ -163,6 +163,7 @@ class PressReleaseItem(BaseSchema):
     published_date: datetime
     view_count: int
     average_rating: float
+    bookmark_count: int
 
 class PressReleaseData(BaseModel):
     """보도자료 데이터"""

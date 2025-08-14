@@ -562,7 +562,8 @@ class FeedRepository:
             Organization.name.label('organization_name'),
             Category.id.label('category_id'),
             Category.name.label('category_name'),
-            func.avg(Rating.score).label('average_rating')
+            func.avg(Rating.score).label('average_rating'),
+            func.count(Bookmark.id).label('bookmark_count')
         ).select_from(
             Feed.__table__.join(
                 Organization.__table__,
@@ -573,6 +574,9 @@ class FeedRepository:
             ).outerjoin(
                 Rating.__table__,
                 Feed.id == Rating.feed_id
+            ).outerjoin(
+            Bookmark.__table__,
+            Feed.id == Bookmark.feed_id
             )
         ).where(
             # 특정 기관명으로 필터링
@@ -582,8 +586,13 @@ class FeedRepository:
             # 활성화된 피드만 대상
             Feed.is_active == True
         ).group_by(
-            Feed.id, Feed.title, Feed.summary, Feed.view_count, Feed.published_date,
-            Feed.organization_id, Organization.name,
+            Feed.id, 
+            Feed.title, 
+            Feed.summary, 
+            Feed.view_count, 
+            Feed.published_date,
+            Feed.organization_id, 
+            Organization.name,
             Category.id, Category.name
         ).order_by(
             Feed.published_date.desc(),
@@ -619,7 +628,8 @@ class FeedRepository:
                 'view_count': row.view_count,
                 'average_rating': float(row.average_rating) if row.average_rating else 0.0,
                 'category_id': row.category_id,
-                'category_name': row.category_name
+                'category_name': row.category_name,
+                'bookmark_count': row.bookmark_count
             }
             press_releases_data.append(press_release_dict)
         

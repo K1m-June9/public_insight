@@ -125,6 +125,7 @@ export interface PressReleaseItem {
     published_date: string;
     view_count: number;
     average_rating: number;
+    bookmark_count: number;
 }
 
 export interface PressReleaseData {

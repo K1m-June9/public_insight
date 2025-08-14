@@ -559,7 +559,8 @@ class FeedService:
                     summary=press_release['summary'],
                     published_date=press_release['published_date'],
                     view_count=press_release['view_count'],
-                    average_rating=press_release['average_rating']  # Repository에서 0.0 처리됨
+                    average_rating=press_release['average_rating'],  # Repository에서 0.0 처리됨
+                    bookmark_count=press_release['bookmark_count']
                 )
                 press_release_items.append(press_item)
             

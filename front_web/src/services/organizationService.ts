@@ -4,6 +4,7 @@ import {
     OrganizationCategoryResponse,
     WordCloudResponse,
     OrganizationIconResponse, // 추후 삭제 예정이지만 지금은 쓸거같은 타입
+    OrganizationSummaryResponse
 } from '@/lib/types/organization';
 
 /**
@@ -40,11 +41,22 @@ export const getOrganizationIcon = async (name: string): Promise<OrganizationIco
 };
 
 /**
-* 특정 기관의 워드클라우드 데이터를 조회
-* @param name - 기관명
-* @returns Promise<WordCloudResponse>
-*/
+ * 특정 기관의 워드클라우드 데이터를 조회합니다. (수정됨)
+ * @param name - 기관명
+ * @returns Promise<WordCloudResponse>
+ */
 export const getOrganizationWordCloud = async (name: string): Promise<WordCloudResponse> => {
+    // 💡 API 엔드포인트도 새로운 경로로 변경
     const response = await apiClient.get<WordCloudResponse>(`/organizations/${name}/wordcloud`);
+    return response.data;
+};
+
+/**
+ * 특정 기관의 요약 정보(이름, 설명, 통계)를 조회
+ * @param name - 기관명
+ * @returns Promise<OrganizationSummaryResponse>
+ */
+export const getOrganizationSummary = async (name: string): Promise<OrganizationSummaryResponse> => {
+    const response = await apiClient.get<OrganizationSummaryResponse>(`/organizations/${name}/summary`);
     return response.data;
 };

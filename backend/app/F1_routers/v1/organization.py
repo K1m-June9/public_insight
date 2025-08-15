@@ -5,7 +5,7 @@ from typing import Union
 from fastapi.responses import JSONResponse
 from app.F2_services.organization import OrganizationService
 from app.F5_core.dependencies import get_organization_service
-from app.F6_schemas.organization import OrganizationListResponse, OrganizationCategoryResponse, OrganizationIconResponse, WordCloudResponse, EmptyWordCloudResponse
+from app.F6_schemas.organization import OrganizationListResponse, OrganizationCategoryResponse, OrganizationIconResponse, WordCloudResponse, EmptyWordCloudResponse, OrganizationSummaryResponse
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,19 @@ async def get_organizations(org_service: OrganizationService = Depends(get_organ
     if isinstance(result, ErrorResponse):
         return JSONResponse(status_code=500, content=result.model_dump())
     
+    return result
+
+@router.get("/{name}/summary", response_model=OrganizationSummaryResponse)
+async def get_organization_summary(name: str, org_service: OrganizationService = Depends(get_organization_service)):
+    """
+    기관 상세 페이지 헤더 요약 정보 조회
+    
+    기관의 기본 정보(이름, 설명)와 통합 통계(총 문서 수, 총 조회수, 평균 만족도)를 제공
+    """
+    result = await org_service.get_organization_summary(name)
+    if isinstance(result, ErrorResponse):
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
     return result
     
 @router.get("/{name}/categories", response_model=OrganizationCategoryResponse)
@@ -92,55 +105,19 @@ async def get_organization_icon(name: str, org_service: OrganizationService = De
     
     return result
 
-
-    """
-    기관 워드클라우드 조회
-    
-    기관별 워드클라우드 데이터를 조회합니다.
-    최근 2개년의 워드클라우드 데이터를 연도별로 제공하며,
-    데이터가 없는 경우 기본 워드클라우드("죄송합니다")를 반환합니다.
-    
-    Args:
-        name (str): 조회할 기관의 이름 (예: "국회")
-        organization_service: 기관 서비스 의존성 주입
-        
-    Returns:
-        Union[WordCloudResponse, EmptyWordCloudResponse]: 
-            - WordCloudResponse: 연도별 워드클라우드 데이터
-            - EmptyWordCloudResponse: 데이터 없는 경우 기본 워드클라우드
-        
-    Raises:
-        HTTPException: 서버 내부 오류 발생 시 500 상태 코드 반환
-        
-    Example:
-        GET /api/organizations/국회/wordcloud
-    """
-@router.get("/{name}/wordcloud", response_model=Union[WordCloudResponse, EmptyWordCloudResponse])
+@router.get("/{name}/wordcloud", response_model=WordCloudResponse)
 async def get_organization_wordcloud(name: str, org_service: OrganizationService = Depends(get_organization_service)):
     """
-    기관 워드클라우드 조회
+    기관별 주요 키워드(워드클라우드용) 조회
     
-    기관별 워드클라우드 데이터를 조회합니다.
-    최근 2개년의 워드클라우드 데이터를 연도별로 제공하며,
-    데이터가 없는 경우 기본 워드클라우드("죄송합니다")를 반환합니다.
-    
-    Args:
-        name (str): 조회할 기관의 이름 (예: "국회")
-        organization_service: 기관 서비스 의존성 주입
-        
-    Returns:
-        Union[WordCloudResponse, EmptyWordCloudResponse]: 
-            - WordCloudResponse: 연도별 워드클라우드 데이터
-            - EmptyWordCloudResponse: 데이터 없는 경우 기본 워드클라우드
-        
-    Raises:
-        HTTPException: 서버 내부 오류 발생 시 500 상태 코드 반환
-        
-    Example:
-        GET /api/organizations/국회/wordcloud
+    score가 높은 순으로 상위 14개 키워드를 조회하여,
+    UI 렌더링에 필요한 text, size, color, weight 정보를 함께 반환
     """
     result = await org_service.get_organization_wordcloud(name)
+    
     if isinstance(result, ErrorResponse):
-        return JSONResponse(status_code=500, content=result.model_dump())
+        # 💡 NOT_FOUND 에러도 처리할 수 있도록 분기 추가
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
     
     return result

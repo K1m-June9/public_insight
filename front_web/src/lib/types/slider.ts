@@ -10,6 +10,7 @@ export interface SliderListItem {
     preview: string;
     imageUrl: string; 
     display_order: number;
+    created_at: string;
 }
 
 export interface SliderListData {

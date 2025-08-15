@@ -31,6 +31,7 @@ class MainFeedItem(BaseSchema):
     published_date: datetime
     view_count: int
     average_rating: float
+    bookmark_count: int
 
 class MainFeedListData(BaseModel):
     """메인 페이지 피드 목록 데이터"""
@@ -59,6 +60,7 @@ class OrganizationFeedItem(BaseSchema):
     published_date: datetime
     view_count: int
     average_rating: float
+    bookmark_count: int
 
 class FeedFilter(BaseModel):
     """피드 필터 정보"""
@@ -132,6 +134,7 @@ class Top5FeedItem(BaseSchema):
     average_rating: float
     view_count: int
     bookmark_count: int
+    organization: str
 
 class Top5FeedData(BaseModel):
     """TOP5 피드 데이터"""
@@ -160,6 +163,7 @@ class PressReleaseItem(BaseSchema):
     published_date: datetime
     view_count: int
     average_rating: float
+    bookmark_count: int
 
 class PressReleaseData(BaseModel):
     """보도자료 데이터"""

@@ -15,6 +15,7 @@ class SliderListItem(BaseSchema):
     preview: str
     imageURL: str  # Base64 -> URL 방식으로 변경
     display_order: int
+    created_at: datetime
 
 class SliderListData(BaseModel):
     """슬라이더 목록 데이터"""

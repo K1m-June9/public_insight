@@ -22,6 +22,7 @@ export interface MainFeedItem {
     published_date: string;
     view_count: number;
     average_rating: number;
+    bookmark_count: number;
 }
 
 export interface MainFeedListData {
@@ -43,6 +44,7 @@ export interface OrganizationFeedItem {
     published_date: string;
     view_count: number;
     average_rating: number;
+    bookmark_count: number;
 }
 
 export interface FeedFilter {
@@ -97,6 +99,7 @@ export type OrganizationLatestFeedResponse = DataResponse<OrganizationLatestFeed
 export interface Top5FeedItem {
     id: number;
     title: string;
+    organization: string;
     average_rating: number;
     view_count: number;
     bookmark_count: number;
@@ -122,6 +125,7 @@ export interface PressReleaseItem {
     published_date: string;
     view_count: number;
     average_rating: number;
+    bookmark_count: number;
 }
 
 export interface PressReleaseData {

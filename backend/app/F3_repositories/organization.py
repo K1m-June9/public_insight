@@ -9,6 +9,8 @@ from app.F7_models.organizations import Organization
 from app.F7_models.categories import Category
 from app.F7_models.feeds import Feed
 from app.F7_models.word_clouds import WordCloud
+from app.F7_models.bookmarks import Bookmark
+from app.F7_models.ratings import Rating
 
 logger = logging.getLogger(__name__)
 
@@ -108,39 +110,93 @@ class OrganizationRepository:
         result = await self.db.execute(query)
         row = result.first()
         return row._asdict() if row else None
+    
 
-    # 기관명으로 해당 기관의 최근 2개년 워드클라우드 데이터 조회 메서드
-    # 입력: 
-    #   org_name - 조회할 기관의 이름 (str)
-    #   current_date - 현재 날짜 (date)
-    # 반환: 
-    #   기관 정보와 워드클라우드 데이터가 포함된 딕셔너리 또는 None
-    #   {"organization": {"id": int, "name": str}, "wordclouds": [{"cloud_data": list, "period_start": date, "period_end": date, "created_at": datetime}, ...]}
-    # 설명: 
-    #   주어진 기관명으로 기관을 조회하고, 현재 날짜 기준 최근 2개년의 워드클라우드 데이터를 반환
-    #   period_start의 연도를 기준으로 최근 2개년 필터링 (예: 2025년 → 2024, 2025년 데이터)
-    #   생성일 기준 내림차순 정렬하여 최신 데이터 우선 반환
-    #   존재하지 않는 기관이거나 워드클라우드 데이터가 없는 경우 None 반환
-    async def get_organization_wordclouds_by_name(self, org_name: str, current_date: date) -> List[Dict[str, Any]]:
-        current_year = current_date.year
-        target_years = [current_year, current_year - 1] #최근 2개년
+    async def get_organization_summary_by_name(self, org_name: str) -> Optional[Dict[str, Any]]:
+        """
+        특정 기관의 요약 정보와 통계를 조회
+        (기관 정보 + 총 문서 수 + 총 조회수 + 평균 별점)
         
-        query = (
-            select(
-                Organization.id.label('organization_id'),
-                Organization.name.label('organization_name'),
-                WordCloud.cloud_data,
-                WordCloud.period_start,
-                WordCloud.period_end,
-                WordCloud.created_at
+        Args:
+            org_name (str): 조회할 기관의 이름
+        
+        Returns:
+            Optional[Dict[str, Any]]: 기관 요약 정보 딕셔너리 또는 None
+        """
+        try:
+            # 1. 서브쿼리: 해당 기관에 속한 모든 피드의 평균 별점을 계산
+            #    COALESCE를 사용하여 평점이 없는 경우 0.0을 반환
+            avg_rating_subquery = (
+                select(
+                    func.coalesce(func.avg(Rating.score), 0.0).label('average_satisfaction')
+                )
+                .select_from(Feed)
+                .join(Rating, Feed.id == Rating.feed_id)
+                .join(Organization, Feed.organization_id == Organization.id)
+                .where(Organization.name == org_name, Feed.is_active == True)
+            ).scalar_subquery()
+
+            # 2. 메인 쿼리: 기관 정보와 나머지 통계를 집계
+            query = (
+                select(
+                    Organization.id,
+                    Organization.name,
+                    Organization.description,
+                    Organization.website_url,
+                    func.count(Feed.id).label('total_documents'),
+                    func.coalesce(func.sum(Feed.view_count), 0).label('total_views'),
+                    avg_rating_subquery.label('average_satisfaction')
+                )
+                .select_from(Organization)
+                .outerjoin(Feed, and_(Organization.id == Feed.organization_id, Feed.is_active == True))
+                .where(
+                    Organization.name == org_name,
+                    Organization.is_active == True
+                )
+                .group_by(
+                    Organization.id,
+                    Organization.name,
+                    Organization.description,
+                    Organization.website_url
+                )
             )
-            .select_from(Organization)
-            .join(WordCloud, Organization.id == WordCloud.organization_id)
-            .where(
-                Organization.name == org_name,
-                func.year(WordCloud.period_start).in_(target_years)
+
+            result = await self.db.execute(query)
+            row = result.first()
+
+            if not row:
+                return None
+
+            return row._asdict()
+
+        except Exception as e:
+            logger.error(f"Error getting organization summary for '{org_name}': {e}", exc_info=True)
+            # 리포지토리에서는 예외를 다시 발생시켜 서비스 레이어에서 처리할수도 있음
+            # 지금은 None을 반환하여 서비스에서 처리
+            return None
+        
+    async def get_top_keywords_by_org_name(self, org_name: str, limit: int = 14) -> List[WordCloud]:
+        """
+        특정 기관의 키워드를 score가 높은 순으로 상위 N개 조회
+        
+        Args:
+            org_name (str): 조회할 기관의 이름
+            limit (int): 조회할 최대 키워드 개수
+        
+        Returns:
+            List[WordCloud]: WordCloud(OrganizationKeyword) 모델 객체의 리스트
+        """
+        try:
+            query = (
+                select(WordCloud)
+                .join(Organization, WordCloud.organization_id == Organization.id)
+                .where(Organization.name == org_name)
+                .order_by(WordCloud.score.desc())
+                .limit(limit)
             )
-            .order_by(WordCloud.created_at.desc())
-        )
-        result = await self.db.execute(query)
-        return [row._asdict() for row in result.all()]
+            result = await self.db.execute(query)
+            # SQLAlchemy 모델 객체 자체를 반환하여 서비스 레이어에서 활용하도록 함
+            return result.scalars().all()
+        except Exception as e:
+            logger.error(f"Error getting top keywords for '{org_name}': {e}", exc_info=True)
+            return [] # 오류 발생 시 빈 리스트 반환

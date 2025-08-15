@@ -102,7 +102,8 @@ class FeedService:
                         summary=feed_data['summary'],
                         published_date=feed_data['published_date'],
                         view_count=feed_data['view_count'],
-                        average_rating=average_rating
+                        average_rating=average_rating,
+                        bookmark_count=feed_data['bookmark_count']
                     )
                     feeds_list.append(feed_item)
             
@@ -214,7 +215,8 @@ class FeedService:
                         summary=feed_data['summary'],
                         published_date=feed_data['published_date'],
                         view_count=feed_data['view_count'],
-                        average_rating=average_rating
+                        average_rating=average_rating,
+                        bookmark_count=feed_data['bookmark_count']
                     )
                     feeds_list.append(feed_item)
             
@@ -446,6 +448,7 @@ class FeedService:
                 feed_item = Top5FeedItem(
                     id=feed['id'],
                     title=feed['title'],
+                    organization=feed['organization_name'], 
                     average_rating=feed['average_rating'] if feed['average_rating'] is not None else 0.0,
                     view_count=feed['view_count'],
                     bookmark_count=feed['bookmark_count']
@@ -458,6 +461,7 @@ class FeedService:
                 feed_item = Top5FeedItem(
                     id=feed['id'],
                     title=feed['title'],
+                    organization=feed['organization_name'], 
                     average_rating=feed['average_rating'],  # 별점 기준이므로 항상 값 존재
                     view_count=feed['view_count'],
                     bookmark_count=feed['bookmark_count']
@@ -470,6 +474,7 @@ class FeedService:
                 feed_item = Top5FeedItem(
                     id=feed['id'],
                     title=feed['title'],
+                    organization=feed['organization_name'], 
                     average_rating=feed['average_rating'] if feed['average_rating'] is not None else 0.0,
                     view_count=feed['view_count'],
                     bookmark_count=feed['bookmark_count']
@@ -554,7 +559,8 @@ class FeedService:
                     summary=press_release['summary'],
                     published_date=press_release['published_date'],
                     view_count=press_release['view_count'],
-                    average_rating=press_release['average_rating']  # Repository에서 0.0 처리됨
+                    average_rating=press_release['average_rating'],  # Repository에서 0.0 처리됨
+                    bookmark_count=press_release['bookmark_count']
                 )
                 press_release_items.append(press_item)
             

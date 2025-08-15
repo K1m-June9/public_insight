@@ -4,6 +4,7 @@ import {
     getOrganizationCategoriesForChart,
     getOrganizationWordCloud,
     getOrganizationIcon,
+    getOrganizationSummary
 } from '@/services/organizationService';
 
 // 기관 관련 쿼리 키를 관리하는 객체
@@ -16,6 +17,7 @@ export const organizationQueryKeys = {
   categories: (name: string) => [...organizationQueryKeys.detail(name), 'categories'] as const,
   wordcloud: (name: string) => [...organizationQueryKeys.detail(name), 'wordcloud'] as const,
   icon: (name: string) => [...organizationQueryKeys.detail(name), 'icon'] as const,
+  summary: (name: string) => [...organizationQueryKeys.detail(name), 'summary'] as const,
 };
 
 /**
@@ -78,4 +80,21 @@ export const useOrganizationIconQuery = (name: string, options?: { enabled?: boo
       enabled: options?.enabled ?? !!name,
       staleTime: Infinity, // 아이콘은 절대 변하지 않는다고 가정하고, 캐시를 영구적으로 유지(나중에 API 호출 방식에서 변경하면 이거도 다시 바꿀 예정)
     });
+};
+
+/**
+ * 특정 기관의 요약 정보를 조회하는 useQuery 훅
+ * 
+ * @param name - 조회할 기관의 이름
+ * @param options - useQuery에 전달할 추가 옵션 (예: enabled)
+ * @returns {data, isLoading, ...}
+ */
+export const useOrganizationSummaryQuery = (name: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: organizationQueryKeys.summary(name),
+    queryFn: () => getOrganizationSummary(name),
+    enabled: options?.enabled ?? !!name,
+    // 기관 요약 정보는 자주 바뀌지 않으므로 staleTime을 길게 설정
+    staleTime: 1000 * 60 * 10, // 10분
+  });
 };

@@ -114,50 +114,43 @@ class OrganizationRepository:
 
     async def get_organization_summary_by_name(self, org_name: str) -> Optional[Dict[str, Any]]:
         """
-        특정 기관의 요약 정보와 통계를 조회
-        (기관 정보 + 총 문서 수 + 총 조회수 + 평균 별점)
-        
-        Args:
-            org_name (str): 조회할 기관의 이름
-        
-        Returns:
-            Optional[Dict[str, Any]]: 기관 요약 정보 딕셔너리 또는 None
+        특정 기관의 요약 정보와 통계를 조회 (안정성 개선 버전)
         """
         try:
-            # 1. 서브쿼리: 해당 기관에 속한 모든 피드의 평균 별점을 계산
-            #    COALESCE를 사용하여 평점이 없는 경우 0.0을 반환
-            avg_rating_subquery = (
+            # 1. 서브쿼리: 기관별로 활성화된 피드의 통계를 미리 계산
+            feed_stats_subquery = (
                 select(
-                    func.coalesce(func.avg(Rating.score), 0.0).label('average_satisfaction')
+                    Feed.organization_id,
+                    func.count(Feed.id).label("total_documents"),
+                    func.coalesce(func.sum(Feed.view_count), 0).label("total_views"),
+                    func.coalesce(func.avg(Rating.score), 0.0).label("average_satisfaction")
                 )
                 .select_from(Feed)
-                .join(Rating, Feed.id == Rating.feed_id)
-                .join(Organization, Feed.organization_id == Organization.id)
-                .where(Organization.name == org_name, Feed.is_active == True)
-            ).scalar_subquery()
+                .outerjoin(Rating, Feed.id == Rating.feed_id)
+                .where(Feed.is_active == True)
+                .group_by(Feed.organization_id)
+            ).subquery()
 
-            # 2. 메인 쿼리: 기관 정보와 나머지 통계를 집계
+            # 2. 메인 쿼리: Organization 테이블을 기준으로, 위에서 만든 통계 서브쿼리를 LEFT JOIN
             query = (
                 select(
                     Organization.id,
                     Organization.name,
                     Organization.description,
                     Organization.website_url,
-                    func.count(Feed.id).label('total_documents'),
-                    func.coalesce(func.sum(Feed.view_count), 0).label('total_views'),
-                    avg_rating_subquery.label('average_satisfaction')
+                    # 통계 서브쿼리의 결과를 COALESCE로 한번 더 감싸서, 피드가 아예 없는 기관도 0으로 처리
+                    func.coalesce(feed_stats_subquery.c.total_documents, 0).label("total_documents"),
+                    func.coalesce(feed_stats_subquery.c.total_views, 0).label("total_views"),
+                    func.coalesce(feed_stats_subquery.c.average_satisfaction, 0.0).label("average_satisfaction")
                 )
                 .select_from(Organization)
-                .outerjoin(Feed, and_(Organization.id == Feed.organization_id, Feed.is_active == True))
-                .where(
-                    Organization.name == org_name,
-                    Organization.is_active == True
+                .outerjoin(
+                    feed_stats_subquery,
+                    Organization.id == feed_stats_subquery.c.organization_id
                 )
-                .group_by(
-                    Organization.id,
-                    Organization.name,
-                    Organization.description,
-                    Organization.website_url
+                .where(
+                    Organization.name == org_name
+                    #Organization.is_active == True
                 )
             )
 
@@ -171,8 +164,6 @@ class OrganizationRepository:
 
         except Exception as e:
             logger.error(f"Error getting organization summary for '{org_name}': {e}", exc_info=True)
-            # 리포지토리에서는 예외를 다시 발생시켜 서비스 레이어에서 처리할수도 있음
-            # 지금은 None을 반환하여 서비스에서 처리
             return None
         
     async def get_top_keywords_by_org_name(self, org_name: str, limit: int = 14) -> List[WordCloud]:

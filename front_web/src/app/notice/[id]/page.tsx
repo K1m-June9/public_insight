@@ -25,13 +25,20 @@ export default function NoticeDetailPage() {
     if (isLoading) {
       // 로딩 스켈레톤 UI
       return (
-        <div className="max-w-4xl mx-auto animate-pulse">
-          <div className="h-8 w-24 bg-gray-200 rounded-md mb-8"></div>
-          <div className="space-y-4 mb-6">
-            <div className="h-10 w-3/4 bg-gray-200 rounded-md"></div>
-            <div className="h-6 w-1/2 bg-gray-200 rounded-md"></div>
+        // 스켈레톤 UI (Figma 디자인 구조에 맞게 수정)
+        <div className="animate-pulse">
+          <div className="border-b border-border bg-card">
+            <div className="max-w-4xl mx-auto px-4 py-6">
+              <div className="h-8 w-24 bg-gray-200 rounded-md mb-6"></div>
+              <div className="space-y-3">
+                <div className="h-8 w-3/4 bg-gray-200 rounded-md"></div>
+                <div className="h-5 w-1/2 bg-gray-200 rounded-md"></div>
+              </div>
+            </div>
           </div>
-          <div className="bg-gray-200 h-96 rounded-lg"></div>
+          <main className="max-w-4xl mx-auto px-4 py-8">
+            <div className="bg-gray-200 h-96 rounded-lg"></div>
+          </main>
         </div>
       );
     }
@@ -48,34 +55,47 @@ export default function NoticeDetailPage() {
 
     // 실제 콘텐츠 UI
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center mb-6">
-          <Button variant="ghost" size="sm" onClick={goBack} className="flex items-center space-x-2 text-muted-foreground">
-            <ArrowLeft className="w-4 h-4" />
-            <span>목록으로</span>
-          </Button>
-        </div>
-        <div className="space-y-4 mb-8">
-          <h1 className="text-3xl font-bold leading-tight text-foreground">{notice.title}</h1>
-          <div className="flex items-center space-x-6 text-sm text-muted-foreground">
-            <div className="flex items-center space-x-2"><User className="w-4 h-4" /><span>{notice.author}</span></div>
-            <div className="flex items-center space-x-2"><Calendar className="w-4 h-4" /><span>{formatDate(notice.created_at)}</span></div>
+      <div>
+        {/* 헤더 영역 */}
+        <div className="border-b border-border bg-card">
+          <div className="max-w-4xl mx-auto px-4 py-6">
+            <div className="flex items-center mb-6">
+              <Button variant="ghost" size="sm" onClick={goBack} className="flex items-center space-x-2 text-muted-foreground">
+                <ArrowLeft className="w-4 h-4" />
+                <span>목록으로</span>
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <h1 className="text-2xl leading-tight text-foreground">{notice.title}</h1>
+              <div className="flex items-center space-x-6 text-sm text-muted-foreground">
+                <div className="flex items-center space-x-2"><User className="w-4 h-4" /><span>{notice.author}</span></div>
+                <div className="flex items-center space-x-2"><Calendar className="w-4 h-4" /><span>{formatDate(notice.created_at)}</span></div>
+              </div>
+            </div>
           </div>
         </div>
-        <Card>
-          <CardContent className="p-8">
-            {/* 평문 텍스트 + 줄바꿈 유지 방식 */}
-            <div className="prose max-w-none">
-              <p className="whitespace-pre-wrap">{notice.content}</p>
-            </div>
-          </CardContent>
-        </Card>
+
+        {/* 메인 콘텐츠 영역 */}
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="p-8">
+              {/* --- 💡 2단계: 문단 구분을 위해 콘텐츠 렌더링 방식을 개선합니다. --- */}
+              <div className="prose max-w-none">
+                {notice.content.split('\n\n').map((paragraph, index) => (
+                  <p key={index} className="mb-6 leading-relaxed text-foreground">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   };
   
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-grow">
         <div className="container px-4 py-8 md:px-6">

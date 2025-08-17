@@ -43,47 +43,53 @@ function FeedCard({ feed }: { feed: OrganizationFeedItem }) {
       </div>
     );
   };
-
-  return (
-    <Card className="group hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-3">
-          <Badge variant="secondary">{feed.category.name}</Badge>
-          <div className="flex items-center text-xs text-muted-foreground gap-1">
-            <Clock className="h-3 w-3" />
-            <span>{formatDate(feed.published_date)}</span>
-          </div>
+    return (
+    // Card 대신 article 태그와 group 클래스를 사용하여 feed-list.tsx와 동일한 구조를 만듭니다.
+    <article className="group p-6 rounded-lg border bg-card border-border hover:border-primary/30 hover:shadow-lg hover:translate-x-1 transition-all duration-300 cursor-pointer">
+      <div className="flex items-start justify-between mb-4">
+        <Badge variant="secondary">{feed.category.name}</Badge>
+        <div className="flex items-center text-xs text-muted-foreground">
+          <Clock className="w-3 h-3 mr-1" />
+          {formatDate(feed.published_date)}
+        </div>
+      </div>
+      
+      <div className="flex items-start space-x-4">
+        <div className="flex-1 min-w-0">
+          <Link href={`/feed/${feed.id}`} className="block">
+            <h3 className="mb-3 leading-tight text-foreground group-hover:text-primary transition-colors duration-300 line-clamp-2">
+              {feed.title}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed line-clamp-2">
+              {feed.summary}
+            </p>
+          </Link>
         </div>
         
-        <div className="flex items-start space-x-4">
-          <div className="flex-1 min-w-0">
-            <Link href={`/feed/${feed.id}`} className="block">
-              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-2 line-clamp-2 leading-snug">{feed.title}</h3>
-              <p className="text-sm text-muted-foreground mb-4 leading-relaxed line-clamp-2">{feed.summary}</p>
-            </Link>
-            <div className="flex items-center justify-end">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                  <Eye className="w-3 h-3" /><span>{formatNumber(feed.view_count)}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  {renderStars(feed.average_rating)}
-                  <span className="text-xs text-muted-foreground ml-1">{feed.average_rating.toFixed(1)}</span>
-                </div>
-                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                  <Bookmark className="w-3 h-3" /><span>{feed.bookmark_count}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex-shrink-0 mt-1">
-            <Link href={`/feed/${feed.id}`}><ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" /></Link>
-          </div>
+        <Link href={`/feed/${feed.id}`} className="flex-shrink-0 mt-1" target="_blank" rel="noopener noreferrer">
+          <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
+        </Link>
+      </div>
+
+      <div className="flex items-center justify-end space-x-4">
+        <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+          <Eye className="w-3 h-3" />
+          <span>{formatNumber(feed.view_count)}</span>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
+        <div className="flex items-center space-x-1">
+          {renderStars(feed.average_rating)}
+          <span className="text-xs text-muted-foreground ml-1">
+            {feed.average_rating.toFixed(1)}
+          </span>
+        </div>
+        <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+          <Bookmark className="w-3 h-3" />
+          <span>{feed.bookmark_count}</span>
+        </div>
+      </div>
+    </article>
+    );
+  };
 
 // 2. 메인 목록 및 페이지네이션 컨테이너
 interface OrganizationFeedListProps {
@@ -98,7 +104,7 @@ export default function OrganizationFeedList({ organizationName, selectedCategor
 
   const { data, isLoading, isError } = useOrganizationFeedsQuery(organizationName, {
     page: currentPage,
-    limit: 10,
+    limit: 6,
     category_id: selectedCategoryId || undefined,
   });
 
@@ -110,6 +116,32 @@ export default function OrganizationFeedList({ organizationName, selectedCategor
     current.set('page', String(page));
     router.push(`?${current.toString()}`);
   };
+
+  // feed-list.tsx와 동일한 페이지네이션 헬퍼 함수
+  const getPageNumbers = () => {
+    if (!pagination) return [];
+    const totalPages = pagination.total_pages;
+    const maxPagesToShow = 5;
+    const pages = [];
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+      if (currentPage < 3) {
+        startPage = 1;
+        endPage = 5;
+      } else if (currentPage > totalPages - 2) {
+        startPage = totalPages - 4;
+        endPage = totalPages;
+      }
+      for (let i = startPage; i <= endPage; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
   
   if (isLoading) {
     return (
@@ -141,8 +173,8 @@ export default function OrganizationFeedList({ organizationName, selectedCategor
             <PaginationContent>
               <PaginationItem><PaginationPrevious onClick={() => handlePageChange(Math.max(1, currentPage - 1))} className={!pagination.has_previous ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
               
-              {/* 페이지 번호 렌더링 */}
-              {Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map((page) => (
+              {/* 페이지 번호 렌더링 부분을 수정된 로직으로 교체 */}
+              {pageNumbers.map((page) => (
                 <PaginationItem key={page}><PaginationLink onClick={() => handlePageChange(page)} isActive={currentPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
               ))}
               

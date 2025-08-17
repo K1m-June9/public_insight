@@ -63,11 +63,9 @@ export default function OrganizationHeader({ organizationName }: OrganizationHea
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2">
-            <div className="flex items-start space-x-4">
-              {/* lucide-react 아이콘을 사용합니다. */}
-              <div className="bg-accent p-3 rounded-lg">
-                <Building className="w-6 h-6 text-primary" />
-              </div>
+            <div className="flex items-center space-x-4">
+              {/* 아이콘 주변 배경 제거 및 크기 조정 */}
+              <Building className="w-8 h-8 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">{summary.name}</h1>
                 <p className="text-muted-foreground mt-1">{summary.description}</p>
@@ -78,15 +76,15 @@ export default function OrganizationHeader({ organizationName }: OrganizationHea
           <div className="lg:col-span-1">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-4 bg-accent/50 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">{formatNumber(summary.stats.documents)}</div>
+                <div className="text-lg text-primary mb-1">{formatNumber(summary.stats.documents)}</div>
                 <div className="text-xs text-muted-foreground">공개문서</div>
               </div>
               <div className="text-center p-4 bg-accent/50 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">{formatNumber(summary.stats.views)}</div>
+                <div className="text-lg text-primary mb-1">{formatNumber(summary.stats.views)}</div>
                 <div className="text-xs text-muted-foreground">총 조회수</div>
               </div>
               <div className="text-center p-4 bg-accent/50 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">{summary.stats.satisfaction.toFixed(1)}</div>
+                <div className="text-lg text-primary mb-1">{summary.stats.satisfaction.toFixed(1)}</div>
                 <div className="text-xs text-muted-foreground">만족도</div>
               </div>
             </div>

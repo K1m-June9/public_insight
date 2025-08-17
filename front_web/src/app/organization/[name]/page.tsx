@@ -27,7 +27,7 @@ export default function OrganizationPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
       
       {/* 기관 헤더 컴포넌트 */}

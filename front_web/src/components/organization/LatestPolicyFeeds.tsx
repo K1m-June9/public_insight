@@ -37,18 +37,17 @@ export default function LatestPolicyFeeds({ organizationName }: LatestPolicyFeed
   }
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader>
+    <Card className="shadow-sm hover:shadow-md transition-shadow p-6">
+      <CardHeader className="p-0 mb-0">
         <div className="flex items-center space-x-2">
           <FileText className="w-5 h-5 text-primary" />
-          <CardTitle className="text-base font-semibold">최신 정책자료</CardTitle>
+          <CardTitle className="text-primary text-lg font-medium">최신 정책자료</CardTitle>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <div className="space-y-4">
           {feeds.length > 0 ? (
             feeds.map((feed) => (
-              // 2. 각 아이템을 Link 컴포넌트로 감싸서 클릭 시 이동하도록 구현
               <Link
                 href={`/feed/${feed.id}`}
                 key={feed.id}

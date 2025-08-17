@@ -10,6 +10,7 @@ asgiref==3.5.0
 async-timeout==5.0.1
 asyncmy==0.2.10
 attrs==21.2.0
+apscheduler==3.10.4
 Automat==20.2.0
 Babel==2.8.0
 bcrypt==3.2.0

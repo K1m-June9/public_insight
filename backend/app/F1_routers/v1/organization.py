@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 from app.F2_services.organization import OrganizationService
 from app.F5_core.dependencies import get_organization_service
 from app.F6_schemas.organization import OrganizationListResponse, OrganizationCategoryResponse, OrganizationIconResponse, WordCloudResponse, OrganizationSummaryResponse
-# EmptyWordCloudResponse
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 
 logger = logging.getLogger(__name__)

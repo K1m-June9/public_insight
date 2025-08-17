@@ -14,6 +14,7 @@ import uvicorn
 
 # --- 설정 및 초기화 관련 모듈을 먼저 import ---
 from app.F5_core.config import settings 
+from app.F10_tasks.scheduler import setup_scheduler, scheduler
 from app.F11_search.es_initializer import initialize_elasticsearch
 from app.F11_search.ES1_client import es_async, es_sync
 from app.F8_database.connection import engine, Base 
@@ -128,6 +129,12 @@ async def app_lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Async Elasticsearch ping failed on startup: {e}")
     
+
+    # 스케줄러 설정 및 시작
+    setup_scheduler()
+    scheduler.start()
+    logger.info("APScheduler has been started.")
+
     yield
     # 종료 시 추가 로직 필요하면 작성
 
@@ -136,6 +143,11 @@ async def app_lifespan(app: FastAPI):
     # await client_redis.close()
     # await email_redis.close()
     # await token_redis.close()
+
+    # 스케줄러 안전하게 종료
+    if scheduler.running:
+        scheduler.shutdown()
+        logger.info("APScheduler has been shut down.")
 
     # 비동기 Elasticsearch 클라이언트 연결 종료
     if es_async:

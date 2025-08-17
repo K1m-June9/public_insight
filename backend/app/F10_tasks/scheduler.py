@@ -1,0 +1,46 @@
+import logging 
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from app.F8_database.connection import AsyncSessionLocal
+from app.F3_repositories.refresh_token import RefreshTokenRepository
+
+logger = logging.getLogger(__name__)
+
+# 스케줄러 인스턴스를 전역으로 생성
+scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
+
+# ----- refresh_token 관련 -----
+async def cleanup_tokens_task():
+    """
+    데이터베이스에서 만료된 refresh_token을 주기적으로 자동 삭제하는 스케줄링 작업
+    """
+    logger.info("Scheduler task 'delete_expired_tokens_task' started.")
+    try:
+        async with AsyncSessionLocal() as db:
+            repo = RefreshTokenRepository(db)
+            deleted_count = await repo.delete_expired_and_revoked_tokens()
+            if deleted_count > 0:
+                logger.info(f"[Scheduler] Deleted {deleted_count} expired refresh tokens.")
+            else:
+                logger.info("[Scheduler] No expired refresh tokens to delete.")
+    except Exception as e:
+        logger.error(f"Error in scheduled task 'delete_expired_tokens_task': {e}", exc_info=True)
+
+def setup_scheduler():
+    """
+    스케줄러에 작업을 추가하고 시작 준비
+    """
+    # 매 1시간마다 delete_expired_tokens_task 작업을 실행하도록 추가
+
+    scheduler.add_job(
+        cleanup_tokens_task,
+        'interval',
+        hours=1,
+        id="delete_expired_tokens_job",
+        name="Cleanup expired and revoked refresh tokens every hour"
+    )
+    logger.info("Scheduler job 'delete_expired_tokens_task' has been added.")
+
+
+# ----------------------------------------------

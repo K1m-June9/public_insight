@@ -1,3 +1,39 @@
+from sqlalchemy import select, update, delete, or_
+from sqlalchemy.ext.asyncio import AsyncSession 
+from datetime import datetime
+from typing import Optional, List 
+
+import logging 
+
+from app.F7_models.refresh_token import RefreshToken
+
+security_logger = logging.getLogger("app.security")
+
+class RefreshTokenRepository:
+    """
+    Refresh Token 관련 DB 작업을 담당하는 리포지토리 클래스
+    """
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    async def delete_expired_and_revoked_tokens(self) -> int:
+        """
+        [스케줄러가 사용할 메서드]
+        만료되었거나 또는 무효화된 모든 리프레시 토큰을 삭제
+        삭제된 행의 개수를 반환
+        """
+
+        stmt = delete(RefreshToken).where(
+            or_(
+                RefreshToken.expires_at < datetime.utcnow(),
+                RefreshToken.revoked == True
+            )
+        )
+        result = await self.db.execute(stmt)
+
+        await self.db.commit()
+        return result.rowcount
+
 # from sqlalchemy import select, update, delete
 # from sqlalchemy.ext.asyncio import AsyncSession
 # from datetime import datetime

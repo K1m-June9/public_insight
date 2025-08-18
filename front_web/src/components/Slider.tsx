@@ -64,7 +64,7 @@ export function Slider({ slides = [] }: SliderProps) {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 text-white">
-                <h2 className="text-xl font-semibold leading-tight">{slide.title}</h2>
+                <h2 className="text-xl text-white leading-tight">{slide.title}</h2>
               </div>
             </Link>
 

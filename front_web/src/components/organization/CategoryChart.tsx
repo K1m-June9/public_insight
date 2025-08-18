@@ -36,22 +36,24 @@ export default function CategoryChart({ organizationName, selectedCategoryId, on
   }
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader>
+    // --- 💡 수정된 부분 1: Card의 기본 패딩을 p-6으로 늘립니다. ---
+    <Card className="shadow-sm hover:shadow-md transition-shadow p-6">
+      {/* --- 💡 수정된 부분 2: CardHeader의 패딩을 없애고 제목 아래 마진을 추가합니다. --- */}
+      <CardHeader className="p-0 mb-0">
         <div className="flex items-center space-x-2">
           <BarChart3 className="w-5 h-5 text-primary" />
-          <CardTitle className="text-base font-semibold">분야별 문서 현황</CardTitle>
+          {/* --- 💡 수정된 부분 3: CardTitle의 스타일을 다른 컴포넌트와 통일합니다. --- */}
+          <CardTitle className="text-primary text-lg font-medium">분야별 문서 현황</CardTitle>
         </div>
       </CardHeader>
-      <CardContent>
+      {/* --- 💡 수정된 부분 4: CardContent의 패딩을 제거하여 이중 여백을 방지합니다. --- */}
+      <CardContent className="p-0">
         <div className="space-y-3">
           {categories.map((category) => (
-            // 1. 각 항목을 button으로 감싸서 클릭 이벤트 처리
             <button
               key={category.id}
               onClick={() => onCategorySelect(category.id)}
-              disabled={category.name === "기타"} // "기타" 항목은 클릭 비활성화
-              // 2. cn 유틸리티로 조건부 클래스 적용 (선택됨, 호버 효과)
+              disabled={category.name === "기타"}
               className={cn(
                 "w-full flex items-center justify-between text-sm p-3 rounded-lg transition-colors text-left",
                 category.name !== "기타" && "hover:bg-accent cursor-pointer",
@@ -62,9 +64,9 @@ export default function CategoryChart({ organizationName, selectedCategoryId, on
                 {category.name}
               </span>
               <div className="flex items-center space-x-4">
-                <span className="text-muted-foreground">{category.percentage}%</span>
-                {/* 3. API로 받아온 feed_count 표시 */}
-                <span className="text-xs text-muted-foreground w-12 text-right">{category.feed_count}건</span>
+                <span className="text-muted-foreground">{Number(category.percentage).toFixed(1)}%</span>
+                {/* --- 💡 수정된 부분 5: 고정 너비(w-12)를 제거하여 자연스러운 정렬을 유도합니다. --- */}
+                <span className="text-xs text-muted-foreground text-right">{category.feed_count}건</span>
               </div>
             </button>
           ))}

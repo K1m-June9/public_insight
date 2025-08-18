@@ -1,144 +1,95 @@
+/* 파일 위치: app/globals.css */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@custom-variant dark (&:is(.dark *));
-
-@layer base{
+ 
+@layer base {
   :root {
+    --background: 0 0% 100%; /* #ffffff */
+    --foreground: 222 47% 11%; /* #1e293b */
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 222 47% 11%; /* #1e293b */
+    --popover: 0 0% 100%; /* #ffffff */
+    --popover-foreground: 222 47% 11%; /* #1e293b */
+    --primary: 226 70% 39%; /* #1e40af */
+    --primary-foreground: 0 0% 100%; /* #ffffff */
+    --secondary: 225 100% 94%; /* #e0e7ff */
+    --secondary-foreground: 226 70% 39%; /* #1e40af */
+    --muted: 240 20% 96%; /* #f1f5f9 */
+    --muted-foreground: 225 16% 47%; /* #64748b */
+    --accent: 225 95% 91%; /* #dbeafe */
+    --accent-foreground: 226 70% 39%; /* #1e40af */
+    --destructive: 0 72% 51%; /* #dc2626 */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
+    --border: 220 13% 91%; /* #e2e8f0 */
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%; /* #3b82f6 */
+    --radius: 0.625rem;
+    
+    /* --- Figma 디자인 변수 (HSL 포맷으로 변환) --- */
     --font-size: 14px;
-    --background: #ffffff;
-    --foreground: #1e293b;
-    --card: #ffffff;
-    --card-foreground: #1e293b;
-    --popover: #ffffff;
-    --popover-foreground: #1e293b;
-    --primary: #1e40af;
-    --primary-foreground: #ffffff;
-    --secondary: #e0e7ff;
-    --secondary-foreground: #1e40af;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
-    --accent: #dbeafe;
-    --accent-foreground: #1e40af;
-    --destructive: #dc2626;
-    --destructive-foreground: #ffffff;
-    --border: #e2e8f0;
-    --input: transparent;
-    --input-background: #f8fafc;
-    --switch-background: #cbd5e1;
+    --input-background: 210 40% 98%;      /* #f8fafc */
+    --switch-background: 220 26% 84%;     /* #cbd5e1 */
     --font-weight-medium: 500;
     --font-weight-normal: 400;
-    --ring: #3b82f6;
-    --chart-1: #3b82f6;
-    --chart-2: #1d4ed8;
-    --chart-3: #6366f1;
-    --chart-4: #8b5cf6;
-    --chart-5: #06b6d4;
-    --radius: 0.625rem;
-    --sidebar: #f8fafc;
-    --sidebar-foreground: #1e293b;
-    --sidebar-primary: #1e40af;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #e0e7ff;
-    --sidebar-accent-foreground: #1e40af;
-    --sidebar-border: #e2e8f0;
-    --sidebar-ring: #3b82f6;
+    --chart-1: 217 91% 60%;               /* #3b82f6 */
+    --chart-2: 224 76% 48%;               /* #1d4ed8 */
+    --chart-3: 239 84% 67%;               /* #6366f1 */
+    --chart-4: 258 90% 66%;               /* #8b5cf6 */
+    --chart-5: 188 95% 43%;               /* #06b6d4 */
+    --sidebar: 210 40% 98%;               /* #f8fafc */
+    --sidebar-foreground: 222 47% 11%;    /* #1e293b */
+    --sidebar-primary: 226 70% 39%;       /* #1e40af */
+    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-accent: 225 100% 94%;       /* #e0e7ff */
+    --sidebar-accent-foreground: 226 70% 39%; /* #1e40af */
+    --sidebar-border: 220 13% 91%;        /* #e2e8f0 */
+    --sidebar-ring: 217 91% 60%;          /* #3b82f6 */
+  }
+ 
+  .dark {
+    --background: 224 39% 11%; /* #0f172a */
+    --foreground: 240 20% 96%; /* #f1f5f9 */
+    --card: 222 47% 11%; /* #1e293b */
+    --card-foreground: 240 20% 96%; /* #f1f5f9 */
+    --popover: 222 47% 11%; /* #1e293b */
+    --popover-foreground: 240 20% 96%; /* #f1f5f9 */
+    --primary: 217 91% 60%; /* #3b82f6 */
+    --primary-foreground: 224 39% 11%; /* #0f172a */
+    --secondary: 215 28% 27%; /* #334155 */
+    --secondary-foreground: 240 20% 96%; /* #f1f5f9 */
+    --muted: 215 28% 27%; /* #334155 */
+    --muted-foreground: 218 19% 65%; /* #94a3b8 */
+    --accent: 215 28% 27%; /* #334155 */
+    --accent-foreground: 240 20% 96%; /* #f1f5f9 */
+    --destructive: 0 84% 60%; /* #ef4444 */
+    --destructive-foreground: 224 39% 11%; /* #0f172a */
+    --border: 215 28% 27%; /* #334155 */
+    --input: 215 28% 27%; /* #334155 */
+    --ring: 217 91% 60%; /* #3b82f6 */
+
+    /* --- Figma 디자인 변수 (HSL 포맷으로 변환, dark mode) --- */
+    --input-background: 215 28% 27%;     /* #334155 */ /* .dark에서는 input과 동일하게 설정됨 */
+    --switch-background: 215 28% 27%;     /* #334155 */ /* Figma CSS에는 없어서 muted 색상으로 대체 */
+    --font-weight-medium: 500;
+    --font-weight-normal: 400;
+    --chart-1: 212 94% 67%;               /* #60a5fa */
+    --chart-2: 217 91% 60%;               /* #3b82f6 */
+    --chart-3: 236 91% 74%;               /* #818cf8 */
+    --chart-4: 256 92% 76%;               /* #a78bfa */
+    --chart-5: 186 85% 53%;               /* #22d3ee */
+    --sidebar: 222 47% 11%;               /* #1e293b */
+    --sidebar-foreground: 240 20% 96%;    /* #f1f5f9 */
+    --sidebar-primary: 217 91% 60%;       /* #3b82f6 */
+    --sidebar-primary-foreground: 224 39% 11%; /* #0f172a */
+    --sidebar-accent: 215 28% 27%;        /* #334155 */
+    --sidebar-accent-foreground: 240 20% 96%; /* #f1f5f9 */
+    --sidebar-border: 215 28% 27%;        /* #334155 */
+    --sidebar-ring: 217 91% 60%;          /* #3b82f6 */
   }
 }
-
-.dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --card: #1e293b;
-  --card-foreground: #f1f5f9;
-  --popover: #1e293b;
-  --popover-foreground: #f1f5f9;
-  --primary: #3b82f6;
-  --primary-foreground: #0f172a;
-  --secondary: #334155;
-  --secondary-foreground: #f1f5f9;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #334155;
-  --accent-foreground: #f1f5f9;
-  --destructive: #ef4444;
-  --destructive-foreground: #0f172a;
-  --border: #334155;
-  --input: #334155;
-  --ring: #3b82f6;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: #60a5fa;
-  --chart-2: #3b82f6;
-  --chart-3: #818cf8;
-  --chart-4: #a78bfa;
-  --chart-5: #22d3ee;
-  --sidebar: #1e293b;
-  --sidebar-foreground: #f1f5f9;
-  --sidebar-primary: #3b82f6;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: #334155;
-  --sidebar-accent-foreground: #f1f5f9;
-  --sidebar-border: #334155;
-  --sidebar-ring: #3b82f6;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-input-background: var(--input-background);
-  --color-switch-background: var(--switch-background);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
-@layer base {
-  * {
-    /* 💡 v3 방식인 @apply 대신, 표준 CSS를 사용 */
-    border-color: var(--border);
-  }
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
-  }
-}
-
-/**
- * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
- */
+ 
 @layer base {
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
     h1 {
@@ -188,6 +139,15 @@
       font-weight: var(--font-weight-normal);
       line-height: 1.5;
     }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }
 

@@ -23,7 +23,7 @@ export function Notices({ data }: NoticesProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Bell className="w-5 h-5 text-primary" />
-            <CardTitle className="text-base font-semibold">공지사항</CardTitle>
+            <CardTitle className="text-primary">공지사항</CardTitle>
           </div>
           <Button asChild variant="outline" size="sm">
             <Link href="/notice">전체보기</Link>
@@ -40,7 +40,7 @@ export function Notices({ data }: NoticesProps) {
             >
               <div className="flex-1 min-w-0">
                 {/* 첫 번째 공지사항(가장 중요한)에만 다른 스타일 적용 */}
-                <h4 className="text-sm text-foreground group-hover:text-primary group-hover:font-semibold transition-colors truncate mb-1">
+                <h4 className="text-sm text-foreground group-hover:text-primary transition-colors truncate mb-1">
                   {notice.title}
                 </h4>
                 <p className="text-xs text-muted-foreground">

@@ -37,19 +37,17 @@ export default function OrganizationWordCloud({ organizationName }: Organization
   }
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader>
+    <Card className="shadow-sm hover:shadow-md transition-shadow p-6">
+      <CardHeader className="p-0 mb-0">
         <div className="flex items-center space-x-2">
           <Cloud className="w-5 h-5 text-primary" />
-          <CardTitle className="text-base font-semibold">주요 키워드</CardTitle>
+          <CardTitle className="text-primary text-lg font-medium">주요 키워드</CardTitle>
         </div>
       </CardHeader>
-      <CardContent>
-        {/* 2. 키워드 유무에 따라 다른 UI를 렌더링합니다. */}
+      <CardContent className="p-0">
         {keywords.length > 0 ? (
-          <div className="relative h-64 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 overflow-hidden">
+          <div className="relative h-64 flex flex-wrap items-center justify-center gap-2 overflow-hidden">
             {keywords.map((word) => (
-              // 3. API에서 받은 size, color, weight를 style에 직접 적용합니다.
               <span
                 key={word.text}
                 className="inline-block transition-all duration-300 hover:scale-110 cursor-pointer"

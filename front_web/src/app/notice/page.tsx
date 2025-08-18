@@ -1,5 +1,3 @@
-// 파일 위치: app/notice/page.tsx
-
 "use client";
 
 import React from "react";
@@ -18,14 +16,12 @@ export default function NoticeListPage() {
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get('page')) || 1;
 
-  // 1. '더보기' 로직 대신, URL의 페이지 번호를 직접 사용합니다.
   const { data: noticeData, isLoading, isError } = useNoticesQuery({ page: currentPage, limit: 6 });
 
   const notices = noticeData?.data.notices || [];
   const pagination = noticeData?.data.pagination;
 
   const handlePageChange = (page: number) => {
-    // 2. 페이지 변경 시 URL 쿼리 파라미터를 업데이트합니다.
     const current = new URLSearchParams(Array.from(searchParams.entries()));
     current.set('page', String(page));
     router.push(`/notice?${current.toString()}`);
@@ -33,8 +29,33 @@ export default function NoticeListPage() {
 
   const goBack = () => router.back();
 
+  const getPageNumbers = () => {
+    if (!pagination) return [];
+    const totalPages = pagination.total_pages;
+    const maxPagesToShow = 5;
+    const pages = [];
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+      if (currentPage < 3) {
+        startPage = 1;
+        endPage = 5;
+      } else if (currentPage > totalPages - 2) {
+        startPage = totalPages - 4;
+        endPage = totalPages;
+      }
+      for (let i = startPage; i <= endPage; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-grow">
         {/* 헤더 섹션 */}
@@ -52,7 +73,6 @@ export default function NoticeListPage() {
         <div className="container max-w-4xl mx-auto px-4 py-8">
             <div className="flex items-center justify-between mb-6">
                 <div className="text-sm text-muted-foreground">
-                    {/* 3. pagination.total_count를 사용하여 총 개수를 표시 */}
                     총 {pagination?.total_count || 0}개의 공지사항
                 </div>
             </div>
@@ -62,16 +82,19 @@ export default function NoticeListPage() {
             : (
                 <div className="space-y-4 mb-8">
                     {notices.map((notice) => (
-                    <Link href={`/notice/${notice.id}`} key={notice.id} className="block group">
-                        <div className="bg-card border border-border rounded-lg p-6 hover:shadow-md transition-all">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">{notice.title}</h3>
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                                <Calendar className="w-3 h-3" />
-                                <span>{formatDate(notice.created_at)}</span>
-                                </div>
-                            </div>
-                        </div>
+                    
+                    <Link 
+                      href={`/notice/${notice.id}`} 
+                      key={notice.id} 
+                      className="block group bg-card border border-border rounded-lg p-6 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                          <h3 className="group-hover:text-primary transition-colors">{notice.title}</h3>
+                          <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>{formatDate(notice.created_at)}</span>
+                          </div>
+                      </div>
                     </Link>
                     ))}
                 </div>
@@ -82,9 +105,12 @@ export default function NoticeListPage() {
                 <Pagination>
                     <PaginationContent>
                         <PaginationItem><PaginationPrevious onClick={() => handlePageChange(Math.max(1, currentPage - 1))} className={!pagination.has_previous ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
-                        {Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map((page) => (
+                        
+                        {/* --- 💡 4단계: 수정된 페이지네이션 로직을 적용합니다. --- */}
+                        {pageNumbers.map((page) => (
                             <PaginationItem key={page}><PaginationLink onClick={() => handlePageChange(page)} isActive={currentPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
                         ))}
+
                         <PaginationItem><PaginationNext onClick={() => handlePageChange(Math.min(pagination.total_pages, currentPage + 1))} className={!pagination.has_next ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
                     </PaginationContent>
                 </Pagination>

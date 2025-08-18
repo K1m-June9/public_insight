@@ -12,7 +12,7 @@ from .search import router as search_router
 from .admin import static_page as admin_static_page_router
 from .admin import users as admin_users_router
 from .admin import slider as admin_slider_router
-from .admin import feed as admin_feed_router
+# from .admin import feed as admin_feed_router
 from .admin import organization as admin_organization_router
 from .admin import notices as admin_notices_router
 from .admin import dashboard as admin_dashboard_router
@@ -48,7 +48,8 @@ router.include_router(search_router, prefix="/search")
 # admin API 그룹을 /admin prefix로 연결
 #======================================================================
 router.include_router(admin_static_page_router.router, prefix="/admin")
-router.include_router(admin_feed_router.router, prefix="/admin")
+# router.include_router(admin_feed_router.router, prefix="/admin")
+
 router.include_router(admin_organization_router.router, prefix="/admin")
 router.include_router(admin_users_router.router, prefix="/admin")
 router.include_router(admin_slider_router.router, prefix="/admin")

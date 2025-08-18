@@ -4,12 +4,12 @@ import logging
 
 from app.F2_services.users import UserService
 from app.F5_core.dependencies import verify_active_user, get_user_service
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F5_core.redis import RedisCacheService
+from app.F7_models.users import User
 from app.F6_schemas.base import (
     ErrorResponse,
     ErrorCode,
-    PaginationQuery,
-    UserRole
 )
 
 from app.F6_schemas.users import (
@@ -24,15 +24,18 @@ from app.F6_schemas.users import (
     UserBookmarkListResponse, 
     UserBookmarkListQuery
 )
-from app.F7_models.users import User
 
-router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+router = APIRouter()
+
+
 # 사용자 프로필 조회 - 로그인 직후, 마이페이지, + 내 정보 조회
+# - 미들웨어가 기본 접근 로그를 자동으로 남김, 추가 로그 코드 x
 @router.get("/me", response_model=UserProfileResponse)
 async def get_my_profile(
+    request: Request,
     current_user: User = Depends(verify_active_user),
     ):
     return UserProfileResponse(
@@ -55,16 +58,20 @@ async def get_my_profile(
 # PUT: 전체 자원 교체
 # PATCH: 일부 자원 수정
 @router.patch("/me/nickname", response_model=UserProfileResponse)
+@log_event_detailed(action="updated_user_nickname", category=["iam", "profile"])
 async def update_nickname(
+    request: Request,
     payload: UserNickNameUpdateRequest,
     current_user: User = Depends(verify_active_user),
     user_service: UserService = Depends(get_user_service)
     ):
     # 1. nickname 규칙 및 중복 검사 후, 업데이트 시도
+    # user_service.update_nickname 함수 내부에서 상세한 DEBUG, WARNING 로그를 남길 수 있음
     result = await user_service.update_nickname(
         current_user.user_id,
         current_user.email,
-        payload.nickname
+        payload.nickname,
+        current_user.role 
         )
 
     # 2. Service에서 에러 응답이 반환된 경우 처리

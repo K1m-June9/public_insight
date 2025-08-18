@@ -8,8 +8,9 @@ export interface SliderListItem {
     id: number;
     title: string;
     preview: string;
-    image: string; // Base64 인코딩된 이미지 데이터
+    imageUrl: string; 
     display_order: number;
+    created_at: string;
 }
 
 export interface SliderListData {
@@ -26,7 +27,7 @@ export interface SliderDetail {
     id: number;
     title: string;
     content: string;
-    image: string; // Base64 인코딩된 이미지 데이터
+    imageUrl: string; 
     author: string;
     tag: string;
     created_at: string;

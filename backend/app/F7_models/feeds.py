@@ -1,7 +1,19 @@
+import enum
+
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
+from sqlalchemy import Enum as EnumType
 from sqlalchemy.sql import func
 from app.F8_database.connection import Base
+
+class ContentTypeEnum(enum.Enum):
+    PDF = "pdf"
+    TEXT = "text"
+
+class ProcessingStatusEnum(enum.Enum):
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 class Feed(Base):
     __tablename__ = 'feeds'
@@ -22,10 +34,15 @@ class Feed(Base):
     summary = Column(Text)
 
     # 원본 텍스트 내용 (제한 없는 텍스트) -> 삭제(주석처리한건 그냥 히스토리 보려고)
-    #original_text = Column(Text)
+    original_text = Column(Text)
 
     # PDF 파일의 파일 시스템 저장 경로 (최대 1000자)
     pdf_file_path = Column(String(1000))
+
+    #    새로운 피드가 생성될 때 기본값은 'processing'이 됩니다.
+    processing_status = Column(EnumType(ProcessingStatusEnum), nullable=False, default=ProcessingStatusEnum.PROCESSING, server_default=ProcessingStatusEnum.PROCESSING.value)
+
+    content_type = Column(EnumType(ContentTypeEnum), nullable=False)
 
     # 원본 콘텐츠의 URL 주소 (최대 1000자)
     source_url = Column(String(1000))

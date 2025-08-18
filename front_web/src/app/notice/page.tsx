@@ -1,80 +1,121 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Bell, Calendar } from "lucide-react";
 import { useNoticesQuery } from "@/hooks/queries/useNoticeQueries";
 import { Button } from "@/components/ui/button";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { NoticeListItem } from "@/lib/types/notice";
 import { formatDate } from "@/lib/utils/date";
 
 export default function NoticeListPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get('page')) || 1;
 
-  const [page, setPage] = useState(1);
-  const [displayedNotices, setDisplayedNotices] = useState<NoticeListItem[]>([]);
-  const { data, isLoading, isError, isFetching } = useNoticesQuery({ page, limit: 10 }); // 한 페이지에 10개씩
+  const { data: noticeData, isLoading, isError } = useNoticesQuery({ page: currentPage, limit: 6 });
 
-  useEffect(() => {
-    if (data?.data.notices) {
-      if (page === 1) {
-        setDisplayedNotices(data.data.notices);
-      } else {
-        setDisplayedNotices(prev => {
-          const newItems = data.data.notices.filter(
-            newItem => !prev.some(prevItem => prevItem.id === newItem.id)
-          );
-          return [...prev, ...newItems];
-        });
-      }
-    }
-  }, [data, page]);
-  
-  const handleLoadMore = () => setPage(prev => prev + 1);
-  const hasNextPage = data?.data.pagination.has_next ?? false;
+  const notices = noticeData?.data.notices || [];
+  const pagination = noticeData?.data.pagination;
+
+  const handlePageChange = (page: number) => {
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    current.set('page', String(page));
+    router.push(`/notice?${current.toString()}`);
+  };
 
   const goBack = () => router.back();
 
+  const getPageNumbers = () => {
+    if (!pagination) return [];
+    const totalPages = pagination.total_pages;
+    const maxPagesToShow = 5;
+    const pages = [];
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+      if (currentPage < 3) {
+        startPage = 1;
+        endPage = 5;
+      } else if (currentPage > totalPages - 2) {
+        startPage = totalPages - 4;
+        endPage = totalPages;
+      }
+      for (let i = startPage; i <= endPage; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-grow">
-        <div className="container px-4 py-8 md:px-6">
-          <div className="max-w-3xl mx-auto">
-            <Button variant="ghost" onClick={goBack} className="mb-6 flex items-center gap-1"><ArrowLeft className="h-4 w-4" /><span>뒤로가기</span></Button>
-            <h1 className="text-2xl font-bold mb-6 text-gray-900">공지사항</h1>
+        {/* 헤더 섹션 */}
+        <div className="border-b border-border bg-card">
+            <div className="container max-w-4xl mx-auto px-4 py-6">
+                <Button variant="ghost" size="sm" onClick={goBack} className="flex items-center space-x-2 mb-6 text-muted-foreground"><ArrowLeft className="w-4 h-4" /><span>메인으로</span></Button>
+                <div className="space-y-2">
+                    <div className="flex items-center space-x-3"><Bell className="w-6 h-6 text-primary" /><h1 className="text-2xl font-bold leading-tight text-foreground">공지사항</h1></div>
+                    <p className="text-muted-foreground">PublicInsight의 최신 소식과 업데이트를 확인하세요</p>
+                </div>
+            </div>
+        </div>
+        
+        {/* 콘텐츠 섹션 */}
+        <div className="container max-w-4xl mx-auto px-4 py-8">
+            <div className="flex items-center justify-between mb-6">
+                <div className="text-sm text-muted-foreground">
+                    총 {pagination?.total_count || 0}개의 공지사항
+                </div>
+            </div>
 
-            {isLoading && page === 1 ? (
-              <div className="text-center py-8">로딩 중...</div>
-            ) : isError ? (
-              <div className="text-center py-8 text-red-500">오류가 발생했습니다.</div>
-            ) : (
-              <div className="space-y-4">
-                {displayedNotices.map((notice) => (
-                  <Link href={`/notice/${notice.id}`} key={notice.id} className="block">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                      {/* API 응답에는 preview가 없으므로 title과 date만 표시합니다. */}
-                      <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-medium">{notice.title}</h2>
-                        <span className="text-sm text-gray-500 flex-shrink-0 ml-4">{formatDate(notice.created_at)}</span>
+            {isLoading ? (<div className="text-center py-8">로딩 중...</div>)
+            : isError ? (<div className="text-center py-8 text-red-500">오류가 발생했습니다.</div>)
+            : (
+                <div className="space-y-4 mb-8">
+                    {notices.map((notice) => (
+                    
+                    <Link 
+                      href={`/notice/${notice.id}`} 
+                      key={notice.id} 
+                      className="block group bg-card border border-border rounded-lg p-6 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                          <h3 className="group-hover:text-primary transition-colors">{notice.title}</h3>
+                          <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>{formatDate(notice.created_at)}</span>
+                          </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                    </Link>
+                    ))}
+                </div>
             )}
 
-            {hasNextPage && (
-              <div className="mt-8 text-center">
-                <Button variant="outline" onClick={handleLoadMore} disabled={isFetching} className="w-full">
-                  {isFetching ? "로딩 중..." : "더보기"}
-                </Button>
-              </div>
+            {pagination && pagination.total_pages > 1 && (
+            <div className="flex justify-center">
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem><PaginationPrevious onClick={() => handlePageChange(Math.max(1, currentPage - 1))} className={!pagination.has_previous ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
+                        
+                        {/* --- 💡 4단계: 수정된 페이지네이션 로직을 적용합니다. --- */}
+                        {pageNumbers.map((page) => (
+                            <PaginationItem key={page}><PaginationLink onClick={() => handlePageChange(page)} isActive={currentPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
+                        ))}
+
+                        <PaginationItem><PaginationNext onClick={() => handlePageChange(Math.min(pagination.total_pages, currentPage + 1))} className={!pagination.has_next ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </div>
             )}
-          </div>
         </div>
       </main>
       <Footer />

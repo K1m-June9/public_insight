@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from typing import Optional
 import logging
 from app.F2_services.feed import FeedService
 from app.F5_core.dependencies import get_feed_service, verify_active_user, verify_active_user_optional
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F6_schemas.feed import (
     MainFeedListResponse, 
     FeedListQuery, 
@@ -137,7 +138,9 @@ async def get_latest_feeds(
     return result
 
 @router.get("/detail/{id}", response_model=FeedDetailResponse)
+@log_event_detailed(action="VIEW", category=["FEED_DETAIL"])
 async def get_feed_by_id(
+    request:Request,
     id: int,
     feed_service: FeedService = Depends(get_feed_service),
     current_user: Optional[User] = Depends(verify_active_user_optional) #선택적 인증 메서드
@@ -262,8 +265,8 @@ async def get_organization_feeds_latest(
     """
     기관 페이지 최신 피드 슬라이드 조회
     
-    해당 기관의 각 카테고리별 최신 피드를 카테고리당 1개씩 제공합니다.
-    기관 페이지 원형 그래프 아래 피드 슬라이드에서 사용됩니다.
+    해당 기관의 각 카테고리별 최신 피드를 카테고리당 1개씩 제공
+    기관 페이지 원형 그래프 아래 피드 슬라이드에서 사용
     """
     # Service를 통해 기관별 카테고리별 최신 피드 데이터 조회
     result = await feed_service.get_organization_latest_feeds(name, query.limit)
@@ -289,8 +292,8 @@ async def get_press_releases(
     """
     기관 페이지 보도자료 목록 조회
     
-    각 기관의 보도자료 목록을 페이지네이션과 함께 제공합니다.
-    기관 페이지 좌측 하단 보도자료 리스트에서 사용됩니다.
+    각 기관의 보도자료 목록을 페이지네이션과 함께 제공
+    기관 페이지 좌측 하단 보도자료 리스트에서 사용
     """
     # Service를 통해 기관별 보도자료 데이터 조회
     result = await feed_service.get_organization_press_releases(name, query)

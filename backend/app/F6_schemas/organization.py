@@ -37,6 +37,7 @@ class CategoryItem(BaseSchema):
     id: int
     name: str
     percentage: float
+    feed_count: int
 
 class OrganizationCategoryData(BaseModel):
     """기관별 카테고리 데이터"""
@@ -57,7 +58,7 @@ class OrganizationWithIcon(BaseSchema):
     id: int
     name: str
     website_url: str #기관 웹사이트 url
-    icon: str  # Base64 인코딩된 이미지 데이터
+    iconURL: str  # Base64 -> URL 방식으로 변경
 
 class OrganizationIconData(BaseModel):
     """기관 아이콘 데이터"""
@@ -71,50 +72,21 @@ class OrganizationIconResponse(BaseResponse):
 # 4. 워드클라우드 관련 스키마
 # ============================================================================
 
-class WordItem(BaseSchema):
-    """워드클라우드 단어 항목"""
-    text: str
-    value: int
+class WordCloudKeywordItem(BaseSchema):
+    """워드클라우드에 표시될 개별 키워드 항목"""
+    text: str = Field(..., description="키워드 텍스트")
+    size: int = Field(..., description="계산된 글자 크기")
+    color: str = Field(..., description="랜덤하게 할당된 글자 색상 (HEX 코드)")
+    weight: int = Field(..., description="계산된 글자 굵기 (font-weight)")
 
-class WordCloudPeriod(BaseSchema):
-    """워드클라우드 기간 정보"""
-    start_date: date
-    end_date: date
-
-class WordCloudByYear(BaseSchema):
-    """연도별 워드클라우드"""
-    year: int
-    words: List[WordItem]
-    period: WordCloudPeriod
-    generated_at: datetime
-
-class WordCloudData(BaseModel):
-    """워드클라우드 데이터"""
+class WordCloudData(BaseSchema): # 기존 WordCloudData 스키마와 이름이 겹치므로 확인 필요
+    """기관별 워드클라우드 데이터"""
     organization: OrganizationInfo
-    wordclouds: List[WordCloudByYear]
+    keywords: List[WordCloudKeywordItem]
 
 class WordCloudResponse(BaseResponse):
-    """워드클라우드 응답"""
+    """기관별 워드클라우드 응답"""
     data: WordCloudData
-
-# ============================================================================
-# 5. 워드클라우드 데이터 없는 경우 스키마
-# ============================================================================
-
-class EmptyWordCloud(BaseSchema):
-    """빈 워드클라우드"""
-    words: List[WordItem]  # [{"text": "죄송합니다", "value": 100}]
-    period: Optional[WordCloudPeriod] = None
-    generated_at: Optional[datetime] = None
-
-class EmptyWordCloudData(BaseModel):
-    """빈 워드클라우드 데이터"""
-    organization: OrganizationInfo
-    wordcloud: EmptyWordCloud
-
-class EmptyWordCloudResponse(BaseResponse):
-    """빈 워드클라우드 응답"""
-    data: EmptyWordCloudData
 
 # ============================================================================
 # 6. 경로 파라미터 스키마
@@ -123,3 +95,24 @@ class EmptyWordCloudResponse(BaseResponse):
 class OrganizationPathParams(BaseModel):
     """기관명 경로 파라미터"""
     organization_name: str = Field(..., min_length=1, description="기관명 (URL 디코딩 필요)")
+
+
+# ============================================================================
+# 7. UI 개편하면서 새로 만든 기관 페이지 헤더를 위한 스키마
+# ============================================================================
+# 파일 위치: backend/app/F6_schemas/organization.py
+
+class OrganizationStats(BaseModel):
+    documents: int
+    views: int
+    satisfaction: float
+
+class OrganizationSummaryData(BaseSchema):
+    id: int
+    name: str
+    description: str
+    website_url: Optional[str] = None # 웹사이트 URL도 함께 보내주면 유용하지만 쓸까말까쓸까말까쓸래말래쓸래말래
+    stats: OrganizationStats
+
+class OrganizationSummaryResponse(BaseSchema):
+    data: OrganizationSummaryData

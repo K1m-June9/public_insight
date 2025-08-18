@@ -28,8 +28,8 @@ export function SearchInput() {
   return (
     <form onSubmit={handleSearch} className="hidden md:flex md:w-1/3 lg:w-1/2 xl:w-1/3">
       <div className="relative w-full">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-        <Input type="search" placeholder="검색어를 입력하세요" className="w-full pl-9 bg-gray-100 border-gray-300" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+        <Input type="search" placeholder="검색어를 입력하세요" className="pl-10 bg-input-background border-border" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
       </div>
     </form>
   );

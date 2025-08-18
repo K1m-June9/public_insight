@@ -30,6 +30,7 @@ export interface CategoryItem {
     id: number;
     name: string;
     percentage: number;
+    feed_count: number;
 }
 
 export interface OrganizationCategoryData {
@@ -45,28 +46,21 @@ export type OrganizationCategoryResponse = DataResponse<OrganizationCategoryData
 // 3. 워드클라우드 관련
 // ============================================================================
 
-export interface WordItem {
-    text: string;
-    value: number;
+// 백엔드의 WordCloudKeywordItem 스키마에 해당
+export interface WordCloudKeywordItem {
+  text: string;
+  size: number;
+  color: string;
+  weight: number;
 }
 
-export interface WordCloudPeriod {
-    start_date: string; // 날짜는 string으로 받는 것이 편리(YYYY-MM-DD)
-    end_date: string;
-}
-
-export interface WordCloudByYear {
-    year: number;
-    words: WordItem[];
-    period: WordCloudPeriod;
-    generated_at: string; // 시간도 string으로 받는 것이 편리(ISO 8601)
-}
-
+// 백엔드의 WordCloudData 스키마에 해당
 export interface WordCloudData {
-    organization: OrganizationInfo;
-    wordclouds: WordCloudByYear[];
+  organization: OrganizationInfo;
+  keywords: WordCloudKeywordItem[];
 }
 
+// 백엔드의 WordCloudResponse 스키마에 해당
 export type WordCloudResponse = DataResponse<WordCloudData>;
 
 // ============================================================================
@@ -79,7 +73,7 @@ export interface OrganizationWithIcon {
     id: number;
     name: string;
     website_url: string; //기관 웹사이트 url
-    icon: string;        // Base64 인코딩된 이미지 데이터
+    iconUrl: string;
 }
 
 export interface OrganizationIconData {
@@ -87,3 +81,24 @@ export interface OrganizationIconData {
 }
 
 export type OrganizationIconResponse = DataResponse<OrganizationIconData>;
+
+// ============================================================================
+// 기관 헤더 전용
+// ============================================================================
+export interface OrganizationStats {
+  documents: number;
+  views: number;
+  satisfaction: number;
+}
+
+// 백엔드의 OrganizationSummaryData 스키마에 해당
+export interface OrganizationSummaryData {
+  id: number;
+  name: string;
+  description: string;
+  website_url?: string;
+  stats: OrganizationStats;
+}
+
+// 백엔드의 OrganizationSummaryResponse 스키마에 해당
+export type OrganizationSummaryResponse = DataResponse<OrganizationSummaryData>;

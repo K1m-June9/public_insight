@@ -107,6 +107,8 @@ export default function OrganizationPieChart({ organizationName, selectedCategor
   const onPieEnter = (_: any, index: number) => setActiveIndex(index);
   const onPieLeave = () => setActiveIndex(null);
   const handlePieClick = (data: any) => onCategorySelect(data.id);
+
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
   
   if (isLoadingCategories || isLoadingIcon) {
     return <div className="bg-gray-200 h-[500px] rounded-lg shadow-sm border border-gray-200 animate-pulse"></div>;
@@ -137,7 +139,7 @@ export default function OrganizationPieChart({ organizationName, selectedCategor
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
           <div className="relative rounded-full overflow-hidden bg-white shadow-md" style={{ height: `${getLogoSize()}px`, width: `${getLogoSize()}px` }}>
             {iconData && (
-              <Image src={iconData.data.organization.icon} alt={`${organizationName} 로고`} fill className="object-contain p-2" />
+                <Image src={`${apiBaseUrl}${iconData.data.organization.iconUrl}`} alt={`${organizationName} 로고`} fill className="object-contain p-2" />
             )}
           </div>
         </div>

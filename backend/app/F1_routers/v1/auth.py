@@ -9,6 +9,7 @@ from app.F4_utils import device, cookie, client
 from app.F4_utils.email import EmailVerificationService, SendPasswordResetEmail
 from app.F5_core.redis import PasswordResetRedisService
 from app.F5_core.security import JWTBearer, AuthHandler
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F5_core.config import settings
 from app.F5_core.dependencies import (
     get_auth_service, 
@@ -76,6 +77,59 @@ async def login(
             refresh_token=refresh_token # 웹은 None
         )
     )
+
+# # -------------------------------------------------
+# # --- ⚠️ swagger UI 전용 ⚠️ ---
+# from app.F6_schemas.auth import LoginResponse
+# from fastapi.security import OAuth2PasswordRequestForm 
+# @router.post("/login", response_model=LoginResponse)
+# @log_event_detailed(action="LOGIN", category=["AUTH"])
+# async def login(
+#     # 기존 파라미터들
+#     request: Request,
+#     response: Response,
+#     form_data: OAuth2PasswordRequestForm = Depends(),
+#     auth_service: AuthService = Depends(get_auth_service)
+# ):
+#     """
+#     사용자 아이디와 비밀번호로 로그인하여 Access Token과 Refresh Token을 발급합니다.
+#     - Content-Type: application/x-www-form-urlencoded
+#     - Swagger UI의 'Authorize' 버튼과 호환됩니다.
+#     """
+#     # 사용자 인증
+#     user_or_error = await auth_service.authenticate_user(
+#         user_id=form_data.username, 
+#         password=form_data.password
+#     )
+
+#     # 인증 실패 시 ErrorResponse 반환 여부 확인
+#     if isinstance(user_or_error, base.ErrorResponse):
+#         status_code = 401 if user_or_error.error.code == "INVALID_CREDENTIALS" else 403
+#         return JSONResponse(status_code=status_code, content=user_or_error.model_dump())
+
+#     user = user_or_error
+
+#     # 사용자 디바이스 정보 수집
+#     device_info = device.extract_device_info(request)
+
+#     # 인증 성공 시 Access Token과 Refresh Token 생성
+#     tokens = await auth_service.create_tokens(user, device_info)
+
+#     # 클라이언트 유형 판단
+#     is_mobile = client.is_mobile_client(request)
+
+#     # Refresh Token을 HttpOnly 쿠키로 설정
+#     if not is_mobile:
+#         cookie.set_refresh_token_cookie(response, tokens["refresh_token"])
+#         refresh_token = None
+#     else:
+#         refresh_token = tokens["refresh_token"]
+
+#     return {
+#         "access_token": tokens["access_token"],
+#         "token_type": "bearer"
+#     }
+# # -------------------------------------------------
 
 
 # 리프레쉬
@@ -206,7 +260,7 @@ async def logout(
     request: Request,
     response: Response,
     auth_service: AuthService = Depends(get_auth_service),
-    # ★★ 2. AuthHandler를 주입받아 토큰을 해독할 준비를 합니다. ★★
+    # AuthHandler를 주입받아 토큰을 해독할 준비를 합니다
     auth_handler: AuthHandler = Depends(get_auth_handler)
 ):  
     # 1. 요청 본문에서 필요한 정보 추출 (수정 없음)

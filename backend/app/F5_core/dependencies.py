@@ -16,7 +16,7 @@ from app.F2_services.notice import NoticeService
 from app.F2_services.admin.static_page import StaticPageAdminService
 from app.F2_services.admin.users import UsersAdminService
 from app.F2_services.admin.slider import SliderAdminService
-from app.F2_services.admin.feed import FeedAdminService
+# from app.F2_services.admin.feed import FeedAdminService
 from app.F2_services.admin.organization import OrganizationAdminService
 from app.F2_services.admin.notices import NoticesAdminService
 from app.F2_services.admin.dashboard import DashboardAdminService
@@ -35,7 +35,7 @@ from app.F3_repositories.admin.static_page import StaticPageAdminRepository
 from app.F3_repositories.admin.users import UsersAdminRepository
 from app.F3_repositories.admin.activity_log import UsersActivityRepository
 from app.F3_repositories.admin.slider import SliderAdminRepository
-from app.F3_repositories.admin.feed import FeedAdminRepository
+# from app.F3_repositories.admin.feed import FeedAdminRepository
 from app.F3_repositories.admin.organization import OrganizationAdminRepository
 from app.F3_repositories.admin.notices import NoticesAdminRepository
 from app.F3_repositories.admin.dashboard import DashboardAdminRepository
@@ -123,9 +123,9 @@ async def get_admin_users_service(
     activity_repo = UsersActivityRepository(es=es)
     return UsersAdminService(user_repo=user_repo, activity_repo=activity_repo)
 
-async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
-    """관리자 피드 관련 의존성 주입용 함수"""
-    return FeedAdminService(FeedAdminRepository(db))
+# async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
+#     """관리자 피드 관련 의존성 주입용 함수"""
+#     return FeedAdminService(FeedAdminRepository(db))
 
 async def get_admin_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationAdminService:
     """관리자 기관/카테고리 관련 의존성 주입용 함수"""

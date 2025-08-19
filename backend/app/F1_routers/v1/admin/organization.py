@@ -6,6 +6,7 @@ from typing import Optional
 
 from app.F2_services.admin.organization import OrganizationAdminService
 from app.F5_core.dependencies import get_admin_organization_service, verify_active_user
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F6_schemas.admin.organization import (
     SimpleOrganizationListResponse, 
     OrganizationListResponse, 
@@ -29,6 +30,7 @@ router = APIRouter(tags=["Admin-Organizations"], prefix="/organizations")
 
 #기존 계획에 없던 API
 @router.get("/list", response_model=SimpleOrganizationListResponse)
+@log_event_detailed(action="LIST", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "SIMPLE_LIST"])
 async def get_simple_organization_list(
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
     current_user: User = Depends(verify_active_user)
@@ -39,6 +41,7 @@ async def get_simple_organization_list(
     return result
 
 @router.get("", response_model=OrganizationListResponse)
+@log_event_detailed(action="LIST", category=["ADMIN", "ORGANIZATION_MANAGEMENT"])
 async def get_organizations_list(
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
     current_user: User = Depends(verify_active_user)
@@ -54,6 +57,7 @@ async def get_organizations_list(
     return result
 
 @router.post("", response_model=OrganizationCreateResponse, status_code=201)
+@log_event_detailed(action="CREATE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "ORGANIZATION"])
 async def create_organization(
     # multipart/form-data를 처리하기 위해 Form을 사용
     # 아이콘 파일이 없더라도, 텍스트 데이터를 form-data로 받는 것이 확장성에 유리
@@ -82,6 +86,7 @@ async def create_organization(
     return result
 
 @router.post("/categories", response_model=CategoryCreateResponse, status_code=201)
+@log_event_detailed(action="CREATE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "CATEGORY"])
 async def create_category(
     request: CategoryCreateRequest,
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
@@ -99,6 +104,7 @@ async def create_category(
     return result
 
 @router.patch("/{id}", response_model=OrganizationUpdateResponse)
+@log_event_detailed(action="UPDATE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "ORGANIZATION"])
 async def update_organization(
     id: int,
     request: OrganizationUpdateRequest, # JSON Body로 받음
@@ -124,6 +130,7 @@ async def update_organization(
     return result
 
 @router.get("/categories/{id}", response_model=CategoryDetailResponse)
+@log_event_detailed(action="READ", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "ORGANIZATION", "DETAIL"])
 async def get_category_detail(
     id: int,
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
@@ -139,6 +146,7 @@ async def get_category_detail(
     return result
 
 @router.patch("/categories/{id}", response_model=CategoryUpdateResponse)
+@log_event_detailed(action="UPDATE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "CATEGORY"])
 async def update_category(
     id: int,
     request: CategoryUpdateRequest,
@@ -155,6 +163,7 @@ async def update_category(
     return result
 
 @router.get("/{id}", response_model=OrganizationDetailResponse)
+@log_event_detailed(action="READ", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "CATEGORY", "DETAIL"])
 async def get_organization_detail(
     id: int,
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
@@ -170,6 +179,7 @@ async def get_organization_detail(
     return result
 
 @router.delete("/{id}", response_model=OrganizationDeleteResponse)
+@log_event_detailed(action="DELETE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "ORGANIZATION"])
 async def delete_organization(
     id: int,
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
@@ -185,6 +195,7 @@ async def delete_organization(
     return result
 
 @router.delete("/categories/{id}", response_model=CategoryDeleteResponse)
+@log_event_detailed(action="DELETE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "CATEGORY"])
 async def delete_category(
     id: int,
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),

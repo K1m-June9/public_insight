@@ -5,6 +5,7 @@ import logging
 
 from app.F2_services.slider import SliderService
 from app.F5_core.dependencies import get_slider_service
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F6_schemas.slider import SliderListResponse, SliderDetailResponse
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 
@@ -14,6 +15,7 @@ router = APIRouter()
 
 # 메인페이지 슬라이더 목록 조회 엔드포인트
 @router.get("", response_model=SliderListResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "SLIDER"])
 async def get_sliders(
     slider_service: SliderService = Depends(get_slider_service)
 ):
@@ -34,6 +36,7 @@ async def get_sliders(
 
 # 슬라이더 상세 조회 엔드포인트
 @router.get("/{id}", response_model=Union[SliderDetailResponse, ErrorResponse])
+@log_event_detailed(action="READ", category=["PUBLIC", "SLIDER", "DETAIL"])
 async def get_slider_detail(
     id: int,
     slider_service: SliderService = Depends(get_slider_service)

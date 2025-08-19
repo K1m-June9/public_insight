@@ -5,6 +5,7 @@ import logging
 
 from app.F2_services.notice import NoticeService
 from app.F5_core.dependencies import get_notice_service
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F6_schemas.base import (
     PaginationQuery, ErrorResponse, ErrorDetail, ErrorCode, Message
 )
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 # 공지사항 목록 조회
 # 공지사항 페이지에서 전체 공지사항 목록 조회
 @router.get("", response_model=NoticeListResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "NOTICE"])
 async def read_notices(
     query: PaginationQuery = Depends(),
     notice_service: NoticeService = Depends(get_notice_service)
@@ -49,6 +51,7 @@ async def read_notices(
 
 # 중요(고정된) 게시물
 @router.get("/pinned", response_model=PinnedNoticeResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "NOTICE", "PINNED"])
 async def pinned_notices(
     notice_service: NoticeService = Depends(get_notice_service)
 ):
@@ -68,6 +71,7 @@ async def pinned_notices(
 
 
 @router.get("/{id}", response_model=Union[NoticeDetailResponse, ErrorResponse])
+@log_event_detailed(action="READ", category=["PUBLIC", "NOTICE", "DETAIL"])
 async def get_notice_detail(
     id: int,
     notice_service: NoticeService = Depends(get_notice_service)

@@ -94,7 +94,7 @@ async def get_user_detail(
 
 
 @router.get("/{id}/activities",response_model=UserActivityResponse)
-@log_event_detailed(action="READ", category=["ADMIN", "USER_MANAGEMENT", "DETAIL_USER_LOG"])
+@log_event_detailed(action="LIST", category=["ADMIN", "USER_MANAGEMENT", "ACTIVITY_LOG"])
 async def get_user_detail_log(
     request:Request,
     id: str,
@@ -129,7 +129,7 @@ async def get_user_detail_log(
 
 
 @router.patch("/{id}/role", response_model=UserRoleChangeResponse)
-@log_event_detailed(action="UPDATE", category=["ADMIN","USER_MANAGEMENT", "ROLE"])
+@log_event_detailed(action="UPDATE", category=["ADMIN", "USER_MANAGEMENT", "ROLE"])
 async def update_user_role(
     request:Request,
     request_body:UserRoleChangeRequest,
@@ -168,7 +168,7 @@ async def update_user_role(
 
 
 @router.patch("/{id}/status", response_model=UserStatusChangeResponse)
-@log_event_detailed(action="UPDATE", category=["ADMIN","USER_MANAGEMENT", "STATUS"])
+@log_event_detailed(action="UPDATE", category=["ADMIN", "USER_MANAGEMENT", "STATUS"])
 async def update_user_role(
     request:Request,
     request_body:UserStatusChangeRequest,

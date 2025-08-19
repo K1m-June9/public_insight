@@ -56,7 +56,7 @@ def handle_error_response(result: ErrorResponse) -> JSONResponse:
 
 # 모든 공지사항 목록 조회
 @router.get("", response_model=NoticeListResponse)
-@log_event_detailed(action="LIST", category=["ADMIN", "NOTICE"])
+@log_event_detailed(action="LIST", category=["ADMIN", "NOTICE_MANAGEMENT"])
 async def get_notice_list(
     request:Request,
     current_user: User = Depends(verify_active_user),
@@ -71,7 +71,7 @@ async def get_notice_list(
 
 # 공지사항 상세 조회
 @router.get("/{id}", response_model=NoticeDetailResponse)
-@log_event_detailed(action="READ", category=["ADMIN", "NOTICE_DETAIL"])
+@log_event_detailed(action="READ", category=["ADMIN", "NOTICE_MANAGEMENT", "DETAIL"])
 async def get_notice_detail(
     requet:Request,
     path_params: NoticePathParams = Depends(),
@@ -91,7 +91,7 @@ async def get_notice_detail(
 
 # 공지사항 생성
 @router.post("", response_model=NoticeCreateResponse)
-@log_event_detailed(action="POST", category=["ADMIN", "NOTICE"])
+@log_event_detailed(action="CREATE", category=["ADMIN", "NOTICE_MANAGEMENT"])
 async def create_notice(
     requet:Request,
     request_data: NoticeCreateRequest = Depends(),
@@ -113,7 +113,7 @@ async def create_notice(
 
 # 공지사항 수정
 @router.put("/{id}", response_model=NoticeUpdateResponse)
-@log_event_detailed(action="PUT", category=["ADMIN", "NOTICE"])
+@log_event_detailed(action="UPDATE", category=["ADMIN", "NOTICE_MANAGEMENT"])
 async def update_notice(
     requet:Request,
     request_data: NoticeUpdateRequest,
@@ -136,7 +136,7 @@ async def update_notice(
 # 일단 통합해서 만듦
 # 공지사항 부분수정(고정, 활성/비활성)
 @router.patch("/{id}", response_model=NoticeUpdateResponse)
-@log_event_detailed(action="PATCH", category=["ADMIN", "NOTICE"])
+@log_event_detailed(action="UPDATE", category=["ADMIN", "NOTICE_MANAGEMENT", "STATUS"])
 async def update_notice_status(
     request:Request,
     request_data:NoticePinStateUpdateRequest,
@@ -158,7 +158,7 @@ async def update_notice_status(
 
 # 공지사항 삭제
 @router.delete("/{id}", response_model=NoticeDeleteResponse)
-@log_event_detailed(action="DELETE", category=["ADMIN", "NOTICE"])
+@log_event_detailed(action="DELETE", category=["ADMIN", "NOTICE_MANAGEMENT"])
 async def delete_notice(
     requet:Request,
     path_params: NoticePathParams = Depends(),

@@ -44,6 +44,7 @@ router = APIRouter()
 #   - limit: 페이지당 항목 수 (기본값: 20, 최소값: 1, 최대값: 100)
 # 응답: 피드 목록과 페이지네이션 정보를 포함한 JSON 응답 또는 에러 응답
 @router.get("/", response_model=MainFeedListResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED"])
 async def get_feeds(
     query: PaginationQuery = Depends(),
     feed_service: FeedService = Depends(get_feed_service)
@@ -88,6 +89,7 @@ async def get_feeds(
     return result
 
 @router.get("/top5", response_model=Top5FeedResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "TOP5"])
 async def get_feeds_top5(
     query: Top5FeedQuery = Depends(),
     feed_service: FeedService = Depends(get_feed_service)
@@ -112,6 +114,7 @@ async def get_feeds_top5(
     return result
 
 @router.get("/latest", response_model=LatestFeedResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "LATEST"])
 async def get_latest_feeds(
     query: LatestFeedQuery = Depends(),
     feed_service: FeedService = Depends(get_feed_service)
@@ -138,7 +141,7 @@ async def get_latest_feeds(
     return result
 
 @router.get("/detail/{id}", response_model=FeedDetailResponse)
-@log_event_detailed(action="VIEW", category=["FEED_DETAIL"])
+@log_event_detailed(action="READ", category=["PUBLIC", "FEED", "DETAIL"])
 async def get_feed_by_id(
     request:Request,
     id: int,
@@ -166,6 +169,7 @@ async def get_feed_by_id(
 
 # 별점 주기
 @router.post("/detail/{id}/ratings", response_model=RatingResponse)
+@log_event_detailed(action="CREATE", category=["USER", "FEED", "RATING"])
 async def post_feed_rating(
     id: int, 
     payload: RatingRequest,
@@ -184,6 +188,7 @@ async def post_feed_rating(
 
 # 북마크
 @router.post("/detail/{id}/bookmark", response_model=BookmarkResponse)
+@log_event_detailed(action="CREATE", category=["USER", "FEED", "BOOKMARK"])
 async def post_feed_bookmark(
     id: int, 
     payload: BookmarkRequest,
@@ -213,6 +218,7 @@ async def post_feed_bookmark(
 #   - category_id: 카테고리 ID (선택사항, 미입력시 전체 피드)
 # 응답: 기관 정보, 피드 목록, 페이지네이션 정보, 필터 정보를 포함한 JSON 응답 또는 에러 응답
 @router.get("/{name}", response_model=OrganizationFeedListResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "BY_ORGANIZATION"])
 async def get_organization_feeds(
     name: str,
     query: OrganizationFeedQuery = Depends(),
@@ -257,6 +263,7 @@ async def get_organization_feeds(
     return result
 
 @router.get("/{name}/latest", response_model=OrganizationLatestFeedResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "BY_ORGANIZATION", "LATEST"])
 async def get_organization_feeds_latest(
     name: str,
     query: LatestFeedQuery = Depends(),
@@ -284,6 +291,7 @@ async def get_organization_feeds_latest(
     return result
 
 @router.get("/{name}/press", response_model=PressReleaseResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "BY_ORGANIZATION", "PRESS"])
 async def get_press_releases(
     name: str,
     query: PressReleaseQuery = Depends(),

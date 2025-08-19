@@ -5,6 +5,7 @@ import logging
 
 from app.F2_services.static_page import StaticPageService
 from app.F5_core.dependencies import get_static_page_service
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F6_schemas.static_page import (
     StaticPageResponse, 
     StaticPagePathParams
@@ -17,6 +18,7 @@ router = APIRouter()
 
 # 정적 페이지 조회 엔드포인트
 @router.get("/{slug}", response_model=Union[StaticPageResponse, ErrorResponse])
+@log_event_detailed(action="READ", category=["PUBLIC", "STATIC_PAGE"])
 async def get_static_page(
     path_params: StaticPagePathParams = Depends(),
     static_page_service: StaticPageService = Depends(get_static_page_service)

@@ -13,11 +13,11 @@ from app.F5_core.config import settings
 # 이 클라이언트는 asyncio 기반의 비동기 호출에 사용됨
 es_async = AsyncElasticsearch(
     hosts=[settings.ELASTICSEARCH_URL], # Elasticsearch 서버의 URL 지정 (예: http://localhost:9201)
-    basic_auth=(                         # Elasticsearch 접속 인증 정보
+    http_auth=(                         # Elasticsearch 접속 인증 정보
         settings.ELASTICSEARCH_USERNAME, # 사용자 이름
         settings.ELASTICSEARCH_PASSWORD  # 비밀번호
     ),
-    verify_certs=True,        # SSL 인증서 검증 활성화
+    verify_certs=False,        # SSL 인증서 검증 활성화
     # True: 서버가 제공하는 SSL 인증서를 검증하여 신뢰할 수 있는지 확인
     # False: 인증서 검증을 하지 않음 (테스트 환경에서는 False로 쓰기도 함)
     ssl_show_warn=False       # SSL 관련 경고 메시지 비활성화
@@ -33,11 +33,11 @@ es_async = AsyncElasticsearch(
 # Elasticsearch 인스턴스 생성
 # 이 클라이언트는 blocking 방식의 동기 호출에 사용됨
 es_sync = Elasticsearch(
-    settings.ELASTICSEARCH_URL,     # Elasticsearch 서버의 URL
-    basic_auth=(                    # Elasticsearch 접속 인증 정보
+    hosts=[settings.ELASTICSEARCH_URL],     # Elasticsearch 서버의 URL
+    http_auth=(                    # Elasticsearch 접속 인증 정보
         settings.ELASTICSEARCH_USERNAME,  # 사용자 이름          
         settings.ELASTICSEARCH_PASSWORD   # 비밀번호
     ),
-    verify_certs=True,          # SSL 인증서 검증 활성화
+    verify_certs=False,          # SSL 인증서 검증 활성화
     ssl_show_warn=False         # SSL 관련 경고 메시지 비활성화
 )

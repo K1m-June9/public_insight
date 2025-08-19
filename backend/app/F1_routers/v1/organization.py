@@ -5,6 +5,7 @@ from typing import Union
 from fastapi.responses import JSONResponse
 from app.F2_services.organization import OrganizationService
 from app.F5_core.dependencies import get_organization_service
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F6_schemas.organization import OrganizationListResponse, OrganizationCategoryResponse, OrganizationIconResponse, WordCloudResponse, OrganizationSummaryResponse
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/", response_model=OrganizationListResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "ORGANIZATION"])
 async def get_organizations(org_service: OrganizationService = Depends(get_organization_service)):
     """
     메인페이지 기관 목록 조회
@@ -34,6 +36,7 @@ async def get_organizations(org_service: OrganizationService = Depends(get_organ
     return result
 
 @router.get("/{name}/summary", response_model=OrganizationSummaryResponse)
+@log_event_detailed(action="READ", category=["PUBLIC", "ORGANIZATION", "SUMMARY"])
 async def get_organization_summary(name: str, org_service: OrganizationService = Depends(get_organization_service)):
     """
     기관 상세 페이지 헤더 요약 정보 조회
@@ -47,6 +50,7 @@ async def get_organization_summary(name: str, org_service: OrganizationService =
     return result
     
 @router.get("/{name}/categories", response_model=OrganizationCategoryResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "ORGANIZATION", "CATEGORY"])
 async def get_organization_categories(name: str, org_service: OrganizationService = Depends(get_organization_service)):
     """
     기관별 카테고리 목록 조회
@@ -76,6 +80,7 @@ async def get_organization_categories(name: str, org_service: OrganizationServic
     return result
 
 @router.get("/{name}/icon", response_model=OrganizationIconResponse)
+@log_event_detailed(action="READ", category=["PUBLIC", "ORGANIZATION", "ICON"])
 async def get_organization_icon(name: str, org_service: OrganizationService = Depends(get_organization_service)):
     """
     기관 아이콘 조회
@@ -106,6 +111,7 @@ async def get_organization_icon(name: str, org_service: OrganizationService = De
     return result
 
 @router.get("/{name}/wordcloud", response_model=WordCloudResponse)
+@log_event_detailed(action="READ", category=["PUBLIC", "ORGANIZATION", "WORDCLOUD"])
 async def get_organization_wordcloud(name: str, org_service: OrganizationService = Depends(get_organization_service)):
     """
     기관별 주요 키워드(워드클라우드용) 조회

@@ -77,7 +77,7 @@ class SliderCreateForm:
         )
 
 @router.get("",response_model=SliderListResponse)
-@log_event_detailed(action="LIST", category=["ADMIN", "SLIDER"])
+@log_event_detailed(action="LIST", category=["ADMIN", "SLIDER_MANAGEMENT"])
 async def get_slider_list(
     request:Request,
     # current_user: User = Depends(verify_active_user),
@@ -104,7 +104,7 @@ async def get_slider_list(
     return result 
 
 @router.get("/{id}", response_model=SliderDetailResponse)
-@log_event_detailed(action="READ", category=["ADMIN", "SLIDER_DETAIL"])
+@log_event_detailed(action="READ", category=["ADMIN", "SLIDER_MANAGEMENT", "DETAIL"])
 async def get_slider_detail(
     request:Request,
     path_params: SliderPathParams = Depends(),
@@ -134,7 +134,7 @@ async def get_slider_detail(
 
 
 @router.post("", response_model=SliderCreateResponse)
-@log_event_detailed(action="CREATE", category=["ADMIN", "SLIDER"])
+@log_event_detailed(action="CREATE", category=["ADMIN", "SLIDER_MANAGEMENT"])
 async def create_slider(
     request: Request,
     # form_data: SliderCreateRequest = Depends(parse_slider_form_data),
@@ -170,7 +170,7 @@ async def create_slider(
 
 
 @router.put("/{id}", response_model=SliderUpdateResponse)
-@log_event_detailed(action="UPDATE", category=["ADMIN", "SLIDER"])
+@log_event_detailed(action="UPDATE", category=["ADMIN", "SLIDER_MANAGEMENT"])
 async def update_slider(
     request:Request,
     path_params: SliderPathParams = Depends(), 
@@ -237,7 +237,7 @@ async def update_slider(
 
 
 @router.patch("/{id}", response_model=SliderStatusUpdateResponse)
-@log_event_detailed(action="UPDATE_STATUS", category=["ADMIN", "SLIDER", "IS_ACTIVE"])
+@log_event_detailed(action="UPDATE", category=["ADMIN", "SLIDER_MANAGEMENT", "STATUS"])
 async def update_slider_status (
     request:Request,
     payload: SliderStatusUpdateRequest,
@@ -284,7 +284,7 @@ async def update_slider_status (
 
 
 @router.delete("/{id}", response_model=SliderDeleteResponse)
-@log_event_detailed(action="DELETE", category=["ADMIN", "SLIDER"])
+@log_event_detailed(action="DELETE", category=["ADMIN", "SLIDER_MANAGEMENT"])
 async def delete_slider(
     request:Request,
     path_params: SliderPathParams = Depends(), 

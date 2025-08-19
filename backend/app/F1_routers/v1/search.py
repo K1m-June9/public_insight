@@ -7,6 +7,8 @@ from app.F6_schemas.search import (
     SearchQuery,
     SearchResponse,
 )
+
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F11_search.ES8_search_service import search_contents
 
 router = APIRouter()
@@ -21,6 +23,7 @@ logger = logging.getLogger(__name__)
         500: {"model": ErrorResponse, "description": "검색 엔진 오류"}
     }
 )
+@log_event_detailed(action="SEARCH", category=["PUBLIC", "GLOBAL_SEARCH"])
 async def get_search_results(
     query_params: SearchQuery = Depends(),
     request: Request = None

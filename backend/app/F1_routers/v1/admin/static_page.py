@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.F2_services.admin.static_page import StaticPageAdminService
-from app.F5_core.dependencies import get_admin_static_page_service, verify_active_user 
+from app.F5_core.dependencies import get_admin_static_page_service, verify_active_user
+from app.F5_core.logging_decorator import log_event_detailed
 from app.F6_schemas.admin.static_page import StaticPageListResponse, StaticPageUpdateResponse, StaticPageDetailResponse, StaticPageUpdateRequest
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 from app.F7_models.users import User 
@@ -16,6 +17,7 @@ router = APIRouter(
 )
 
 @router.get("", response_model=StaticPageListResponse)
+@log_event_detailed(action="LIST", category=["ADMIN", "STATIC_PAGE"])
 async def get_static_pages(
     admin_service: StaticPageAdminService = Depends(get_admin_static_page_service),
     # 우선은 '활성 사용자'인지 확인하는 것으로 인증을 처리
@@ -37,6 +39,7 @@ async def get_static_pages(
     return result
 
 @router.get("/{slug}", response_model=StaticPageDetailResponse)
+@log_event_detailed(action="READ", category=["ADMIN", "STATIC_PAGE", "DETAIL"])
 async def get_static_page_detail(
     slug: str,
     admin_service: StaticPageAdminService = Depends(get_admin_static_page_service),
@@ -54,6 +57,7 @@ async def get_static_page_detail(
     return result
 
 @router.put("/{slug}", response_model=StaticPageUpdateResponse)
+@log_event_detailed(action="UPDATE", category=["ADMIN", "STATIC_PAGE"])
 async def update_static_page(
     slug: str,
     request: StaticPageUpdateRequest,

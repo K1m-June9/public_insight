@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 # 로그인 엔드포인트
 @router.post("/login", response_model=TokenResponse)
+@log_event_detailed(action="LOGIN", category=["AUTH"])
 async def login(
     request: Request,               # 요청 객체(클라이언트 정보, 헤더, IP 등 확인용)
     credentials: LoginRequest,      # 사용자 입력 데이터(user_id, password)
@@ -134,6 +135,7 @@ async def login(
 
 # 리프레쉬
 @router.post("/refresh", response_model=TokenResponse)
+@log_event_detailed(action="REFRESH", category=["AUTH", "TOKEN"])
 async def refresh_token(
     request: Request,
     response: Response,
@@ -256,6 +258,7 @@ async def refresh_token(
 ####임시방편 ###### 리팩토링할때 수정할것
 # 로그아웃(현재 디바이스)
 @router.post("/logout", response_model=None)
+@log_event_detailed(action="LOGOUT", category=["AUTH"])
 async def logout(
     request: Request,
     response: Response,
@@ -330,6 +333,7 @@ async def logout(
 
 # 회원가입 완료 버튼
 @router.post("/register",response_model=RegisterSuccessResponse)
+@log_event_detailed(action="CREATE", category=["AUTH", "REGISTER"])
 async def register(
     request: Request,
     credentials: UserCreate,
@@ -404,6 +408,7 @@ async def register(
 
 # check-id 버튼
 @router.post("/check-id", response_model=base.BaseResponse)
+@log_event_detailed(action="VALIDATE", category=["AUTH", "USER_ID_CHECK"])
 async def check_user_id_availability(
     request: UserCheckID,
     auth_service: AuthService = Depends(get_auth_service)
@@ -417,6 +422,7 @@ async def check_user_id_availability(
 
 # 이메일 인증코드 [발송] 버튼
 @router.post("/check-email/send", response_model=EmailSendSuccessResponse)
+@log_event_detailed(action="SEND", category=["AUTH", "EMAIL_VERIFICATION"])
 async def send_verification_code(
     request: UserCheckEmail,
     auth_service: AuthService = Depends(get_auth_service),
@@ -440,6 +446,7 @@ async def send_verification_code(
 
 # 이메일 인증 코드 검증 [확인] 버튼
 @router.post("/check-email/verify")
+@log_event_detailed(action="VERIFY", category=["AUTH", "EMAIL_VERIFICATION"])
 async def email_verify(
     valid: EmailVerifyCode,
     email_service: EmailVerificationService = Depends(get_email_verification_services)
@@ -453,6 +460,7 @@ async def email_verify(
 
 # 아이디 찾기 버튼
 @router.post("/find-id", response_model=FindIdResponse)
+@log_event_detailed(action="SEARCH", category=["AUTH", "FIND_USER_ID"])
 async def find_user_id(
     payload: UserCheckEmail,
     auth_service: AuthService = Depends(get_auth_service)
@@ -474,6 +482,7 @@ async def find_user_id(
 
 # 비밀번호 재설정 요청(이메일 + user_id 검증 후 토큰 생성 및 이메일 발송)
 @router.post("/reset-password-reset", response_model=PasswordResetEmailSentResponse)
+@log_event_detailed(action="REQUEST", category=["AUTH", "PASSWORD_RESET"])
 async def request_reset_password(
     payload: ResetPasswordRequest,
     auth_service: AuthService = Depends(get_auth_service)
@@ -496,6 +505,7 @@ async def request_reset_password(
 
 # 비밀번호 재설정 토큰 검사
 @router.get("/verify-reset-token", response_model=TokenVerificationResponse)
+@log_event_detailed(action="VERIFY", category=["AUTH", "PASSWORD_RESET_TOKEN"])
 async def verify_reset_token(
     token: str,
     auth_service: AuthService = Depends(get_auth_service)
@@ -533,6 +543,7 @@ async def verify_reset_token(
 
 # 실제 비밀번호 재설정 수행
 @router.post("/reset-password", response_model=PasswordResetCompleteResponse)
+@log_event_detailed(action="UPDATE", category=["AUTH", "PASSWORD_RESET"])
 async def reset_password(
     payload: PasswordResetSubmitRequest, # 요청 본문: 토큰과 새 비밀번호를 포함
     auth_service: AuthService = Depends(get_auth_service),

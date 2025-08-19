@@ -34,6 +34,7 @@ router = APIRouter()
 # 사용자 프로필 조회 - 로그인 직후, 마이페이지, + 내 정보 조회
 # - 미들웨어가 기본 접근 로그를 자동으로 남김, 추가 로그 코드 x
 @router.get("/me", response_model=UserProfileResponse)
+@log_event_detailed(action="READ", category=["USER", "PROFILE", "ME"])
 async def get_my_profile(
     request: Request,
     current_user: User = Depends(verify_active_user),
@@ -58,7 +59,7 @@ async def get_my_profile(
 # PUT: 전체 자원 교체
 # PATCH: 일부 자원 수정
 @router.patch("/me/nickname", response_model=UserProfileResponse)
-@log_event_detailed(action="updated_user_nickname", category=["iam", "profile"])
+@log_event_detailed(action="UPDATE", category=["USER", "PROFILE", "NICKNAME"])
 async def update_nickname(
     request: Request,
     payload: UserNickNameUpdateRequest,
@@ -91,6 +92,7 @@ async def update_nickname(
 
 # 비밀번호 변경
 @router.put("/password", response_model=UserPasswordUpdateResponse)
+@log_event_detailed(action="UPDATE", category=["USER", "PROFILE", "PASSWORD"])
 async def update_password(
     request: Request,
     payload: UserPasswordUpdateRequest,
@@ -126,6 +128,7 @@ async def update_password(
 
 # 사용자 별점 목록 조회
 @router.get("/ratings", response_model=UserRatingListResponse)
+@log_event_detailed(action="LIST", category=["USER", "MY_ACTIVITY", "RATING"])
 async def get_my_ratings(
     query: UserRatingListQuery = Depends(),               # 페이지네이션 쿼리 파라미터
     current_user: User = Depends(verify_active_user),      # 현재 로그인한 사용자
@@ -154,6 +157,7 @@ async def get_my_ratings(
 
 # 사용자 북마크 목록 조회
 @router.get("/bookmarks", response_model=UserBookmarkListResponse)
+@log_event_detailed(action="LIST", category=["USER", "MY_ACTIVITY", "BOOKMARK"])
 async def get_my_bookmarks(
     query: UserBookmarkListQuery = Depends(),
     current_user: User = Depends(verify_active_user),      # 현재 로그인한 사용자

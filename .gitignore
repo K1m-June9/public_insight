@@ -1,6 +1,5 @@
 docker-compose.yml
 docker-compose_*.txt
-Dockerfile.elasticsearch
 test-compose.yml
 
 certbot-etc/
@@ -13,3 +12,9 @@ esdata/
 esdata_su/
 esdata_ha/
 nginx_dev/
+
+fluentd/
+
+elasticsearch/Dockerfile
+elasticsearch/docker-entrypoint-es.sh
+elasticsearch/init-es.sh 

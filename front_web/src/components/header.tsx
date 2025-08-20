@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import Image from 'next/image';
 
 import { useLogoutMutation } from "@/hooks/mutations/useAuthMutations";
 import { SearchInput } from "@/components/SearchInput"
@@ -55,9 +56,17 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* 로고 */}
         <div className="text-xl font-semibold text-gray-900">
-        <Link href="/" className="flex items-center">
-          <h1 className="text-primary">PublicInsight</h1>
-        </Link>
+          <Link href="/" className="flex items-center space-x-2 text-primary"> {/* 💡 space-x-2 추가 */}
+          {/* 💡 next/image 컴포넌트로 로고를 추가합니다. */}
+          <Image 
+            src="/logo.svg" // public 폴더 기준 경로
+            alt="PublicInsight Logo"
+            width={28} // 원하는 로고 너비 (픽셀)
+            height={28} // 원하는 로고 높이 (픽셀)
+            className="h-10 w-10" // Tailwind 클래스로도 크기 지정 가능
+          />
+        <h1>PublicInsight</h1>
+      </Link>
         </div>
 
         <Suspense fallback={<div className="hidden md:block h-8 w-1/3 bg-gray-100 rounded-md"></div>}>

@@ -81,10 +81,10 @@ export default function SliderDetailPage() {
             또는 Tailwind CSS의 whitespace-pre-wrap 클래스를 사용하여 줄바꿈을 유지할 수 있음.
             현재는 그냥 평문
             <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: slider.content }} /> <- 예전거(나중에 필요해지면 쓸까 싶어서 그냥 남겨둠)
-          */}
-          <div className="prose max-w-none">
             <p className="whitespace-pre-wrap">{slider.content}</p>
           </div>
+          */}
+          <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: slider.content }} />
         </div>
       </div>
     </div>

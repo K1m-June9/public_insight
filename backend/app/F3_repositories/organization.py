@@ -114,44 +114,54 @@ class OrganizationRepository:
 
     async def get_organization_summary_by_name(self, org_name: str) -> Optional[Dict[str, Any]]:
         """
-        특정 기관의 요약 정보와 통계를 조회 (안정성 개선 버전)
+        특정 기관의 요약 정보와 통계를 조회 (집계 정확도 개선 버전)
         """
         try:
-            # 1. 서브쿼리: 기관별로 활성화된 피드의 통계를 미리 계산
+            # 1. 서브쿼리 1: 피드 관련 통계 (문서 수, 조회수) - Rating 조인 제거
             feed_stats_subquery = (
                 select(
                     Feed.organization_id,
                     func.count(Feed.id).label("total_documents"),
-                    func.coalesce(func.sum(Feed.view_count), 0).label("total_views"),
-                    func.coalesce(func.avg(Rating.score), 0.0).label("average_satisfaction")
+                    func.coalesce(func.sum(Feed.view_count), 0).label("total_views")
                 )
                 .select_from(Feed)
-                .outerjoin(Rating, Feed.id == Rating.feed_id)
                 .where(Feed.is_active == True)
                 .group_by(Feed.organization_id)
             ).subquery()
 
-            # 2. 메인 쿼리: Organization 테이블을 기준으로, 위에서 만든 통계 서브쿼리를 LEFT JOIN
+            # 2. 서브쿼리 2: 평점 관련 통계 (평균 만족도)
+            rating_stats_subquery = (
+                select(
+                    Feed.organization_id,
+                    func.coalesce(func.avg(Rating.score), 0.0).label("average_satisfaction")
+                )
+                .select_from(Feed)
+                .join(Rating, Feed.id == Rating.feed_id) # 여기서는 JOIN이 필수
+                .where(Feed.is_active == True)
+                .group_by(Feed.organization_id)
+            ).subquery()
+
+            # 3. 메인 쿼리: Organization 테이블에 두 통계 서브쿼리를 각각 LEFT JOIN
             query = (
                 select(
                     Organization.id,
                     Organization.name,
                     Organization.description,
                     Organization.website_url,
-                    # 통계 서브쿼리의 결과를 COALESCE로 한번 더 감싸서, 피드가 아예 없는 기관도 0으로 처리
                     func.coalesce(feed_stats_subquery.c.total_documents, 0).label("total_documents"),
                     func.coalesce(feed_stats_subquery.c.total_views, 0).label("total_views"),
-                    func.coalesce(feed_stats_subquery.c.average_satisfaction, 0.0).label("average_satisfaction")
+                    func.coalesce(rating_stats_subquery.c.average_satisfaction, 0.0).label("average_satisfaction")
                 )
                 .select_from(Organization)
                 .outerjoin(
-                    feed_stats_subquery,
+                    feed_stats_subquery, 
                     Organization.id == feed_stats_subquery.c.organization_id
                 )
-                .where(
-                    Organization.name == org_name
-                    #Organization.is_active == True
+                .outerjoin(
+                    rating_stats_subquery, 
+                    Organization.id == rating_stats_subquery.c.organization_id
                 )
+                .where(Organization.name == org_name)
             )
 
             result = await self.db.execute(query)

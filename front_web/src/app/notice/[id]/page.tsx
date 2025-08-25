@@ -79,7 +79,7 @@ export default function NoticeDetailPage() {
         <main className="max-w-4xl mx-auto px-4 py-8">
           <Card>
             <CardContent className="p-8">
-              {/* --- 💡 2단계: 문단 구분을 위해 콘텐츠 렌더링 방식을 개선합니다. --- */}
+              {/* --- 💡 2단계: 문단 구분을 위해 콘텐츠 렌더링 방식을 개선합니다. --- 
               <div className="prose max-w-none">
                 {notice.content.split('\n\n').map((paragraph, index) => (
                   <p key={index} className="mb-6 leading-relaxed text-foreground">
@@ -87,6 +87,8 @@ export default function NoticeDetailPage() {
                   </p>
                 ))}
               </div>
+              */}
+              <div className="prose max-w-none"dangerouslySetInnerHTML={{ __html: notice.content }} />
             </CardContent>
           </Card>
         </main>

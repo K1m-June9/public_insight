@@ -1,5 +1,6 @@
 import logging
-import math 
+import math
+import markdown
 from datetime import datetime
 
 from app.F3_repositories.notice import NoticeRepository
@@ -18,6 +19,24 @@ class NoticeService:
     def __init__(self, repo: NoticeRepository):
         # NoticeRepository 인스턴스를 주입받아 DB 접근에 사용
         self.repo = repo
+
+        # Markdown 변환기 초기화 (테이블, 코드 하이라이팅 등 확장 기능 포함)
+        self.markdown_converter = markdown.Markdown(
+            extensions=[
+                'tables',           # 테이블 지원
+                'codehilite',       # 코드 하이라이팅
+                'fenced_code',      # 펜스 코드 블록
+                'toc',              # 목차 생성
+                'nl2br',            # 줄바꿈 처리
+                'sane_lists'        # 리스트 처리 개선
+            ],
+            extension_configs={
+                'codehilite': {
+                    'css_class': 'highlight',
+                    'use_pygments': True
+                }
+            }
+        )
 
     async def get_pinned_notice(self) -> PinnedNoticeResponse:
         """고정된 공지사항을 조회"""
@@ -164,13 +183,14 @@ class NoticeService:
             if not view_count_result:
                 logger.warning(f"공지사항 조회수 증가 실패 - notice_id: {notice_id}")
 
+            html_content = self.markdown_converter.convert(content)
             
             # 4. NoticeDetail 스키마로 변환
             notice_detail = NoticeDetail(
                 id=notice_id,
                 title=title,
                 author=author,
-                content=content,
+                content=html_content,
                 is_pinned=is_pinned,
                 view_count=view_count + 1 if view_count_result else view_count,
                 created_at=created_at,

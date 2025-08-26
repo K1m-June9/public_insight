@@ -151,12 +151,19 @@ class StaticPageAdminService:
                 updated_at=updated_page.updated_at
             )
             
+            # 트랜잭션의 단위(Unit of Work)는 서비스 레이어에서 관리
+            # 기존의 repository 레이어에서 커밋과 리프레쉬를 사용하면 데이터 정합성이 깨질 위험이 있음
+            #  나중에 "정적 페이지를 수정하고, 관련 로그를 남기는" 서비스 로직이 필요할 때, 로그 남기기에 실패해도 페이지 수정은 이미 커밋되어 롤백이 불가능
+            await self.repo.db.commit()
+            await self.repo.db.refresh(updated_page)
+
             return StaticPageUpdateResponse(
                 success=True,
                 data=page_detail
                 )
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in update_static_page for slug {slug}: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(

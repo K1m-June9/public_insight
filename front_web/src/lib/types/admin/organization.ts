@@ -88,6 +88,12 @@ export interface AdminCategoryDetail {
  */
 export type AdminCategoryDetailResponse = DataResponse<AdminCategoryDetail>;
 
+/** 관리자: 카테고리 생성 응답 타입 */
+export type AdminCategoryCreateResponse = DataResponse<AdminCategoryDetail>;
+
+/** 관리자: 카테고리 수정 응답 타입 */
+export type AdminCategoryUpdateResponse = DataResponse<AdminCategoryDetail>;
+
 
 /** 관리자: 기관 생성/수정 시 Body 타입 */
 export interface AdminOrganizationRequest {
@@ -113,9 +119,10 @@ export interface AdminCategoryUpdateRequest {
   is_active: boolean;
 }
 
-/** 관리자: 기관 생성/수정 응답 타입 (상세 조회와 동일 구조) */
-export type AdminOrganizationCRUDResponse = DataResponse<AdminOrganizationWithCategories>; // 생성 시에는 카테고리도 함께 반환
-/** 관리자: 카테고리 생성/수정 응답 타입 */
-export type AdminCategoryCRUDResponse = DataResponse<AdminCategoryDetail>;
+// 생성 응답 타입 (카테고리 포함)
+export type AdminOrganizationCreateResponse = DataResponse<AdminOrganizationWithCategories>;
+
+// 수정 응답 타입 (카테고리 미포함)
+export type AdminOrganizationUpdateResponse = DataResponse<AdminOrganizationDetail>;
 /** 관리자: 기관/카테고리 삭제 응답 타입 */
 export type AdminDeleteResponse = BaseResponse;

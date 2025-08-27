@@ -8,6 +8,7 @@ admin_paths = {
     "/api/v1/admin/static-pages":{UserRole.ADMIN}, #관리자 정적 페이지 목록 조회
     "/api/v1/admin/feeds":{UserRole.ADMIN}, #피드 관리 페이지 목록 조회
     "/api/v1/admin/organization/list":{UserRole.ADMIN}, #원래 계획에 없던 거(관리자 피드 조회 시 기관 및 카테고리 확인을 위한)
+    "/api/v1/admin/organizations": {UserRole.ADMIN},
 }
 
 admin_regex_paths = {

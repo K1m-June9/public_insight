@@ -11,6 +11,7 @@ admin_paths = {
     "/api/v1/admin/organizations": {UserRole.ADMIN},
     "/api/v1/admin/slider": {UserRole.ADMIN},
     "/api/v1/admin/users": {UserRole.ADMIN},
+    "/api/v1/admin/dashboard": {UserRole.ADMIN},
 }
 
 admin_regex_paths = {

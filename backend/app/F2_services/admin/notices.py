@@ -52,14 +52,14 @@ class NoticesAdminService:
     
     async def get_notice_list(self, current_user:User) -> Union[NoticeListResponse,ErrorResponse]:
         try:
-            # --- 1. 계정 ADMIN 인지 체크 ---
-            if current_user.role != UserRole.ADMIN:
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.FORBIDDEN,
-                        message=Message.FORBIDDEN
-                    )
-                )
+            # # --- 1. 계정 ADMIN 인지 체크 ---
+            # if current_user.role != UserRole.ADMIN:
+            #     return ErrorResponse(
+            #         error=ErrorDetail(
+            #             code=ErrorCode.FORBIDDEN,
+            #             message=Message.FORBIDDEN
+            #         )
+            #     )
             # --- 2. 전체 notice 조회(고정 공지사항, 최신순으로 정렬) ---
             notices_from_db = await self.repo.get_all_notices()
 
@@ -96,14 +96,14 @@ class NoticesAdminService:
         
     async def get_notice_detail(self, current_user:User, notice_id:int) -> Union[NoticeDetailResponse, ErrorResponse]:
         try:
-            # --- 1. 계정 ADMIN 인지 체크 ---
-            if current_user.role != UserRole.ADMIN:
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.FORBIDDEN,
-                        message=Message.FORBIDDEN
-                    )
-                )
+            # # --- 1. 계정 ADMIN 인지 체크 ---
+            # if current_user.role != UserRole.ADMIN:
+            #     return ErrorResponse(
+            #         error=ErrorDetail(
+            #             code=ErrorCode.FORBIDDEN,
+            #             message=Message.FORBIDDEN
+            #         )
+            #     )
             
             # --- 2. 리포지토리를 통해 ID로 notice 데이터 조회 ---
             notice = await self.repo.get_notice_by_id(notice_id)
@@ -145,14 +145,14 @@ class NoticesAdminService:
         
     async def create_notice(self, current_user:User, request_data:NoticeCreateRequest) -> Union[NoticeCreateResponse, ErrorResponse]:
         try:
-            # --- 1. 계정 ADMIN 인지 체크 ---
-            if current_user.role != UserRole.ADMIN:
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.FORBIDDEN,
-                        message=Message.FORBIDDEN
-                    )
-                )
+            # # --- 1. 계정 ADMIN 인지 체크 ---
+            # if current_user.role != UserRole.ADMIN:
+            #     return ErrorResponse(
+            #         error=ErrorDetail(
+            #             code=ErrorCode.FORBIDDEN,
+            #             message=Message.FORBIDDEN
+            #         )
+            #     )
             
             # --- 2. 생성할 최종 데이터 생성 ---
             notice_data_dict = request_data.model_dump()
@@ -173,12 +173,16 @@ class NoticesAdminService:
                 updated_at=new_notice.updated_at
             )
 
+            await self.repo.db.commit()
+            await self.repo.db.refresh(new_notice)
+
             return NoticeCreateResponse(
                 success=True,
                 data=notice_response_data
             )
         
         except SQLAlchemyError as e:
+            await self.repo.db.rollback()
             logger.error(f"Database error in Admin create_notice service:{e}", exc_info=True)
             return ErrorResponse(
                 error = ErrorDetail(
@@ -188,6 +192,7 @@ class NoticesAdminService:
             )
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in Admin create_notice service: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
@@ -198,14 +203,14 @@ class NoticesAdminService:
 
     async def update_notice(self, current_user:User, notice_id:int, request_data:NoticeUpdateRequest) -> Union[NoticeUpdateResponse, ErrorResponse]:
         try:
-            # --- 1. 계정 ADMIN 인지 체크 ---
-            if current_user.role != UserRole.ADMIN:
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.FORBIDDEN,
-                        message=Message.FORBIDDEN
-                    )
-                )
+            # # --- 1. 계정 ADMIN 인지 체크 ---
+            # if current_user.role != UserRole.ADMIN:
+            #     return ErrorResponse(
+            #         error=ErrorDetail(
+            #             code=ErrorCode.FORBIDDEN,
+            #             message=Message.FORBIDDEN
+            #         )
+            #     )
             
             # --- 2. 리포지토리를 통해 ID로 notice 데이터 조회 ---
             notice = await self.repo.get_notice_by_id(notice_id)
@@ -241,6 +246,9 @@ class NoticesAdminService:
                 updated_at=update_notice.updated_at
             )
 
+            await self.repo.db.commit()
+            await self.repo.db.refresh(update_notice)
+
             return NoticeUpdateResponse(
                 success=True,
                 data=notice_response_data
@@ -266,14 +274,14 @@ class NoticesAdminService:
         
     async def update_notice_status(self, current_user:User, notice_id, request_data:NoticePinStateUpdateRequest) -> Union[NoticeUpdateResponse, ErrorResponse]:
         try:
-            # --- 1. 계정 ADMIN 인지 체크 ---
-            if current_user.role != UserRole.ADMIN:
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.FORBIDDEN,
-                        message=Message.FORBIDDEN
-                    )
-                )
+            # # --- 1. 계정 ADMIN 인지 체크 ---
+            # if current_user.role != UserRole.ADMIN:
+            #     return ErrorResponse(
+            #         error=ErrorDetail(
+            #             code=ErrorCode.FORBIDDEN,
+            #             message=Message.FORBIDDEN
+            #         )
+            #     )
             
             # --- 2. 리포지토리를 통해 ID로 notice 데이터 조회 ---
             notice_to_update = await self.repo.get_notice_by_id(notice_id)
@@ -338,14 +346,14 @@ class NoticesAdminService:
 
     async def delete_notice(self,current_user:User, notice_id:int) -> Union[NoticeDeleteResponse, ErrorResponse]:
         try:
-            # --- 1. 계정 ADMIN 인지 체크 ---
-            if current_user.role != UserRole.ADMIN:
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.FORBIDDEN,
-                        message=Message.FORBIDDEN
-                    )
-                )
+            # # --- 1. 계정 ADMIN 인지 체크 ---
+            # if current_user.role != UserRole.ADMIN:
+            #     return ErrorResponse(
+            #         error=ErrorDetail(
+            #             code=ErrorCode.FORBIDDEN,
+            #             message=Message.FORBIDDEN
+            #         )
+            #     )
             
             # --- 2. 리포지토리를 통해 ID로 notice 데이터 조회 ---
             notice_to_delete = await self.repo.get_notice_by_id(notice_id)
@@ -378,12 +386,14 @@ class NoticesAdminService:
                     )
                 )
             else:
+                await self.repo.db.commit()
                 return NoticeDeleteResponse(
                     success=True,
                     message=Message.DELETED
                 )
 
         except SQLAlchemyError as e:
+            await self.repo.db.rollback()
             logger.error(f"Database error in Admin delete_notice service:{e}", exc_info=True)
             return ErrorResponse(
                 error = ErrorDetail(
@@ -393,6 +403,7 @@ class NoticesAdminService:
             )
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in Admin delete_notice service: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(

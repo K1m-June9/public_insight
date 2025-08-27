@@ -8,8 +8,8 @@ export default function AdminUsersPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   return (
-    <Suspense fallback={<div>로딩 중...</div>}>
-      <UserListClient searchParams={searchParams} />
+    <Suspense fallback={<div className="text-center p-10">사용자 목록을 준비 중입니다...</div>}>
+      <UserListClient />
     </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useParams } from 'next/navigation';
 import { useAdminUserDetailQuery } from "@/hooks/queries/useAdminUserQueries";
 import Link from "next/link";
 
@@ -11,7 +12,9 @@ import { ArrowLeft } from "lucide-react";
 import { UserInfoCard } from "@/components/admin/UserInfoCard";
 import { UserActivityLog } from "@/components/admin/UserActivityLog";
 
-export default function UserDetailClient({ userId }: { userId: string }) {
+export default function UserDetailClient() {
+  const params = useParams();
+  const userId = params.id as string;
   const { data: userData, isLoading, isError } = useAdminUserDetailQuery(userId);
   const user = userData?.data;
 

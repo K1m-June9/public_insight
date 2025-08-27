@@ -128,7 +128,6 @@ class UsersAdminRepository:
             .values(role=new_role, updated_at=func.now())
         )
         await self.db.execute(stmt)
-        await self.db.commit()
         return await self.get_user_by_id(user_id)
 
     async def update_user_status(self, user_id: str, new_status:UserStatus) -> User | None:
@@ -139,6 +138,5 @@ class UsersAdminRepository:
             .values(status=new_status, updated_at=func.now())
         )
         await self.db.execute(stmt)
-        await self.db.commit()
         return await self.get_user_by_id(user_id)
     

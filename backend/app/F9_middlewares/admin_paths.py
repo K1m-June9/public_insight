@@ -10,6 +10,7 @@ admin_paths = {
     "/api/v1/admin/organization/list":{UserRole.ADMIN}, #원래 계획에 없던 거(관리자 피드 조회 시 기관 및 카테고리 확인을 위한)
     "/api/v1/admin/organizations": {UserRole.ADMIN},
     "/api/v1/admin/slider": {UserRole.ADMIN},
+    "/api/v1/admin/users": {UserRole.ADMIN},
 }
 
 admin_regex_paths = {

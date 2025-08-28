@@ -145,7 +145,7 @@ class UserStatusChangeRequest(BaseModel):
 class UserListData(BaseSchema):
     """사용자 목록 데이터"""
     users: List[UserListItem]
-    pagination: PaginatedResponse
+    pagination: PaginationInfo
     statistics: UserListStatistics
 
 class UserListResponse(BaseResponse):

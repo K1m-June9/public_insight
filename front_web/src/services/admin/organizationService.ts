@@ -5,11 +5,13 @@ import {
     AdminOrganizationRequest, 
     AdminCategoryCreateRequest, 
     AdminCategoryUpdateRequest,
-    AdminOrganizationCRUDResponse, 
-    AdminCategoryCRUDResponse, 
+    AdminOrganizationCreateResponse,
+    AdminOrganizationUpdateResponse,
     AdminDeleteResponse,
     AdminOrganizationDetailResponse, 
-    AdminCategoryDetailResponse
+    AdminCategoryDetailResponse,
+    AdminCategoryCreateResponse,
+    AdminCategoryUpdateResponse,
 } from '@/lib/types/admin/organization';
 
 /**
@@ -31,23 +33,16 @@ export const getAdminOrganizationsList = async (): Promise<AdminOrganizationList
 };
 
 /** 관리자: 새로운 기관을 생성 */
-export const createAdminOrganization = async (formData: FormData): Promise<AdminOrganizationCRUDResponse> => {
-    const response = await apiClient.post<AdminOrganizationCRUDResponse>('/admin/organizations', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
+// 반환 타입을 AdminOrganizationCreateResponse로 수정
+export const createAdminOrganization = async (payload: AdminOrganizationRequest): Promise<AdminOrganizationCreateResponse> => {
+    const response = await apiClient.post<AdminOrganizationCreateResponse>('/admin/organizations', payload);
     return response.data;
 };
 
 /** 관리자: 기존 기관 정보를 수정 */
-export const updateAdminOrganization = async (id: number, formData: FormData): Promise<AdminOrganizationCRUDResponse> => {
-    // 💡 PATCH가 아닌 PUT을 사용하고, 파일 수정을 위해 _method 트릭을 사용할 수 있음
-    // 하지만 API가 PATCH/JSON을 받는 것으로 수정되었으므로 그에 맞춤
-    const payload: Partial<AdminOrganizationRequest> = {};
-    formData.forEach((value, key) => (payload[key as keyof AdminOrganizationRequest] = value as any));
-    
-    // 파일은 별도로 처리해야 하므로, 우선은 텍스트 데이터만 업데이트하는 로직으로 가정
-    // 실제로는 파일이 있다면 multipart/form-data로 보내야 함
-    const response = await apiClient.patch<AdminOrganizationCRUDResponse>(`/admin/organizations/${id}`, payload);
+// 반환 타입을 AdminOrganizationUpdateResponse로 수정
+export const updateAdminOrganization = async (id: number, payload: AdminOrganizationRequest): Promise<AdminOrganizationUpdateResponse> => {
+    const response = await apiClient.patch<AdminOrganizationUpdateResponse>(`/admin/organizations/${id}`, payload);
     return response.data;
 };
 
@@ -58,14 +53,14 @@ export const deleteAdminOrganization = async (id: number): Promise<AdminDeleteRe
 };
 
 /** 관리자: 새로운 카테고리를 생성 */
-export const createAdminCategory = async (payload: AdminCategoryCreateRequest): Promise<AdminCategoryCRUDResponse> => {
-    const response = await apiClient.post<AdminCategoryCRUDResponse>('/admin/organizations/categories', payload);
+export const createAdminCategory = async (payload: AdminCategoryCreateRequest): Promise<AdminCategoryCreateResponse> => {
+    const response = await apiClient.post<AdminCategoryCreateResponse>('/admin/organizations/categories', payload);
     return response.data;
 };
 
 /** 관리자: 기존 카테고리 정보를 수정 */
-export const updateAdminCategory = async (id: number, payload: AdminCategoryUpdateRequest): Promise<AdminCategoryCRUDResponse> => {
-    const response = await apiClient.patch<AdminCategoryCRUDResponse>(`/admin/organizations/categories/${id}`, payload);
+export const updateAdminCategory = async (id: number, payload: AdminCategoryUpdateRequest): Promise<AdminCategoryUpdateResponse> => {
+    const response = await apiClient.patch<AdminCategoryUpdateResponse>(`/admin/organizations/categories/${id}`, payload);
     return response.data;
 };
 

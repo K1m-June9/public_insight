@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 
+from app.F5_core.config import settings
+
 from app.F2_services.auth import AuthService
 from app.F2_services.slider import SliderService
 from app.F2_services.session import SessionService
@@ -137,11 +139,11 @@ async def get_admin_notices_service(db: AsyncSession=Depends(get_db)) -> Notices
 
 
 async def get_admin_dashboard_service(
-        db: AsyncSession=Depends(get_db),
+        #db: AsyncSession=Depends(get_db),
         es: AsyncElasticsearch = Depends(get_es_client)
 ) -> DashboardAdminService:
     """관리자 대시보드 관련 의존성 주입용 함수"""
-    dash_repo = DashboardAdminRepository(db=db)
+    dash_repo = DashboardAdminRepository()
     es_repo = DashboardActivityRepository(es=es)
     return DashboardAdminService(dash_repo=dash_repo, es_repo=es_repo)
 
@@ -206,7 +208,6 @@ async def verify_active_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """요청에 인증된 사용자가 활성 상태인지 검증하고, request.state에 사용자 정보를 저장합니다."""
-    
     # JWT 미들웨어에서 user_id를 전달받았다고 가정합니다.
     user_id = getattr(request.state, "user_id", None)
     if not user_id:

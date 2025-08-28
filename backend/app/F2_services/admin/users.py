@@ -91,11 +91,11 @@ class UsersAdminService:
                 has_previous=params.page > 1
             )
 
-            # --- 3. PaginatedResponse 객체 생성(2단계) ---
-            paginated_response_for_field = PaginatedResponse(
-                data = [],
-                pagination=pagination_info_obj
-            )
+            # # --- 3. PaginatedResponse 객체 생성(2단계) ---
+            # paginated_response_for_field = PaginatedResponse(
+            #     data = [],
+            #     pagination=pagination_info_obj
+            # )
 
             # --- 4. 최종 응답 데이터 구성 ---
             # 최종 응답 데이터 구성
@@ -106,7 +106,7 @@ class UsersAdminService:
 
             response_data = UserListData(
                 users=user_list_items,
-                pagination=paginated_response_for_field,
+                pagination=pagination_info_obj,
                 statistics=statistics
             )
             # 최종 반환
@@ -282,6 +282,8 @@ class UsersAdminService:
             # --- 5. 성공 응답 데이터 생성 ---
             user_role_data = UserRoleUpdate.model_validate(update_user, from_attributes=True)
 
+            await self.user_repo.db.commit()
+
             return UserRoleChangeResponse(
                 success=True,
                 data=user_role_data
@@ -323,7 +325,7 @@ class UsersAdminService:
             
             # --- 3. ADMIN 게정의 상태 변경 방지 로직 ---
             if user.role == UserRole.ADMIN:
-                return ErrorCode(
+                return ErrorResponse(
                     error=ErrorDetail(
                         code=ErrorCode.FORBIDDEN,
                         message=Message.FORBIDDEN
@@ -335,6 +337,8 @@ class UsersAdminService:
 
             # --- 5. 성공 응답 데이터 생성 ---
             user_status_data = UserStatusUpdate.model_validate(update_user, from_attributes=True)
+
+            await self.user_repo.db.commit()
 
             return UserStatusChangeResponse(
                 success=True,

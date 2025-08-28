@@ -100,7 +100,7 @@ async def get_user_detail_log(
     id: str,
     # current_user: User = Depends(verify_active_user),
     admin_service: UsersAdminService = Depends(get_admin_users_service),
-        pagination: PaginationQuery = Depends()
+    pagination: PaginationQuery = Depends()
 ):
     # if current_user.role != UserRole.ADMIN:
     #     error_response = ErrorResponse(
@@ -115,7 +115,6 @@ async def get_user_detail_log(
     #         status_code=403, content=error_response.model_dump()
     #     )
     user_id = id
-    pagination.limit = 50
     result = await admin_service.get_user_detail_log(user_id, pagination.page, pagination.limit)
 
     if isinstance(result, ErrorResponse):

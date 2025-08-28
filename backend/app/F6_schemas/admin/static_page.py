@@ -26,7 +26,6 @@ class StaticPageListItem(BaseSchema):
     id: int
     slug: str
     title: str
-    content: str
     created_at: datetime
     updated_at: datetime
 

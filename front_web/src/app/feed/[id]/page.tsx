@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from "next/navigation";
 import dynamic from 'next/dynamic'; // 1. next/dynamic을 임포트
-import { ArrowLeft, Bookmark, Share2, Star } from "lucide-react";
+import { ArrowLeft, Bookmark, Scroll, Share2, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFeedDetailQuery } from "@/hooks/queries/useFeedQueries";
 import { useToggleBookmarkMutation, usePostRatingMutation } from "@/hooks/mutations/useFeedMutations";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils/date";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-// import { PdfViewer } from "@/components/PdfViewer"; // <- 이 줄은 제거
+import { ScrollToTopButton } from "@/components/ScrollToTop"
 
 // 2. PdfViewer 컴포넌트를 dynamic import
 const PdfViewer = dynamic(() => import('@/components/PdfViewer').then(mod => mod.PdfViewer), {
@@ -108,6 +108,7 @@ export default function FeedDetailPage() {
         </div>
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

@@ -55,7 +55,7 @@ export function Slider({ slides = [] }: SliderProps) {
             <Link href={`/slider/${slide.id}`} className="block relative">
               {/* --- 💡 1. image_path를 imageUrl로 수정 💡 --- */}
               <Image 
-                src={slide.imageUrl ? `${apiBaseUrl}${slide.imageUrl}` : "/placeholder.svg"}
+                src={slide.imageUrl ? `${slide.imageUrl}` : "/placeholder.svg"}
                 alt={slide.title}
                 width={800}
                 height={400}

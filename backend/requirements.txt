@@ -145,6 +145,7 @@ regex==2025.7.34
 requests==2.32.3
 rsa==4.9.1
 safetensors==0.5.3
+scikit-learn==1.7.1
 scipy==1.15.3
 SecretStorage==3.3.1
 service-identity==18.1.0

@@ -8,7 +8,8 @@ import {
     PressReleaseResponse,
     FeedDetailResponse,
     RatingResponse,
-    BookmarkResponse
+    BookmarkResponse,
+    RecommendationResponse
 } from '@/lib/types/feed';
 
 interface PaginationParams {
@@ -126,4 +127,14 @@ export const toggleBookmark = async (id: number): Promise<BookmarkResponse> => {
     // const response = await apiClient.post<BookmarkResponse>(`/feeds/${id}/bookmark`, {});
     const response = await apiClient.post<BookmarkResponse>(`/feeds/detail/${id}/bookmark`, {});
     return response.data;
+};
+
+/**
+ * 특정 피드와 관련된 추천 피드 목록을 조회
+ * @param id - 기준이 되는 피드의 ID
+ * @returns Promise<RecommendationResponse>
+ */
+export const getFeedRecommendations = async (id: number): Promise<RecommendationResponse> => {
+  const response = await apiClient.get<RecommendationResponse>(`/feeds/detail/${id}/recommendations`);
+  return response.data;
 };

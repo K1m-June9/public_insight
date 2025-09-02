@@ -179,3 +179,33 @@ export interface RatingData {
     message: string;
 }
 export type RatingResponse = DataResponse<RatingData>;
+
+// =================================
+// 8. 피드 추천 (추가)
+// =================================
+
+/**
+ * 추천된 단일 피드 항목의 타입
+ */
+export interface RecommendedFeedItem {
+  id: number;
+  title: string;
+  summary: string | null;
+  organization_name: string;
+  category_name: string;
+  published_date: string | null;
+  similarity_score: number | null;
+}
+
+/**
+ * 추천 API의 응답 데이터 타입
+ */
+export interface RecommendationResultData {
+  main_recommendations: RecommendedFeedItem[];
+  sub_recommendations: RecommendedFeedItem[];
+}
+
+/**
+ * 피드 추천 API의 전체 응답 타입
+ */
+export type RecommendationResponse = DataResponse<RecommendationResultData>;

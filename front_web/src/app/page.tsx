@@ -1,6 +1,7 @@
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import MainContent from "@/components/main-content"
+import { ScrollToTopButton } from "@/components/ScrollToTop"
 
 export default function Home() {
   return (
@@ -10,6 +11,7 @@ export default function Home() {
         <MainContent />
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   )
 }

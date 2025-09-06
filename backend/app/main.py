@@ -200,7 +200,7 @@ def create_app() -> FastAPI:
     # 미들웨어 등록
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3001"],  # 운영 시 도메인 제한 권장
+        allow_origins=["*"],  # 운영 시 도메인 제한 권장
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

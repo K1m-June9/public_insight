@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     DB_PORT: int
     DB_NAME: str
 
+    # 그래프 데이터베이스 설정 (Neo4j)
+    NEO4J_URI: str
+    NEO4J_USERNAME: str
+    NEO4J_PASSWORD: str
+
     # SMTP 설정
     SMTP_SERVER: str
     SMTP_PORT: int

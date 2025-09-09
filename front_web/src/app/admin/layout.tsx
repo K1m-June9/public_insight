@@ -13,6 +13,7 @@ import AuthGuard from "@/components/admin/authGuard";
 // 1. 네비게이션 아이템 데이터
 const navItems = [
   { href: "/admin/dashboard", icon: BarChart3, label: "대시보드" },
+  { href: "/admin/monitoring", icon: BarChart3, label: "운영 대시보드" },
   { href: "/admin/static-pages", icon: FileEdit, label: "정적 페이지" },
   { href: "/admin/sliders", icon: Sliders, label: "슬라이더" },
   { href: "/admin/notices", icon: Megaphone, label: "공지사항" },

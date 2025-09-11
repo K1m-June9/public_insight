@@ -17,9 +17,14 @@ from .admin import organization as admin_organization_router
 from .admin import notices as admin_notices_router
 from .admin import dashboard as admin_dashboard_router
 
+from .graph import router as graph_router
+
 
 # 메인 API 라우터 설정
 router = APIRouter()
+
+#PoC
+router.include_router(graph_router, prefix="/graph")
 
 # /auth 엔드포인트 하위에 인증 라우터 연결
 router.include_router(auth_router, prefix="/auth")

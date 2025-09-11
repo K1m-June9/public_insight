@@ -50,6 +50,23 @@ from app.F6_schemas.base import UserRole
 from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
 from app.F11_search.ES1_client import es_async
+from app.F8_database.graph_db import Neo4jDriver # 👈 Neo4jDriver를 직접 import
+from neo4j import AsyncSession
+
+#------------------------------------------------
+# PoC
+#------------------------------------------------
+from app.F2_services.graph import GraphService
+from app.F3_repositories.graph import GraphRepository
+#------------------------------------------------
+def get_graph_repository(session: AsyncSession = Depends(Neo4jDriver.get_driver)) -> GraphRepository:
+    """그래프 DB 리포지토리 의존성 주입용 함수"""
+    return GraphRepository(session)
+
+def get_graph_service(repo: GraphRepository = Depends(get_graph_repository)) -> GraphService:
+    """그래프 DB 서비스 의존성 주입용 함수"""
+    return GraphService(repo)
+#------------------------------------------------
 
 # --- 일반 ---
 def get_es_client() -> AsyncElasticsearch:

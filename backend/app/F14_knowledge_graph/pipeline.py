@@ -27,6 +27,9 @@ from app.F7_models.feeds import Feed
 from app.F7_models.bookmarks import Bookmark
 from app.F7_models.ratings import Rating
 
+# --- neo4j ---
+from neo4j import AsyncGraphDatabase, AsyncDriver
+
 # --- 로깅 설정 ---
 logger = logging.getLogger(__name__)
 
@@ -519,31 +522,141 @@ def _structure_graph_data(
 
 
 # =================================== LOAD ===================================
-def phase_load():
+async def _execute_neo4j_query(driver: AsyncDriver, query: str, **kwargs):
+    """(Helper) Neo4j 드라이버를 사용하여 쿼리를 안전하게 실행함."""
+    try:
+        # execute_query는 쿼리 실행과 결과 처리를 모두 관리해주는 고수준 API임.
+        await driver.execute_query(query, **kwargs, database_="neo4j")
+    except Exception as e:
+        logger.error(f"Neo4j 쿼리 실행 실패: {query[:100]}... | 오류: {e}")
+        # 오류 발생 시, 전체 파이프라인이 멈추지 않도록 로그만 남기고 넘어감.
+        # 더 엄격한 제어가 필요하면 'raise e'를 통해 예외를 다시 발생시킬 수 있음.
+
+
+async def phase_load(driver: AsyncDriver, transformed_data: TransformedData):
+    """
+    ETL 파이프라인 3단계: Load
+    - 변환된 데이터를 Neo4j 데이터베이스에 적재함.
+    - 데이터 정합성을 위해 기존 데이터를 모두 삭제하고 새로 생성함.
+    """
     logger.info("--- Phase 3: Load 시작 ---")
-    pass
+    
+    nodes, relationships = transformed_data
+    
+    # 1. 데이터베이스 초기화
+    logger.info("  - 1/4: Neo4j 데이터베이스 초기화 중...")
+    await _execute_neo4j_query(driver, "MATCH (n) DETACH DELETE n")
+    
+    # 2. 제약조건 생성 (노드의 고유성을 보장하여 성능 향상 및 데이터 중복 방지)
+    logger.info("  - 2/4: Neo4j 제약조건 생성 중...")
+    constraints = [
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE",
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (o:Organization) REQUIRE o.id IS UNIQUE",
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Category) REQUIRE c.id IS UNIQUE",
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (f:Feed) REQUIRE f.id IS UNIQUE",
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (k:Keyword) REQUIRE k.id IS UNIQUE",
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (au:AnonymousUser) REQUIRE au.id IS UNIQUE",
+    ]
+    for constraint_query in constraints:
+        await _execute_neo4j_query(driver, constraint_query)
+
+    # 3. 노드 생성
+    logger.info(f"  - 3/4: {len(nodes)}개의 노드 생성 중...")
+    # [핵심] APOC 라이브러리를 사용한 동적 라벨링 쿼리
+    # 하나의 쿼리로 모든 종류의 노드(User, Feed 등)를 효율적으로 생성함.
+    node_query = """
+    // $nodes 파라미터로 받은 노드 리스트를 한 줄씩 처리
+    UNWIND $nodes as node_data
+    
+    // 먼저 'Default'라는 임시 라벨과 id로 노드를 MERGE함.
+    // MERGE는 노드가 없으면 생성하고, 있으면 찾는 똑똑한 명령어임.
+    MERGE (n:Default {id: node_data.id}) 
+    
+    // 노드가 새로 생성될 때(ON CREATE), 
+    // properties(name, title 등)를 모두 설정하고 임시 라벨인 Default는 제거함.
+    ON CREATE SET n += node_data.properties, n.Default = null
+    
+    // APOC 프로시저를 사용하여 실제 라벨(예: 'User', 'Feed')을 동적으로 추가함.
+    WITH n, node_data.label as label
+    CALL apoc.create.addLabels(n, [label]) YIELD node
+    RETURN count(node)
+    """
+    # 노드 데이터를 위 Cypher 쿼리에 전달하기 좋은 형태로 재가공
+    node_params = [
+        {
+            'label': n.pop('label'),          # 라벨은 Cypher에서 별도로 사용
+            'id': n['id'],                    # MERGE의 기준이 될 고유 id
+            'properties': n                   # id를 포함한 나머지 모든 속성
+        }
+        for n in nodes
+    ]
+    await _execute_neo4j_query(driver, node_query, nodes=node_params)
+
+    # 4. 관계 생성
+    logger.info(f"  - 4/4: {len(relationships)}개의 관계 생성 중...")
+    # [핵심] APOC 라이브러리를 사용한 동적 관계 생성 쿼리
+    # 하나의 쿼리로 모든 종류의 관계(BOOKMARKED, CONTAINS_KEYWORD 등)를 생성함.
+    relationship_query = """
+    // $relationships 파라미터로 받은 관계 리스트를 한 줄씩 처리
+    UNWIND $relationships as rel_data
+    
+    // 관계의 시작 노드를 id로 찾음. 
+    // WHERE ... IN labels() 구문으로 정확한 라벨을 가진 노드인지 한번 더 확인함.
+    MATCH (start {id: rel_data.start_node_id}) WHERE rel_data.start_node_label IN labels(start)
+
+    // 관계의 끝 노드를 id로 찾음.
+    MATCH (end {id: rel_data.end_node_id}) WHERE rel_data.end_node_label IN labels(end)
+    
+    // APOC 프로시저를 사용하여 시작 노드와 끝 노드 사이에 동적인 타입과 속성을 가진 관계를 생성함.
+    CALL apoc.merge.relationship(start, rel_data.type, rel_data.properties, {}, end) YIELD rel
+    RETURN count(rel)
+    """
+    # 관계 데이터를 위 Cypher 쿼리에 전달하기 좋은 형태로 재가공
+    relationship_params = [
+        {
+            'start_node_label': rel['start_node'][0], # 예: 'User'
+            'start_node_id': rel['start_node'][1],    # 예: 123
+            'end_node_label': rel['end_node'][0],     # 예: 'Feed'
+            'end_node_id': rel['end_node'][1],      # 예: 456
+            'type': rel['type'].upper(),              # 예: 'BOOKMARKED' (관계 타입은 대문자가 관례)
+            'properties': rel.get('properties', {})   # 예: {'score': 5}
+        }
+        for rel in relationships
+    ]
+    await _execute_neo4j_query(driver, relationship_query, relationships=relationship_params)
+
+    logger.info("--- Phase 3: Load 종료 ---")
+
 
 # --- 메인 실행 함수 (개발/테스트용) ---
 async def run_pipeline_for_dev():
     """
     개발 환경에서 파이프라인을 단독으로 실행하기 위한 비동기 함수.
-    - 실제 스케줄러가 이와 유사한 방식으로 파이프라인을 호출할 것임.
     """
     logger.info("======= Knowledge Graph ETL Pipeline (DEV) 시작 =======")
+    
+    # Neo4j 드라이버는 외부에서 생성하여 주입하는 것이 좋음
+    neo4j_driver = AsyncGraphDatabase.driver(
+        settings.NEO4J_URI, 
+        auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD)
+    )
     
     async with AsyncSessionLocal() as db:
         try:
             # 1. Extract
             mysql_data, pdf_texts, search_logs = await phase_extract(db)
             
-            # 2. Transform (아직 구현되지 않음)
-            # transformed_data = phase_transform(mysql_data, pdf_texts, search_logs)
+            # 2. Transform
+            # transformed_data 튜플을 명시적으로 분리하여 전달
+            nodes, relationships = phase_transform(mysql_data, pdf_texts, search_logs)
             
-            # 3. Load (아직 구현되지 않음)
-            # await phase_load(db, transformed_data)
+            # 3. Load
+            await phase_load(neo4j_driver, (nodes, relationships))
 
         except Exception as e:
             logger.error(f"파이프라인 실행 중 오류 발생: {e}", exc_info=True)
+        finally:
+            await neo4j_driver.close() # 작업이 끝나면 드라이버를 닫음
 
     logger.info("======= Knowledge Graph ETL Pipeline (DEV) 종료 =======")
 

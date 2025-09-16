@@ -104,6 +104,7 @@ pandas==2.3.1
 passlib==1.7.4
 pathlib==1.0.1
 pexpect==4.8.0
+kiwipiepy==0.21.0
 playwright==1.52.0
 pluggy==1.6.0
 propcache==0.3.2

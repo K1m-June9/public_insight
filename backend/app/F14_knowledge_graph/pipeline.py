@@ -24,7 +24,7 @@ from app.F5_core.config import settings
 from app.F7_models.users import User
 from app.F7_models.organizations import Organization
 from app.F7_models.categories import Category
-from app.F7_models.feeds import Feed
+from app.F7_models.feeds import Feed, ContentTypeEnum
 from app.F7_models.bookmarks import Bookmark
 from app.F7_models.ratings import Rating
 
@@ -106,7 +106,7 @@ async def phase_extract(db: AsyncSession) -> Tuple[MysqlData, PdfTextData, Searc
     # 🔧 수정: content_type이 'PDF'인 피드만 필터링하여 전달함
     feeds_with_pdf = [
         f for f in mysql_data.get('feeds', []) 
-        if f.get('content_type') == 'PDF' and f.get('pdf_file_path')
+        if f.get('content_type') == ContentTypeEnum.PDF and f.get('pdf_file_path')
     ]
     pdf_texts = _extract_text_from_pdfs(feeds_with_pdf)
     logger.info(f"{len(pdf_texts)}개의 PDF 파일에서 텍스트 추출 완료.")

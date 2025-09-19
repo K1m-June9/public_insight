@@ -3,6 +3,7 @@ import logging
 import os
 import fitz
 import re
+import enum
 from elasticsearch import Elasticsearch
 from typing import Dict, List, Any, Tuple
 
@@ -62,31 +63,30 @@ def kiwi_tokenizer(text: str) -> List[str]:
 # ---------- 스크립트 실행 위치에 상관없이 항상 올바른 경로를 찾도록 초기에 설정 ----------
 # 1. 현재 이 파일(pipeline.py)의 절대 경로를 찾음
 #    ex: /home/pumpkinbee/public_insight/app/F14_knowledge_graph/pipeline.py
-current_file_path = os.path.abspath(__file__)
+project_root_dir = os.path.abspath(__file__)
 
-# 2. F14_knowledge_graph 폴더의 경로를 찾음 (한 단계 위)
-#    ex: /home/pumpkinbee/public_insight/app/F14_knowledge_graph
-f14_dir = os.path.dirname(current_file_path)
+while os.path.basename(project_root_dir) != 'backend':
+    project_root_dir = os.path.dirname(project_root_dir)
+project_root_dir = os.path.dirname(project_root_dir) # backend 상위 디렉토리로 한번 더 이동
 
-# 3. app 폴더의 경로를 찾음 (두 단계 위)
-#    ex: /home/pumpkinbee/public_insight/app
-app_dir = os.path.dirname(f14_dir)
-
-# 4. 프로젝트 루트 경로를 찾음 (세 단계 위)
-#    ex: /home/pumpkinbee/public_insight
-project_root_dir = os.path.dirname(app_dir)
-
-# 5. 루트 경로를 기준으로 static 폴더의 절대 경로를 생성함
-#    이렇게 하면 이 스크립트를 어디서 실행하든 항상 동일한 절대 경로를 가리킴
 PDF_BASE_PATH = os.path.join(project_root_dir, "backend", "static", "feeds_pdf")
+print(f"계산된 PDF 기본 경로: {PDF_BASE_PATH}")
 
 # --- MySQL 연결 설정 (개발/테스트용) ---
+# DATABASE_URL = (
+#     f"mysql+aiomysql://{settings.DB_USER}:{settings.DB_PASSWORD}@"
+#     f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+# )
+# engine = create_async_engine(DATABASE_URL)
+# AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+DB_HOST_FOR_SCRIPT = "localhost" # 또는 "127.0.0.1"
 DATABASE_URL = (
     f"mysql+aiomysql://{settings.DB_USER}:{settings.DB_PASSWORD}@"
-    f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+    f"{DB_HOST_FOR_SCRIPT}:{settings.DB_PORT}/{settings.DB_NAME}"
 )
 engine = create_async_engine(DATABASE_URL)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
 
 # =================================== EXTRACT ===================================
 async def phase_extract(db: AsyncSession) -> Tuple[MysqlData, PdfTextData, SearchLogData]:
@@ -106,7 +106,7 @@ async def phase_extract(db: AsyncSession) -> Tuple[MysqlData, PdfTextData, Searc
     # 🔧 수정: content_type이 'PDF'인 피드만 필터링하여 전달함
     feeds_with_pdf = [
         f for f in mysql_data.get('feeds', []) 
-        if f.get('content_type') == 'pdf' and f.get('pdf_file_path')
+        if f.get('content_type') == 'PDF' and f.get('pdf_file_path')
     ]
     pdf_texts = _extract_text_from_pdfs(feeds_with_pdf)
     logger.info(f"{len(pdf_texts)}개의 PDF 파일에서 텍스트 추출 완료.")
@@ -168,8 +168,9 @@ def _extract_text_from_pdfs(feeds: List[Dict[str, Any]]) -> PdfTextData:
         if not feed_id or not relative_path:
             continue
 
-        # UUID 파일명에 .pdf 확장자를 추가하여 전체 파일 경로 생성
-        pdf_path = os.path.join(base_path, f"{relative_path}.pdf")
+        pdf_path = os.path.join(base_path, relative_path)
+        print(f"Checking path: {pdf_path} | Exists: {os.path.exists(pdf_path)}")
+
 
         try:
             # 파일 존재 여부 확인
@@ -203,8 +204,8 @@ def _extract_search_logs_from_es() -> SearchLogData:
     
     try:
         es_client = Elasticsearch(
-            "http://elasticsearch:9200",
-            basic_auth=(settings.ELASTIC_USERNAME, settings.ELASTIC_PASSWORD)
+            settings.ELASTICSEARCH_URL, # config.py에 정의된 변수 사용
+            basic_auth=(settings.ELASTICSEARCH_USERNAME, settings.ELASTICSEARCH_PASSWORD)
         )
         if not es_client.ping():
             raise ConnectionError("Elasticsearch에 연결할 수 없음.")
@@ -440,7 +441,8 @@ def _structure_graph_data(
     nodes.extend([{'label': 'User', **user} for user in mysql_data['users']])
     nodes.extend([{'label': 'Organization', **org} for org in mysql_data['organizations']])
     nodes.extend([{'label': 'Category', **cat} for cat in mysql_data['categories']])
-    nodes.extend([{'label': 'Feed', **feed} for feed in mysql_data['feeds']])
+    nodes.extend([{'label': 'Feed', **{k: (v.value if isinstance(v, enum.Enum) else v) for k, v in feed.items()}} for feed in mysql_data['feeds']
+    ])
 
     # RATED 관계 (점수별로 세분화)
     for rating in mysql_data['ratings']:
@@ -633,11 +635,13 @@ async def run_pipeline_for_dev():
     """
     개발 환경에서 파이프라인을 단독으로 실행하기 위한 비동기 함수.
     """
+    print(f"DEBUG: Connecting to Neo4j with User = '{settings.NEO4J_USERNAME}'")
+    print(f"DEBUG: Connecting to Neo4j with Password = '{settings.NEO4J_PASSWORD}'")
     logger.info("======= Knowledge Graph ETL Pipeline (DEV) 시작 =======")
-    
+    NEO4J_URI_FOR_SCRIPT = "bolt://localhost:7687"
     # Neo4j 드라이버는 외부에서 생성하여 주입하는 것이 좋음
     neo4j_driver = AsyncGraphDatabase.driver(
-        settings.NEO4J_URI, 
+        NEO4J_URI_FOR_SCRIPT,
         auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD)
     )
     

@@ -18,3 +18,5 @@ fluentd/
 elasticsearch/Dockerfile
 elasticsearch/docker-entrypoint-es.sh
 elasticsearch/init-es.sh 
+
+neo4j/

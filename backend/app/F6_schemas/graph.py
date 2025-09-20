@@ -1,75 +1,50 @@
-# ============================================================================
-# PoC를 위한 파일: 테스트 용도
-# ============================================================================
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Literal
 
-from typing import List, Optional
-from pydantic import BaseModel
+# 우리 프로젝트의 기본 응답 구조를 임포트
+from app.F6_schemas.base import BaseResponse, ErrorDetail
 
-#    기존 스키마 구조와 일관성을 유지하기 위해 base 스키마를 import.
-#    그러나 그래프 데이터는 구조가 유연하므로, BaseSchema 대신 BaseModel을 직접 상속하여
-#    더 자유로운 형태의 데이터 구조를 정의하는 것도 좋은 방법임.
-#    우선은 일관성을 위해 BaseSchema를 사용.
-from app.F6_schemas.base import BaseSchema, DataResponse
+# ====================================================================
+# API 1: GET /api/v1/graph/explore
+# 키워드 중심의 초기 마인드맵 데이터를 위한 스키마
+# ====================================================================
 
-# ============================================================================
-# 1. 그래프 노드를 표현하는 기본 스키마
-# ============================================================================
-
-class GraphNode(BaseSchema):
-    """그래프에서 반환되는 단일 노드를 표현하는 기본 스키마."""
-    id: int
-    label: str # 노드의 레이블 (예: "User", "Feed")
-    properties: dict # 노드가 가진 속성들 (예: {"title": "..."})
-
-class RelatedUserNode(BaseSchema):
-    """관계 분석에 사용될 사용자 노드의 최소 정보."""
-    id: int
-    user_id: str
-    nickname: str
-
-class RelatedFeedNode(BaseSchema):
-    """관계 분석에 사용될 피드 노드의 최소 정보."""
-    id: int
-    title: str
-
-class RelatedOrganizationNode(BaseSchema):
-    """관계 분석에 사용될 기관 노드의 최소 정보."""
-    id: int
-    name: str
-
-class RelatedCategoryNode(BaseSchema):
-    """관계 분석에 사용될 카테고리 노드의 최소 정보."""
-    id: int
-    name: str
-    
-class RatedRelationship(BaseSchema):
-    """RATED 관계의 속성을 담는 스키마."""
-    score: int
-
-# ============================================================================
-# 2. PoC API 응답 데이터 스키마
-# ============================================================================
-
-class FeedRelationsData(BaseSchema):
-    """
-    특정 피드와 직접적으로 연결된 이웃 노드들의 정보를 담는 스키마.
-    PoC API의 실제 데이터 구조임.
-    """
-    source_feed: RelatedFeedNode
-    published_by: Optional[RelatedOrganizationNode] = None
-    belongs_to: Optional[RelatedCategoryNode] = None
-    bookmarked_by_users: List[RelatedUserNode] = []
-    rated_by_users: List[RelatedUserNode] = []
-    # (선택적 확장) 각 사용자의 평점 정보를 함께 반환할 수도 있음
-    # ratings_with_users: List[Tuple[RelatedUserNode, RatedRelationship]] = []
+class GraphNode(BaseModel):
+    """마인드맵의 개별 노드를 나타내는 스키마 (기존 NodeData와 동일)."""
+    id: str = Field(..., description="노드의 고유 식별자")
+    type: Literal['keyword', 'feed', 'organization', 'user', 'anonymous_user'] = Field(..., description="노드의 종류")
+    label: str = Field(..., description="노드에 표시될 이름")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="추가 메타데이터")
 
 
-# ============================================================================
-# 3. 최종 API 응답 래퍼(Wrapper) 스키마
-# ============================================================================
+class GraphEdge(BaseModel):
+    """마인드맵의 엣지(관계)를 나타내는 스키마 (기존 EdgeData와 동일)."""
+    id: str = Field(..., description="엣지의 고유 식별자")
+    source: str = Field(..., description="시작 노드 ID")
+    target: str = Field(..., description="타겟 노드 ID")
+    label: str | None = Field(None, description="엣지에 표시될 이름")
 
-class FeedRelationsResponse(DataResponse):
-    """
-    GET /graph/feeds/{id}/related API의 최종 응답 스키마.
-    """
-    data: FeedRelationsData
+
+class ExploreGraphData(BaseModel):
+    """GET /explore API의 성공 응답의 'data' 필드에 들어갈 내용."""
+    # 🔧 [패턴 적용] XxxData 스키마 정의
+    nodes: List[GraphNode]
+    edges: List[GraphEdge]
+
+
+class ExploreGraphResponse(BaseResponse):
+    """GET /explore API의 최종 응답 스키마."""
+    # 🔧 [패턴 적용] XxxResponse 스키마 정의. BaseResponse 상속.
+    data: ExploreGraphData | None = None
+# ====================================================================
+# 쿼리 파라미터를 위한 스키마
+# ====================================================================
+class ExploreQuery(BaseModel):
+    """GET /explore API의 쿼리 파라미터를 위한 스키마."""
+    keyword: str = Field(..., description="탐색의 중심이 될 키워드")
+
+
+class ExpandQuery(BaseModel):
+    """GET /expand API의 쿼리 파라미터를 위한 스키마."""
+    node_id: str = Field(..., description="확장할 노드의 고유 ID")
+    node_type: str = Field(..., description="확장할 노드의 타입")

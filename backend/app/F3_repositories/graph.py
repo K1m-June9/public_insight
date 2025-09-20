@@ -1,63 +1,62 @@
-# ============================================================================
-# PoC를 위한 파일: 테스트 용도
-# ============================================================================
-
 import logging
 from typing import Dict, Any
-from neo4j import AsyncDriver # F5_core/dependencies.py에서 사용한 타입 힌트와 일치
+
+# neo4j Session 타입을 명확히 하기 위해 임포트
+from neo4j import AsyncDriver
 
 logger = logging.getLogger(__name__)
 
 class GraphRepository:
     """
     Neo4j 데이터베이스와의 통신을 책임지는 리포지토리.
-    Cypher 쿼리를 실행하고 결과를 반환함.
+    - 주입된 AsyncDriver 사용하여 Cypher 쿼리를 실행함.
     """
     def __init__(self, driver: AsyncDriver):
         self.driver = driver
 
-    async def find_related_nodes_for_feed(self, feed_id: int) -> Dict[str, Any]:
+    async def find_initial_nodes_by_keyword(self, keyword: str) -> Dict[str, Any] | None:
         """
-        특정 피드 ID와 직접적으로 연결된 모든 노드 정보를 조회함.
-        하나의 복잡한 Cypher 쿼리로 모든 관계를 한 번에 가져옴.
+        특정 키워드를 중심으로, 마인드맵 초기 화면에 필요한 노드들을 조회함.
+        - 하나의 Cypher 쿼리로 중앙 키워드, 관련 피드, 관련 기관을 모두 가져옴.
+        - 반환값: {'keyword': {...}, 'feeds': [...], 'organizations': [...]} 형태의 딕셔너리
         """
-        # 💥 이것이 바로 그래프 데이터베이스의 힘을 보여주는 Cypher 쿼리임.
+        # [핵심] 키워드와 관련된 정보를 집계(collect)하는 Cypher 쿼리
         cypher_query = """
-        // 1. 기준이 되는 피드 노드를 찾음 (MATCH)
-        MATCH (source_feed:Feed {id: $feed_id})
-        
-        // 2. 이 피드와 연결된 이웃 노드들을 선택적으로(OPTIONAL) 찾음
-        // OPTIONAL MATCH는 관계가 존재하지 않더라도 쿼리가 실패하지 않도록 함
-        OPTIONAL MATCH (source_feed)<-[:PUBLISHED]-(organization:Organization)
-        OPTIONAL MATCH (source_feed)-[:BELONGS_TO]->(category:Category)
-        OPTIONAL MATCH (source_feed)<-[:BOOKMARKED]-(bookmarked_user:User)
-        OPTIONAL MATCH (source_feed)<-[:RATED]-(rated_user:User)
+        // 1. 입력받은 $keyword와 일치하는 :Keyword 노드를 찾음
+        MATCH (k:Keyword {name: $keyword})
 
-        // 3. 찾은 모든 정보를 반환(RETURN)함
+        // 2. 이 키워드와 :CONTAINS_KEYWORD 관계로 연결된 :Feed 노드들을 찾음 (선택적)
+        //    - OPTIONAL MATCH: 관련 피드가 없더라도 쿼리가 실패하지 않음
+        OPTIONAL MATCH (f:Feed)-[:CONTAINS_KEYWORD]->(k)
+
+        // 3. 위에서 찾은 각 피드와 :PUBLISHED 관계로 연결된 :Organization 노드를 찾음 (선택적)
+        OPTIONAL MATCH (o:Organization)-[:PUBLISHED]->(f)
+
+        // 4. 찾은 모든 정보를 집계하여 반환
         RETURN
-            // source_feed 노드의 id와 title을 딕셔너리 형태로 반환
-            source_feed { .id, .title } AS source_feed,
-            // organization 노드의 id와 name을 반환 (없으면 null)
-            organization { .id, .name } AS published_by,
-            // category 노드의 id와 name을 반환 (없으면 null)
-            category { .id, .name } AS belongs_to,
-            // 이 피드를 북마크한 모든 사용자 노드의 리스트를 반환
-            collect(DISTINCT bookmarked_user { .id, .user_id, .nickname }) AS bookmarked_by_users,
-            // 이 피드에 평점을 남긴 모든 사용자 노드의 리스트를 반환
-            collect(DISTINCT rated_user { .id, .user_id, .nickname }) AS rated_by_users
+            // 중앙 키워드 노드의 속성을 'keyword'라는 이름으로 반환
+            k { .id, .name } AS keyword,
+            
+            // 중복을 제거(DISTINCT)하여 관련 피드 노드들의 리스트를 'feeds'라는 이름으로 반환
+            // f{.*}는 해당 노드의 모든 속성을 딕셔너리로 변환해 줌
+            collect(DISTINCT f { .*, content_type: toString(f.content_type) }) AS feeds,
+            
+            // 중복을 제거하여 관련 기관 노드들의 리스트를 'organizations'라는 이름으로 반환
+            collect(DISTINCT o { .* }) AS organizations
         """
         try:
-            # 💥 driver.execute_query를 사용하여 쿼리를 실행하도록 수정합니다.
-            records, summary, keys = await self.driver.execute_query(
-                cypher_query, feed_id=feed_id, database_="neo4j"
-            )
+            # driver를 사용하여 세션을 열고, 해당 세션으로 쿼리를 실행
+            async with self.driver.session() as session:
+                result = await session.run(cypher_query, keyword=keyword)
+                record = await result.single()
             
-            if records:
-                # execute_query는 record 리스트를 반환하므로, 첫 번째 결과를 가져옴
-                return records[0].data()
+            if record and record.data().get("keyword"):
+                return record.data()
             else:
+                # 키워드를 찾지 못한 경우 None을 반환
                 return None
 
         except Exception as e:
-            logger.error(f"Error finding related nodes for feed_id {feed_id} in Neo4j: {e}", exc_info=True)
+            logger.error(f"Error finding nodes for keyword '{keyword}' in Neo4j: {e}", exc_info=True)
+            # 서비스 레이어에서 처리할 수 있도록 예외를 다시 발생시킴
             raise

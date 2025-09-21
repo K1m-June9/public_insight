@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # neo4j Session 타입을 명확히 하기 위해 임포트
 from neo4j import AsyncDriver
@@ -60,3 +60,105 @@ class GraphRepository:
             logger.error(f"Error finding nodes for keyword '{keyword}' in Neo4j: {e}", exc_info=True)
             # 서비스 레이어에서 처리할 수 있도록 예외를 다시 발생시킴
             raise
+
+    async def expand_from_feed(self, feed_id: int) -> List[Dict[str, Any]] | None:
+        """피드 노드에서 확장을 시작함. (Neo4j 4.4 호환 쿼리로 수정)"""
+        # 🔧 [수정] 각 CALL의 결과를 WITH로 받아, 최종적으로 RETURN 하도록 구조 변경
+        cypher_query = """
+        MATCH (start_feed:Feed {id: $feed_id})
+        CALL {
+            WITH start_feed
+            MATCH (start_feed)-[r:IS_SIMILAR_TO]-(similar_feed:Feed)
+            RETURN similar_feed AS node, 'similar_feed' AS type, r.score AS meta
+            ORDER BY r.score DESC LIMIT 2
+        }
+        WITH start_feed, collect({node: node, type: type, meta: meta}) AS results1
+        
+        CALL {
+            WITH start_feed
+            MATCH (start_feed)<-[:BOOKMARKED]-(u:User)-[b:BOOKMARKED]->(rec_feed:Feed)
+            WHERE start_feed <> rec_feed
+            RETURN rec_feed AS node, 'recommended_feed' AS type, count(u) AS meta
+            ORDER BY count(u) DESC LIMIT 2
+        }
+        WITH results1 + collect({node: node, type: type, meta: meta}) AS results2, start_feed
+
+        CALL {
+            WITH start_feed
+            MATCH (start_feed)-[r:CONTAINS_KEYWORD]->(keyword:Keyword)
+            RETURN keyword AS node, 'related_keyword' AS type, r.score AS meta
+            ORDER BY r.score DESC LIMIT 2
+        }
+        WITH results2 + collect({node: node, type: type, meta: meta}) AS final_results
+        
+        UNWIND final_results AS result
+        RETURN result.node AS node, result.type AS type, result.meta AS meta
+        """
+        async with self.driver.session() as session:
+            result = await session.run(cypher_query, feed_id=feed_id)
+            return [record.data() async for record in result]
+
+    async def expand_from_organization(self, org_id: int) -> List[Dict[str, Any]] | None:
+        """기관 노드에서 확장을 시작함. (Neo4j 4.4 호환 쿼리로 수정)"""
+        # 🔧 [수정] 쿼리 구조 변경
+        cypher_query = """
+        MATCH (start_org:Organization {id: $org_id})
+        CALL {
+            WITH start_org
+            MATCH (start_org)-[:PUBLISHED]->(feed:Feed)
+            OPTIONAL MATCH (feed)<-[r:RATED]-(u:User)
+            OPTIONAL MATCH (feed)<-[b:BOOKMARKED]-(u2:User)
+            WITH feed, avg(r.score) AS avg_rating, count(DISTINCT b) AS bookmark_count
+            WITH feed, (coalesce(avg_rating, 0) * 10) + bookmark_count AS popularity_score
+            RETURN feed AS node, 'popular_feed' AS type, popularity_score AS meta
+            ORDER BY popularity_score DESC LIMIT 2
+        }
+        WITH start_org, collect({node: node, type: type, meta: meta}) AS results1
+
+        CALL {
+            WITH start_org
+            MATCH (start_org)-[:PUBLISHED]->(f:Feed)-[r:CONTAINS_KEYWORD]->(keyword:Keyword)
+            RETURN keyword AS node, 'major_keyword' AS type, sum(r.score) AS meta
+            ORDER BY sum(r.score) DESC LIMIT 3
+        }
+        WITH results1 + collect({node: node, type: type, meta: meta}) AS final_results
+
+        UNWIND final_results AS result
+        RETURN result.node AS node, result.type AS type, result.meta AS meta
+        """
+        async with self.driver.session() as session:
+            result = await session.run(cypher_query, org_id=org_id)
+            return [record.data() async for record in result]
+
+    async def expand_from_keyword(self, keyword: str) -> List[Dict[str, Any]] | None:
+        """키워드 노드에서 확장을 시작함. (Neo4j 4.4 호환 쿼리로 수정)"""
+        # 🔧 [수정] 쿼리 구조 변경
+        cypher_query = """
+        MATCH (start_key:Keyword {name: $keyword})
+        CALL {
+            WITH start_key
+            MATCH (start_key)<-[r:CONTAINS_KEYWORD]-(feed:Feed)
+            OPTIONAL MATCH (feed)<-[rate:RATED]-(u:User)
+            OPTIONAL MATCH (feed)<-[b:BOOKMARKED]-(u2:User)
+            WITH feed, avg(rate.score) AS avg_rating, count(DISTINCT b) AS bookmark_count
+            WITH feed, (coalesce(avg_rating, 0) * 10) + bookmark_count AS popularity_score
+            RETURN feed AS node, 'popular_feed' AS type, popularity_score AS meta
+            ORDER BY popularity_score DESC LIMIT 2
+        }
+        WITH start_key, collect({node: node, type: type, meta: meta}) AS results1
+
+        CALL {
+            WITH start_key
+            MATCH (start_key)<-[:SEARCHED]-(u:User)-[:SEARCHED]->(other_key:Keyword)
+            WHERE start_key <> other_key
+            RETURN other_key AS node, 'related_keyword_by_search' AS type, count(u) AS meta
+            ORDER BY count(u) DESC LIMIT 2
+        }
+        WITH results1 + collect({node: node, type: type, meta: meta}) AS final_results
+        
+        UNWIND final_results AS result
+        RETURN result.node AS node, result.type AS type, result.meta AS meta
+        """
+        async with self.driver.session() as session:
+            result = await session.run(cypher_query, keyword=keyword)
+            return [record.data() async for record in result]

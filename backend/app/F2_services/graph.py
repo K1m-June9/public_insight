@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Dict, Any, List
 
 from app.F3_repositories.graph import GraphRepository
 # 🔧 [수정] 우리 프로젝트의 스키마들을 임포트
@@ -126,3 +126,86 @@ class GraphService:
                 
         return nodes, edges
         
+    async def get_expanded_graph_by_node(
+        self, node_id: str, node_type: str
+    ) -> Union[ExploreGraphResponse, ErrorResponse]:
+        """
+        클릭된 노드를 중심으로 그래프를 확장함.
+        - node_type에 따라 적절한 리포지토리 메서드를 호출하고 결과를 구조화함.
+        """
+        try:
+            # 1. node_type에 따라 어떤 리포지토리 메서드를 호출할지 결정
+            raw_expansion_data: List[Dict[str, Any]] | None = None
+            # node_id에서 접두사(예: "feed_")를 제거하여 순수한 숫자/문자 ID를 추출
+            # 💥 중요: 이 ID 추출 방식은 프론트엔드에서 ID를 생성하는 규칙과 일치해야 함
+            entity_id = node_id.split('_', 1)[-1]
+
+            if node_type == 'feed':
+                raw_expansion_data = await self.repo.expand_from_feed(int(entity_id))
+            elif node_type == 'organization':
+                raw_expansion_data = await self.repo.expand_from_organization(int(entity_id))
+            elif node_type == 'keyword':
+                raw_expansion_data = await self.repo.expand_from_keyword(str(entity_id))
+            else:
+                # 지원하지 않는 노드 타입인 경우 에러 반환
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.BAD_REQUEST, message="지원하지 않는 노드 타입입니다."))
+
+            # 2. 리포지토리 결과가 없는 경우 (확장할 노드가 없는 경우)
+            if not raw_expansion_data:
+                # 빈 데이터를 성공적으로 반환 (에러가 아님)
+                return ExploreGraphResponse(success=True, data=ExploreGraphData(nodes=[], edges=[]))
+            
+            # 3. 원시 데이터를 프론트엔드용 nodes와 edges로 '재조립'
+            nodes, edges = self._structure_expansion_for_frontend(node_id, raw_expansion_data)
+            
+            # 4. 최종 성공 응답 반환
+            response_data = ExploreGraphData(nodes=nodes, edges=edges)
+            return ExploreGraphResponse(success=True, data=response_data)
+
+        except Exception as e:
+            logger.error(f"Error expanding graph for node '{node_id}': {e}", exc_info=True)
+            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
+
+
+    def _structure_expansion_for_frontend(
+        self, start_node_id: str, raw_data: List[Dict[str, Any]]
+    ) -> tuple[List[GraphNode], List[GraphEdge]]:
+        """ (Helper) 리포지토리의 확장 결과를 프론트엔드 스키마에 맞게 변환함. """
+        nodes = []
+        edges = []
+        
+        for item in raw_data:
+            node_data = item.get('node')
+            node_type_from_db = item.get('type') # 예: 'similar_feed', 'major_keyword'
+            
+            if not node_data:
+                continue
+
+            # DB에서 온 node_type을 프론트엔드에서 사용할 일반 타입으로 변환
+            # 예: 'similar_feed', 'recommended_feed' -> 'feed'
+            generic_type = node_type_from_db.split('_')[-1] #_
+            
+            # 노드 ID 생성 (접두사 + 실제 ID)
+            # Keyword 노드는 name이 id 역할을 함
+            node_id = f"{generic_type}_{node_data.get('name', node_data.get('id'))}"
+            
+            # 이미 생성된 노드는 추가하지 않도록 중복 체크 (선택적이지만 안정성을 높임)
+            if not any(n.id == node_id for n in nodes):
+                nodes.append(GraphNode(
+                    id=node_id,
+                    type=generic_type,
+                    label=node_data.get('title', node_data.get('name')),
+                    # TODO: 필요에 따라 metadata 추가 (예: 피드의 발행일 등)
+                    metadata={} 
+                ))
+
+            # 엣지(관계) 생성
+            # 시작 노드(클릭된 노드)와 새로 찾은 노드를 연결
+            edges.append(GraphEdge(
+                id=f"{start_node_id}-EXPANDS_TO-{node_id}",
+                source=start_node_id,
+                target=node_id,
+                label=node_type_from_db # 관계 라벨에 구체적인 타입(예: '유사 피드')을 넣어주면 더 풍부한 정보 제공 가능
+            ))
+
+        return nodes, edges

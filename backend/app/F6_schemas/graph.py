@@ -48,3 +48,16 @@ class ExpandQuery(BaseModel):
     """GET /expand API의 쿼리 파라미터를 위한 스키마."""
     node_id: str = Field(..., description="확장할 노드의 고유 ID")
     node_type: str = Field(..., description="확장할 노드의 타입")
+
+
+# ====================================================================
+# API 2: GET /api/v1/graph/wordcloud를 위한 스키마 (메인 페이지, 기관 페이지 같이씀)
+# 결국 열심히 만들고 바꾸고 다시 바꾸고 다시 수정하고 변경한 기존 API와 테이블은 사용하지 않을듯
+# 갑자기 좉나 슬퍼지네
+# ====================================================================
+class WordCloudItem(BaseModel):
+    text: str = Field(..., description="키워드 텍스트")
+    value: float = Field(..., description="키워드의 가중치 또는 빈도수")
+
+class WordCloudResponse(BaseResponse):
+    data: List[WordCloudItem] | None = None

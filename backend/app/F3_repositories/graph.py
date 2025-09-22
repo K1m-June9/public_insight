@@ -162,3 +162,51 @@ class GraphRepository:
         async with self.driver.session() as session:
             result = await session.run(cypher_query, keyword=keyword)
             return [record.data() async for record in result]
+
+    # 아아.. 아아....아아아아아아아아...
+    # organization 도메인에서 워드클라우드 또 삭제해야하는데
+    # 프론트엔드도 바꿔야하네
+    # 앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜앜
+    async def get_keywords_by_popularity(
+        self, organization_name: str | None, limit: int
+    ) -> List[Dict[str, Any]]:
+        """
+        인기 점수를 기준으로 키워드 목록을 조회함.
+        - organization_name이 있으면 해당 기관으로 범위를 좁힘.
+        - 없으면 전체 키워드를 대상으로 함.
+        """
+        # [핵심] '인기 점수' 계산 로직:
+        # (CONTAINS_KEYWORD 관계의 score 합계) + (SEARCHED 관계 수 * 가중치 1.5)
+        # 검색 행동에 더 높은 가중치를 부여하여 사용자 트렌드를 반영함.
+        popularity_score_logic = "(sum(r.score) * 1.0) + (count(u) * 1.5)"
+
+        if organization_name:
+            # --- 기관별 키워드 쿼리 ---
+            # 기관 이름(name)을 기준으로 필터링함.
+            cypher_query = f"""
+                MATCH (o:Organization {{name: $org_name}})-[:PUBLISHED]->(f:Feed)
+                MATCH (f)-[r:CONTAINS_KEYWORD]->(k:Keyword)
+                OPTIONAL MATCH (k)<-[:SEARCHED]-(u:User)
+                RETURN k.name AS text, {popularity_score_logic} AS value
+                ORDER BY value DESC
+                LIMIT $limit
+            """
+            params = {"org_name": organization_name, "limit": limit}
+        else:
+            # --- 전체 키워드 쿼리 ---
+            cypher_query = f"""
+                MATCH (f:Feed)-[r:CONTAINS_KEYWORD]->(k:Keyword)
+                OPTIONAL MATCH (k)<-[:SEARCHED]-(u:User)
+                RETURN k.name AS text, {popularity_score_logic} AS value
+                ORDER BY value DESC
+                LIMIT $limit
+            """
+            params = {"limit": limit}
+
+        try:
+            async with self.driver.session() as session:
+                result = await session.run(cypher_query, **params)
+                return [record.data() async for record in result]
+        except Exception as e:
+            logger.error(f"Error getting keywords by popularity: {e}", exc_info=True)
+            raise

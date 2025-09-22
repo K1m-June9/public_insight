@@ -7,7 +7,9 @@ from app.F6_schemas.graph import (
     ExploreGraphResponse, 
     ExploreGraphData, 
     GraphNode, 
-    GraphEdge
+    GraphEdge,
+    WordCloudItem,
+    WordCloudResponse
 )
 from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message
 
@@ -209,3 +211,32 @@ class GraphService:
             ))
 
         return nodes, edges
+    
+    # 새로 만드는거긴한데 정말 눈물이 난다.
+    async def get_wordcloud_data(
+        self, organization_name: str | None, limit: int
+    ) -> Union[WordCloudResponse, ErrorResponse]:
+        """
+        워드클라우드 또는 인기 키워드 목록을 위한 데이터를 조회하고 구조화함.
+        """
+        try:
+            # 1. 리포지토리를 호출하여 Neo4j로부터 원시 데이터를 가져옴
+            keywords_data = await self.repo.get_keywords_by_popularity(organization_name, limit)
+            
+            # 2. Pydantic 스키마를 사용하여 응답 데이터의 유효성을 검증하고 구조를 맞춤.
+            #    데이터가 없는 경우(keywords_data가 빈 리스트인 경우)에도 
+            #    Pydantic이 알아서 처리하여 빈 리스트를 가진 성공 응답을 만들어 줌.
+            response_data = [WordCloudItem(**item) for item in keywords_data]
+            
+            # 3. 최종 성공 응답 객체를 생성하여 반환
+            return WordCloudResponse(success=True, data=response_data)
+
+        except Exception as e:
+            # 리포지토리에서 발생한 예외를 포함한 모든 에러를 처리
+            logger.error(f"Error in get_wordcloud_data service: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                )
+            )

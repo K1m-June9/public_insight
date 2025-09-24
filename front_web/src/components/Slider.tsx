@@ -33,7 +33,11 @@ export function Slider({ slides = [] }: SliderProps) {
   const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'api/v1';
+  const getSlideImageUrl = (filename: string) => {
+    if (!filename) return 'https://www.public-insight.co.kr/static/sliders/default.jpg'; // 기본 이미지
+    return `https://www.public-insight.co.kr/static/sliders/${filename}`; // public/static/sliders/ 아래 실제 파일 위치
+  };
+
 
   if (slides.length === 0) {
     // 데이터가 없을 때 보여줄 UI (스켈레톤 또는 메시지)
@@ -54,13 +58,13 @@ export function Slider({ slides = [] }: SliderProps) {
             {/* 이미지 영역 */}
             <Link href={`/slider/${slide.id}`} className="block relative">
               {/* --- 💡 1. image_path를 imageUrl로 수정 💡 --- */}
+              <Image
+                src={getSlideImageUrl(slide.imageUrl)} 
               <Image 
                 src={slide.imageUrl ? `${slide.imageUrl}` : "/placeholder.svg"}
                 alt={slide.title}
                 width={800}
                 height={400}
-                className="w-full h-64 object-cover"
-                priority={true}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 text-white">

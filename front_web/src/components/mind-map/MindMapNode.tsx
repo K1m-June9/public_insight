@@ -1,133 +1,187 @@
-"use client";
-
-import { memo } from "react";
-import Link from "next/link";
-// 1. [핵심] reactflow에서 Handle과 Position을 임포트함.
-import { Handle, Position } from 'reactflow';
-import { ChevronRight, Eye, Star, Bookmark, Building, FileText, Tag, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GraphNode } from "@/lib/types/graph";
+//import { motion } from 'motion/react';
 import { motion } from 'framer-motion';
-
-const getNodeColor = (type: string): string => {
-  switch (type) {
-    case 'feed': return 'hsl(var(--chart-1))';
-    case 'organization': return 'hsl(var(--chart-2))';
-    case 'user': return 'hsl(var(--chart-3))';
-    case 'keyword': return 'hsl(var(--chart-4))';
-    default: return 'hsl(var(--muted-foreground))';
-  }
-};
-
-const getNodeIcon = (type: string) => {
-  switch (type) {
-    case 'feed': return FileText;
-    case 'organization': return Building;
-    case 'user': return Users;
-    case 'keyword': return Tag;
-    default: return Tag;
-  }
-};
+import { useState } from 'react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface MindMapNodeProps {
-  data: {
-    node: GraphNode;
-    isExpanded: boolean;
-    onExpand: (nodeId: string, nodeType: string) => void;
-  };
+  title: string;
+  x: number;
+  y: number;
+  isCenter?: boolean;
+  level?: number;
+  category?: number; // 색상 대신 카테고리 번호
+  onClick?: () => void;
+  isExpanded?: boolean;
+  hasChildren?: boolean;
+  width?: number;
+  height?: number;
 }
 
-export const MindMapNode = memo(({ data }: MindMapNodeProps) => {
-  const { node, isExpanded, onExpand } = data;
+// 카테고리 색상 정의
+const CATEGORY_COLORS = [
+  {
+    bar: 'bg-blue-500',
+    hover: 'hover:bg-blue-50 hover:border-blue-200',
+    accent: 'bg-blue-500'
+  },
+  {
+    bar: 'bg-amber-500', 
+    hover: 'hover:bg-amber-50 hover:border-amber-200',
+    accent: 'bg-amber-500'
+  },
+  {
+    bar: 'bg-emerald-500',
+    hover: 'hover:bg-emerald-50 hover:border-emerald-200', 
+    accent: 'bg-emerald-500'
+  },
+  {
+    bar: 'bg-orange-500',
+    hover: 'hover:bg-orange-50 hover:border-orange-200',
+    accent: 'bg-orange-500'
+  }
+];
 
-  const IconComponent = getNodeIcon(node.type);
-  const canExpand = !isExpanded && ['feed', 'organization', 'keyword'].includes(node.type);
-  
-  const entityId = node.id.split('_')[1];
-  const isFeed = node.type === 'feed';
-  const isOrganization = node.type === 'organization';
+export function MindMapNode({ 
+  title, 
+  x, 
+  y, 
+  isCenter = false, 
+  level = 1,
+  category,
+  onClick,
+  isExpanded = false,
+  hasChildren = false,
+  width = 140,
+  height = 40
+}: MindMapNodeProps) {
+  const [isHovered, setIsHovered] = useState(false);
 
-  const NodeContent = (
+  // 노드 스타일 설정 - 깔끔하고 모던한 디자인
+  const getNodeStyle = () => {
+    if (isCenter) {
+      return 'bg-white border-indigo-200 text-gray-900 shadow-md';
+    }
+    
+    // 일반 노드는 깔끔한 흰색 베이스
+    const baseStyle = 'bg-white border-gray-200 text-gray-900 shadow-sm';
+    
+    // 카테고리별 호버 효과
+    if (category !== undefined) {
+      const categoryColor = CATEGORY_COLORS[category % CATEGORY_COLORS.length];
+      return `${baseStyle} ${categoryColor.hover} transition-all duration-200`;
+    }
+    
+    return `${baseStyle} hover:bg-gray-50 hover:border-gray-300 transition-all duration-200`;
+  };
+
+  const getTextSize = () => {
+    if (isCenter) return 'text-base';
+    if (level === 1) return 'text-sm';
+    return 'text-xs';
+  };
+
+  return (
     <motion.div
-      layout="position"
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      style={{
-        borderColor: getNodeColor(node.type),
+      initial={{ scale: 0, opacity: 0, x: x - 50 }}
+      animate={{ scale: 1, opacity: 1, x, y }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 25,
+        delay: isCenter ? 0 : level * 0.05
       }}
-      className="relative p-4 rounded-lg border-2 shadow-lg bg-card w-[280px] cursor-pointer hover:shadow-xl hover:scale-105"
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className="absolute select-none"
+      style={{
+        left: 0,
+        top: 0,
+        transform: `translate(${x}px, ${y}px)`
+      }}
+      data-node="true"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 2. [핵심] 보이지 않는 Handle 컴포넌트를 추가함. */}
-      {/* 이 핸들은 엣지가 들어오는 연결점(왼쪽 중앙) 역할을 함. */}
-      <Handle type="target" position={Position.Left} className="!bg-transparent !border-none" />
-      {/* 이 핸들은 엣지가 나가는 연결점(오른쪽 중앙) 역할을 함. */}
-      <Handle type="source" position={Position.Right} className="!bg-transparent !border-none" />
-      
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <IconComponent
-            className="w-4 h-4 flex-shrink-0"
-            style={{ color: getNodeColor(node.type) }}
+      {/* Main Node */}
+      <div 
+        className={`
+          rounded-lg flex items-center cursor-pointer relative overflow-hidden
+          border ${getNodeStyle()}
+          ${isHovered ? 'shadow-md' : ''}
+          ${isExpanded ? 'ring-2 ring-blue-200 ring-opacity-50' : ''}
+        `}
+        style={{ width, height }}
+        onClick={onClick}
+      >
+        {/* 카테고리 컬러 바 - 왼쪽에 얇은 세로줄 */}
+        {!isCenter && category !== undefined && (
+          <div 
+            className={`absolute left-0 top-0 bottom-0 w-1 ${CATEGORY_COLORS[category % CATEGORY_COLORS.length].bar}`}
           />
-          <span className="text-sm font-medium leading-tight truncate">{node.label}</span>
-        </div>
-        
-        {canExpand && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-muted"
-            onClick={(e) => {
-              e.stopPropagation();
-              onExpand(node.id, node.type);
-            }}
-            title="확장"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
         )}
+        
+        {/* 노드 내용 */}
+        <div className="flex items-center px-3 py-2 w-full">
+          <span className={`${getTextSize()} font-medium text-left leading-tight flex-1`}>
+            {title}
+          </span>
+        </div>
       </div>
 
-      {isFeed && node.metadata && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              <span>{node.metadata.view_count?.toLocaleString() || 0}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Star className="w-3 h-3" />
-              <span>{node.metadata.avg_rating?.toFixed(1) || '0.0'}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Bookmark className="w-3 h-3" />
-              <span>{node.metadata.bookmark_count || 0}</span>
-            </div>
+      {/* External Expand/Collapse Button - 노드 오른쪽 외부에 위치 */}
+      {hasChildren && (
+        <motion.div
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: isHovered ? 1 : 0.7 }}
+          transition={{ duration: 0.2 }}
+          className="absolute cursor-pointer"
+          style={{
+            left: width + 8, // 노드 너비 + 간격
+            top: height / 2 - 10, // 노드 중앙에 위치
+            zIndex: 10
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick?.();
+          }}
+        >
+          <div 
+            className={`
+              w-5 h-5 rounded-full border-2 bg-white shadow-md
+              flex items-center justify-center transition-all duration-200
+              hover:scale-110 active:scale-95
+              ${isExpanded 
+                ? 'border-blue-400 text-blue-600 bg-blue-50' 
+                : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600'
+              }
+            `}
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-3 h-3" />
+            ) : (
+              <ChevronRight className="w-3 h-3" />
+            )}
           </div>
-        </div>
+        </motion.div>
+      )}
+      
+      {/* Center node glow effect - 더 세련되게 */}
+      {isCenter && (
+        <motion.div
+          className="absolute rounded-lg bg-indigo-200 opacity-15 -z-10"
+          style={{ 
+            width: width + 8, 
+            height: height + 8,
+            left: -4,
+            top: -4
+          }}
+          animate={{ 
+            scale: [1, 1.02, 1],
+            opacity: [0.15, 0.25, 0.15]
+          }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        />
       )}
     </motion.div>
   );
-
-  if (node.type === 'feed') {
-    return (
-      <Link href={`/feed/${entityId}`}>
-        {NodeContent}
-      </Link>
-    );
-  }
-  
-  if (node.type === 'organization') {
-    return (
-      <Link href={`/organization/${encodeURIComponent(node.label)}`}>
-        {NodeContent}
-      </Link>
-    );
-  }
-
-  return NodeContent;
-});
-
-MindMapNode.displayName = "MindMapNode";
+}

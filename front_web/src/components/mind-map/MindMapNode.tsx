@@ -1,6 +1,26 @@
+'use client'; // [수정] 'use client' 지시어 추가
+
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+// [수정] 아이콘과 타입 추가
+import { ChevronRight, ChevronDown, FileText, Building2, Tag } from 'lucide-react';
+import type { FC } from 'react';
+
+// [추가] 카테고리별 아이콘을 렌더링하는 작은 헬퍼 컴포넌트
+const CategoryIcon: FC<{ category?: number }> = ({ category }) => {
+  if (category === undefined) return null;
+
+  switch (category) {
+    case 0: // Feed (파랑)
+      return <FileText className="w-4 h-4 text-blue-500" />;
+    case 1: // Organization (주황)
+      return <Building2 className="w-4 h-4 text-orange-500" />;
+    case 2: // Keyword (초록)
+      return <Tag className="w-4 h-4 text-emerald-500" />;
+    default:
+      return null;
+  }
+};
 
 interface MindMapNodeProps {
   title: string;
@@ -10,7 +30,7 @@ interface MindMapNodeProps {
   level?: number;
   category?: number;
   onClick?: () => void;
-  handleExpandClick?: () => void; // [3단계 추가] 확장 버튼 클릭 핸들러
+  handleExpandClick?: () => void;
   isExpanded?: boolean;
   hasChildren?: boolean;
   width?: number;
@@ -18,41 +38,32 @@ interface MindMapNodeProps {
 }
 
 const CATEGORY_COLORS = [
+  // Category 0: Feed (파랑 계열)
   {
     bar: 'bg-blue-500',
     hover: 'hover:bg-blue-50 hover:border-blue-200',
-    accent: 'bg-blue-500'
   },
-  {
-    bar: 'bg-amber-500', 
-    hover: 'hover:bg-amber-50 hover:border-amber-200',
-    accent: 'bg-amber-500'
-  },
-  {
-    bar: 'bg-emerald-500',
-    hover: 'hover:bg-emerald-50 hover:border-emerald-200', 
-    accent: 'bg-emerald-500'
-  },
+  // Category 1: Organization (주황 계열)
   {
     bar: 'bg-orange-500',
     hover: 'hover:bg-orange-50 hover:border-orange-200',
-    accent: 'bg-orange-500'
+  },
+  // Category 2: Keyword (초록 계열)
+  {
+    bar: 'bg-emerald-500',
+    hover: 'hover:bg-emerald-50 hover:border-emerald-200', 
+  },
+  // Category 3: 기타 (회색 계열)
+  {
+    bar: 'bg-slate-500',
+    hover: 'hover:bg-slate-50 hover:border-slate-200',
   }
 ];
 
 export function MindMapNode({ 
-  title, 
-  x, 
-  y, 
-  isCenter = false, 
-  level = 1,
-  category,
-  onClick,
-  handleExpandClick, // [3단계 추가] props로 handleExpandClick을 받습니다.
-  isExpanded = false,
-  hasChildren = false,
-  width = 140,
-  height = 40
+  title, x, y, isCenter = false, level = 1, category,
+  onClick, handleExpandClick, isExpanded = false, hasChildren = false,
+  width = 140, height = 40
 }: MindMapNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -76,6 +87,7 @@ export function MindMapNode({
 
   return (
     <motion.div
+      // (motion.div의 props는 변경 없음)
       initial={{ scale: 0, opacity: 0, x: x - 50 }}
       animate={{ scale: 1, opacity: 1, x, y }}
       transition={{ 
@@ -104,21 +116,28 @@ export function MindMapNode({
           ${isExpanded ? 'ring-2 ring-blue-200 ring-opacity-50' : ''}
         `}
         style={{ width, height }}
-        onClick={onClick} // [3단계 수정] 노드 본체 클릭 시 onClick prop을 호출
+        onClick={onClick}
       >
         {!isCenter && category !== undefined && (
           <div 
             className={`absolute left-0 top-0 bottom-0 w-1 ${CATEGORY_COLORS[category % CATEGORY_COLORS.length].bar}`}
           />
         )}
-        <div className="flex items-center px-3 py-2 w-full">
+        
+        {/* ================================================================= */}
+        {/* [핵심 수정] 아이콘 추가를 위해 JSX 구조 변경 */}
+        <div className="flex items-center pl-3 pr-2 py-1 w-full gap-2"> {/* padding 및 gap 수정 */}
+          {!isCenter && <CategoryIcon category={category} />}
           <span className={`${getTextSize()} font-medium text-left leading-tight flex-1`}>
             {title}
           </span>
         </div>
+        {/* ================================================================= */}
+
       </div>
       {hasChildren && (
         <motion.div
+          // (확장 버튼 motion.div의 props는 변경 없음)
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: isHovered ? 1 : 0.7 }}
           transition={{ duration: 0.2 }}
@@ -128,9 +147,9 @@ export function MindMapNode({
             top: height / 2 - 10,
             zIndex: 10
           }}
-          onClick={(e) => { // [3단계 수정] 확장 버튼 클릭 시 handleExpandClick prop을 호출
+          onClick={(e) => {
             e.stopPropagation();
-            handleExpandClick?.(); // handleExpandClick 함수를 호출합니다.
+            handleExpandClick?.();
           }}
         >
           <div 
@@ -154,6 +173,7 @@ export function MindMapNode({
       )}
       {isCenter && (
         <motion.div
+          // (중앙 노드 효과 motion.div의 props는 변경 없음)
           className="absolute rounded-lg bg-indigo-200 opacity-15 -z-10"
           style={{ 
             width: width + 8, 

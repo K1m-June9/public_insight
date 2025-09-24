@@ -2,13 +2,13 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation'; // [3단계 추가] 라우터 훅 임포트
+import { useRouter } from 'next/navigation';
 import { MindMapNode } from './MindMapNode';
 import { ZoomPanContainer } from './ZoomPanContainer';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+// [최종 수정] 헤더 범례에 사용할 아이콘들을 임포트합니다.
+import { ArrowLeft, RotateCcw, FileText, Building2, Tag } from 'lucide-react';
 import type { GraphNode, GraphEdge } from '@/lib/types/graph';
-
 import { useExpandMutation } from '@/hooks/mutations/useGraphMutations';
 
 interface MindMapDisplayNode extends GraphNode {
@@ -28,6 +28,7 @@ interface MindMapProps {
 }
 
 export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMapProps) {
+  const router = useRouter();
   const [allNodes, setAllNodes] = useState<GraphNode[]>(initialNodes);
   const [allEdges, setAllEdges] = useState<GraphEdge[]>(initialEdges);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -86,16 +87,14 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
     const centerNodeData = baseNodes.find(n => n.id === `keyword_${keyword}`);
     if (!centerNodeData) return [];
     
-    const queue: [MindMapDisplayNode | null, number][] = [[null, 0]]; // [parentNode, level]
+    const queue: [MindMapDisplayNode, number][] = [];
     
     const centerNode: MindMapDisplayNode = {
       ...centerNodeData, x: CENTER_X, y: CENTER_Y, level: 0, width: 160, height: 50
     };
     displayNodes.push(centerNode);
     processedNodes.add(centerNode.id);
-
-    const childrenOfCenter = edgeMap.get(centerNode.id) || [];
-    childrenOfCenter.forEach(edge => queue.push([displayNodes[0], 0]));
+    queue.push([centerNode, 0]);
     
     while(queue.length > 0) {
       const [parentNode, level] = queue.shift()!;
@@ -112,14 +111,19 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
       childrenEdges.forEach((edge, index) => {
         const childNodeData = nodeMap.get(edge.target);
         if (childNodeData && !processedNodes.has(childNodeData.id)) {
+          
+          const labelLength = childNodeData.label.length;
+          const calculatedWidth = 120 + Math.max(0, labelLength - 8) * 7;
+          const finalWidth = Math.min(240, Math.max(140, calculatedWidth));
+
           const childNode: MindMapDisplayNode = {
             ...childNodeData,
             x: parentNode.x + LEVEL_SPACING,
             y: startY + index * NODE_SPACING,
             level: level + 1,
             parentId: parentNode.id,
-            width: Math.max(100, 140 - (level + 1) * 10),
-            height: Math.max(32, 40 - (level + 1) * 2),
+            width: finalWidth,
+            height: 40,
           };
           displayNodes.push(childNode);
           processedNodes.add(childNode.id);
@@ -127,7 +131,7 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
         }
       });
     }
-
+    
     const adjustForCollisions = (nodesToAdjust: MindMapDisplayNode[]): MindMapDisplayNode[] => {
       const adjustedNodes = [...nodesToAdjust];      
       const nodesByLevel: { [level: number]: MindMapDisplayNode[] } = {};
@@ -208,7 +212,7 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
     
     return adjustForCollisions(displayNodes);
 
-  }, [keyword, allNodes, allEdges, expandedNodes]);
+  }, [keyword]);
 
   useEffect(() => {
     const calculatedNodes = calculateLayout(allNodes, allEdges, expandedNodes);
@@ -283,6 +287,17 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
     );
   }).filter(Boolean);
 
+  const handleNodeBodyClick = (node: MindMapDisplayNode) => {
+    if (node.type === 'feed') {
+      router.push(`/feed/${node.id.replace('feed_', '')}`);
+    } else if (node.type === 'organization') {
+      router.push(`/organization/${node.label}`);
+    } else if (node.type === 'keyword' && node.level > 0) {
+      // 키워드 노드 클릭 시, 해당 키워드로 새로운 탐색 시작
+      router.push(`/explore?keyword=${encodeURIComponent(node.label)}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 relative">
       <motion.div 
@@ -298,7 +313,6 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
               이전으로
             </Button>
             <div>
-              {/* [3단계 수정] 헤더에 현재 키워드 표시 */}
               <h1 className="font-semibold text-gray-900 text-lg">{keyword}</h1>
               <p className="text-sm text-gray-500">마인드맵</p>
             </div>
@@ -308,8 +322,27 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
               <RotateCcw className="w-4 h-4 mr-2" />
               모두 접기
             </Button>
+            
+            {/* ================================================================= */}
+            {/* [최종 수정] 헤더에 노드 타입 범례(Legend) 추가 */}
+            <div className="hidden md:flex items-center gap-4 bg-slate-100 text-slate-700 px-3 py-2 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-blue-500" />
+                <span className="text-sm">피드</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-orange-500" />
+                <span className="text-sm">기관</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Tag className="w-4 h-4 text-emerald-500" />
+                <span className="text-sm">키워드</span>
+              </div>
+            </div>
+            {/* ================================================================= */}
+
             <div className="hidden md:block bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200">
-              <p className="text-sm">💡 노드의 확장/축소 버튼을 클릭하여 탐험하세요</p>
+              <p className="text-sm">💡 확장/축소 버튼을 클릭하여 탐험하세요</p>
             </div>
           </div>
         </div>
@@ -333,18 +366,8 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
                 hasChildren={true}
                 width={node.width}
                 height={node.height}
-                onClick={() => { // [3단계 추가] 노드 본체 클릭 이벤트 처리
-                  if (node.type === 'feed') {
-                    // 피드 상세 페이지로 이동
-                    // [수정] 실제 feed의 ID를 사용하여 경로 생성 (예시)
-                    window.open(`/feed/${node.id.replace('feed_', '')}`, '_blank');
-                  } else if (node.type === 'organization') {
-                    // 기관 상세 페이지로 이동
-                    // [수정] 실제 organization의 이름을 사용하여 경로 생성 (예시)
-                    window.open(`/organization/${node.label}`, '_blank');
-                  }
-                }}
-                handleExpandClick={() => handleNodeClick(node.id)} // [3단계 추가] 확장 버튼 클릭 이벤트 처리
+                onClick={() => handleNodeBodyClick(node)}
+                handleExpandClick={() => handleNodeClick(node.id)}
               />
             ))}
           </div>

@@ -28,6 +28,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // 새로고침 시 메모리 토큰은 없지만, httpOnly 쿠키는 살아있음.
         // getMyProfile이 401을 반환하면, apiClient 인터셉터가 쿠키로 토큰 재발급을 시도하고,
         // 성공하면 새로운 토큰으로 getMyProfile을 재시도함.
+
+            
+        const existingAccessToken = getAccessToken();
+
+        // 1. Access Token 없으면 초기 호출 스킵
+        if (!existingAccessToken){
+            setIsLoading(false);
+            return;
+        }
+
+        // 2. Access Token이 있는 경우에만 getMyProfile 호출
         try {
             const profileResponse = await getMyProfile();
             if (profileResponse.success && profileResponse.data.user) {

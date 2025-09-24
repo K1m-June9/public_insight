@@ -6,7 +6,7 @@ import { getAccessToken, setAccessToken } from './tokenManager';
 const refreshAccessToken = async () => {
     try {
         // '/api/v1'은 apiClient의 baseURL에 이미 포함되어 있으므로, 그 뒤의 경로만 작성
-        const response = await apiClient.post('/auth/refresh');
+        const response = await apiClient.post('/auth/refresh', {});
         const newAccessToken = response.data.data.access_token;
         
         if (newAccessToken) {

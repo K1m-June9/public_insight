@@ -1,17 +1,31 @@
 import type { NextConfig } from "next";
 
+const IMAGE_PROTOCOL = process.env.NEXT_PUBLIC_IMAGE_PROTOCOL || "https";
+const IMAGE_HOSTNAME = process.env.NEXT_PUBLIC_IMAGE_HOSTNAME || "public-insight.co.kr";
+const IMAGE_HOSTNAME_WWW = process.env.NEXT_PUBLIC_IMAGE_HOSTNAME_WWW || "www.public-insight.co.kr";
+
 const nextConfig: NextConfig = {
-  /* config options here */
-  eslint: { ignoreDuringBuilds: true },
-  output: 'standalone',
-  // 이미지 파일 전송을 위해서 설정, 실제 환경에서는 실제 환경에 대한 protocol, hostname, port, pathname(이건 그대로겠지만)을 작성해야함
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  output: "standalone",
   images: {
     remotePatterns: [
       {
-        protocol: process.env.NEXT_PUBLIC_IMAGE_PROTOCOL as 'http'|'https',
-        hostname: process.env.NEXT_PUBLIC_IMAGE_HOSTNAME as string,
-        port: process.env.NEXT_PUBLIC_IMAGE_PORT || '', // port는 비어있을 수 있으므로 기본값 설정
-        pathname: process.env.NEXT_PUBLIC_IMAGE_PATHNAME as string,
+        protocol: "https",
+        hostname: "publicinsight.site",
+      },
+      {
+        protocol: "https",
+        hostname: "www.publicinsight.site",
+      },
+      {
+        protocol: "https",
+        hostname: "public-insight.co.kr",
+      },
+      {
+        protocol: "https",
+        hostname: "www.public-insight.co.kr",
       },
     ],
   },

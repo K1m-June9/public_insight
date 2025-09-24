@@ -1,50 +1,77 @@
 'use client';
 
-import { useState } from 'react';
-import { MainPage } from '@/components/mind-map/MainPage';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // [추가] 뒤로가기 버튼을 위해 import
+
+// [수정] 데이터 로딩을 위한 커스텀 훅 임포트
+import { useExploreQuery } from '@/hooks/queries/useGraphQueries';
+
+// [수정] 실제 데이터와 연동될 MindMap 컴포넌트 임포트
 import { MindMap } from '@/components/mind-map/MindMap';
+import { Button } from '@/components/ui/button'; // [추가] 에러 화면에서 사용
 
-// 참고: 컴포넌트 경로인 '@/components/...'는 
-// 프로젝트의 경로 별칭(alias) 설정에 따라 다를 수 있습니다.
-// 만약 './components/...' 또는 '../../components/...' 등 상대 경로를 사용한다면
-// 그에 맞게 수정해주세요.
+/**
+ * useSearchParams 훅을 사용하고 실제 컨텐츠를 렌더링하는 내부 컴포넌트
+ */
+function ExplorePageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter(); // [추가] 뒤로가기 함수 사용
+  const keyword = searchParams.get('keyword');
 
-export default function ExplorePage() {
-  // 현재 선택된 주제를 관리하는 상태
-  // 값이 null이면 메인 페이지, 값이 있으면 마인드맵 페이지를 보여줍니다.
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  // URL에 keyword가 없으면 안내 메시지를 표시
+  if (!keyword) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <h1 className="text-2xl font-semibold text-slate-700 mb-4">탐색할 키워드가 필요합니다.</h1>
+        <p className="text-slate-500">인기 키워드 목록 등에서 키워드를 선택하여 탐색을 시작해주세요.</p>
+        <Button onClick={() => router.back()} className="mt-6">이전 페이지로 돌아가기</Button>
+      </div>
+    );
+  }
 
-  /**
-   * MainPage에서 주제 카드를 클릭했을 때 호출되는 함수입니다.
-   * 선택된 주제로 상태를 업데이트하여 마인드맵을 표시합니다.
-   * @param topic - 선택된 주제 문자열
-   */
-  const handleWordSelect = (topic: string) => {
-    setSelectedTopic(topic);
-  };
+  // [추가] useExploreQuery를 사용하여 키워드로 초기 마인드맵 데이터를 가져옴
+  const { data: response, isLoading, isError, error } = useExploreQuery(keyword);
 
-  /**
-   * MindMap에서 '메인으로' 버튼을 클릭했을 때 호출되는 함수입니다.
-   * 선택된 주제 상태를 null로 만들어 다시 메인 페이지를 보여줍니다.
-   */
-  const handleBack = () => {
-    setSelectedTopic(null);
-  };
+  // 로딩 상태 UI
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">로딩 중...</div>;
+  }
 
+  // 에러 상태 UI
+  if (isError || !response?.success) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-red-50">
+        <h1 className="text-2xl font-semibold text-red-700 mb-4">데이터를 불러올 수 없습니다.</h1>
+        <p className="text-red-500">
+          오류: {error?.message || '알 수 없는 오류가 발생했습니다.'}
+        </p>
+        <Button variant="destructive" onClick={() => router.back()} className="mt-6">
+          이전 페이지로 돌아가기
+        </Button>
+      </div>
+    );
+  }
+
+  // [수정] 데이터 로딩 성공 시, MindMap 컴포넌트에 keyword와 API 데이터를 props로 전달
   return (
-    <main>
-      {selectedTopic ? (
-        // 선택된 주제가 있으면 MindMap 컴포넌트를 렌더링합니다.
-        <MindMap 
-          centerTopic={selectedTopic} 
-          onBack={handleBack} 
-        />
-      ) : (
-        // 선택된 주제가 없으면 MainPage 컴포넌트를 렌더링합니다.
-        <MainPage 
-          onWordSelect={handleWordSelect} 
-        />
-      )}
-    </main>
+    <MindMap
+      keyword={keyword}
+      initialNodes={response.data?.nodes || []}
+      initialEdges={response.data?.edges || []}
+      onBack={() => router.back()} // [추가] 뒤로가기 기능 연결
+    />
+  );
+}
+
+
+/**
+ * Suspense로 Content를 감싸는 메인 페이지 컴포넌트
+ */
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">로딩 중...</div>}>
+      <ExplorePageContent />
+    </Suspense>
   );
 }

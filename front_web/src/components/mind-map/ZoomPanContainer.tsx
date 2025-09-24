@@ -92,10 +92,9 @@ export function ZoomPanContainer({ children, className = '' }: ZoomPanContainerP
       const rect = container.getBoundingClientRect();
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
-      // 마인드맵의 중앙 노드 위치(2200, 1800)가 화면 중앙에 오도록 계산
       setPosition({ 
-        x: centerX - 2200, 
-        y: centerY - 1800 
+        x: centerX-800, 
+        y: centerY-500 
       });
       setIsInitialized(true);
     }

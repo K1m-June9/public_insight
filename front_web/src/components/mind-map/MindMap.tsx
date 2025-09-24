@@ -313,7 +313,7 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
               이전으로
             </Button>
             <div>
-              <h1 className="font-semibold text-gray-900 text-lg">{keyword}</h1>
+              <h1 className="text-xl font-semibold text-1200 text-primary">{keyword}</h1>
               <p className="text-sm text-gray-500">마인드맵</p>
             </div>
           </div>
@@ -343,6 +343,9 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
 
             <div className="hidden md:block bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200">
               <p className="text-sm">💡 확장/축소 버튼을 클릭하여 탐험하세요</p>
+            </div>
+            <div className="hidden md:block bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200">
+              <p className="text-sm">📌 추가 연관 자료가 없으면 확장이 안됩니다</p>
             </div>
           </div>
         </div>

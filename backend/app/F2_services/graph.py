@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import Union, Dict, Any, List
 
 from app.F3_repositories.graph import GraphRepository
@@ -62,68 +63,66 @@ class GraphService:
     def _structure_for_frontend(self, raw_data: dict) -> tuple[list[GraphNode], list[GraphEdge]]:
         """
         (Helper) 리포지토리에서 받은 데이터를 프론트엔드 스키마에 맞게 변환함.
+        - 노드의 초기 위치(x, y)와 부가 정보(메타데이터)를 계산하여 포함함.
+        - 초기 화면에서는 중심 키워드와 1차 연결된 노드/엣지만 생성함.
         """
-        nodes = []
-        edges = []
+        nodes: List[GraphNode] = []
+        edges: List[GraphEdge] = []
         
-        # --- 중앙 키워드 노드 생성 ---
-        keyword_node_data = raw_data.get('keyword', {})
-        if not keyword_node_data: # 키워드가 없는 경우는 거의 없지만, 방어 코드
+        # --- 1. 중심 키워드 노드 생성 ---
+        keyword_node_data = raw_data.get('keyword')
+        if not keyword_node_data:
             return [], []
             
-        keyword_id = f"keyword_{keyword_node_data['id']}"
-        nodes.append(GraphNode(
-            id=keyword_id,
+        keyword_id_str = f"keyword_{keyword_node_data['name']}"
+        
+        keyword_node = GraphNode(
+            id=keyword_id_str,
             type='keyword',
             label=keyword_node_data['name'],
-        ))
+            metadata={} # 좌표는 나중에 프론트엔드에서 계산하므로 비워둠
+        )
+        nodes.append(keyword_node)
 
-        # --- 관련 피드 노드 및 관계 생성 ---
-        for feed in raw_data.get('feeds', []):
-            feed_id = f"feed_{feed['id']}"
+        # --- 2. 관련 피드 및 기관 노드 생성 ---
+        # 피드와 기관 데이터를 미리 딕셔너리로 만들어두면 조회가 빠름
+        feeds_map = {feed['id']: feed for feed in raw_data.get('feeds', [])}
+        orgs_map = {org['id']: org for org in raw_data.get('organizations', [])}
+
+        # 피드 노드 생성
+        for feed_id, feed_data in feeds_map.items():
             nodes.append(GraphNode(
-                id=feed_id,
+                id=f"feed_{feed_id}",
                 type='feed',
-                label=feed['title'],
+                label=feed_data['title'],
                 metadata={
-                    'published_date': str(feed.get('published_date'))
+                    # 우리가 논의했던 모든 부가 정보를 metadata에 추가
+                    'published_date': str(feed_data.get('published_date')),
+                    'view_count': feed_data.get('view_count'),
+                    'avg_rating': feed_data.get('average_rating'),
+                    'bookmark_count': feed_data.get('bookmark_count')
                 }
             ))
-            # (Feed)-[:CONTAINS_KEYWORD]->(Keyword) 관계를 엣지로 추가
-            edges.append(GraphEdge(
-                id=f"{feed_id}-CONTAINS-{keyword_id}",
-                source=feed_id,
-                target=keyword_id,
-                label='포함'
-            ))
-
-        # --- 관련 기관 노드 및 관계 생성 ---
-        # 피드 데이터에서 어떤 기관이 어떤 피드를 발행했는지 역추적
-        feeds_by_org = {}
-        for feed in raw_data.get('feeds', []):
-            org_id = feed.get('organization_id')
-            if org_id:
-                if org_id not in feeds_by_org:
-                    feeds_by_org[org_id] = []
-                feeds_by_org[org_id].append(feed['id'])
-
-        for org in raw_data.get('organizations', []):
-            org_id_numeric = org['id']
-            org_id_str = f"organization_{org_id_numeric}"
+        
+        # 기관 노드 생성
+        for org_id, org_data in orgs_map.items():
             nodes.append(GraphNode(
-                id=org_id_str,
+                id=f"organization_{org_id}",
                 type='organization',
-                label=org['name']
+                label=org_data['name'],
+                metadata={}
             ))
             
-            # (Organization)-[:PUBLISHED]->(Feed) 관계를 엣지로 추가
-            for feed_id_numeric in feeds_by_org.get(org_id_numeric, []):
-                feed_id_str = f"feed_{feed_id_numeric}"
+        # --- 3. 1단계 엣지(관계) 생성 ---
+        # 노트북LM 스타일을 위해, 초기 화면에서는 중심 키워드와 다른 노드들을 잇는 엣지만 생성함.
+        for node in nodes:
+            # 🔧 [수정] 객체의 속성에 접근할 때는 '.'을 사용
+            # 자기 자신이 아니고, 중심 노드(keyword_node)가 아닌 노드들만 연결
+            if node.id != keyword_node.id:
                 edges.append(GraphEdge(
-                    id=f"{org_id_str}-PUBLISHED-{feed_id_str}",
-                    source=org_id_str,
-                    target=feed_id_str,
-                    label='발행'
+                    id=f"{keyword_node.id}-INITIAL_LINK-{node.id}",
+                    source=keyword_node.id, # 모든 엣지는 중심 키워드에서 시작
+                    target=node.id,
                 ))
                 
         return nodes, edges

@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 
+from app.F5_core.config import settings
+
 from app.F2_services.auth import AuthService
 from app.F2_services.slider import SliderService
 from app.F2_services.session import SessionService
@@ -137,11 +139,11 @@ async def get_admin_notices_service(db: AsyncSession=Depends(get_db)) -> Notices
 
 
 async def get_admin_dashboard_service(
-        db: AsyncSession=Depends(get_db),
+        #db: AsyncSession=Depends(get_db),
         es: AsyncElasticsearch = Depends(get_es_client)
 ) -> DashboardAdminService:
     """관리자 대시보드 관련 의존성 주입용 함수"""
-    dash_repo = DashboardAdminRepository(db=db)
+    dash_repo = DashboardAdminRepository()
     es_repo = DashboardActivityRepository(es=es)
     return DashboardAdminService(dash_repo=dash_repo, es_repo=es_repo)
 
@@ -262,6 +264,72 @@ async def verify_active_user(
 
 
 
+#####################################################
+# swaggerUI를 위해 수정된 상태
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+async def verify_active_user(
+    request: Request,
+    # 수정된 부분
+    token: str = Depends(oauth2_scheme),
+    
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """요청에 인증된 사용자가 활성 상태인지 검증하고, request.state에 사용자 정보를 저장합니다."""
+    # JWT 미들웨어에서 user_id를 전달받았다고 가정합니다.
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}, # 401 응답 표준 헤더 추가
+        )
+
+    # 1. Redis 캐시 조회 시도
+    cached = await RedisCacheService.get_cached_user_info(user_id)
+
+    # 캐시 데이터 유효성 검사 (선택사항이지만 좋은 습관)
+    if cached:
+        required_fields = ("user_id", "nickname", "email", "status", "role")
+        if not all(field in cached and cached[field] is not None for field in required_fields):
+            cached = None
+
+    if cached:
+        # 캐시가 존재하면 상태만 검사
+        if cached.get("status") != UserStatus.ACTIVE.value:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
+        
+        # 캐시된 데이터로 User 객체를 생성하여 일관성을 유지
+        user = User(
+            user_id=cached.get("user_id"),
+            nickname=cached.get("nickname"),
+            email=cached.get("email"),
+            status=UserStatus(cached.get("status")),
+            role=UserRole(cached.get("role"))
+        )
+        
+        # request.state에 저장하고 반환
+        request.state.user = user
+        return user
+    
+    # 2. 캐시가 없으면 DB 조회
+    auth_repo = AuthRepository(db)
+    user = await auth_repo.get_user_by_user_id(user_id)
+    
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if user.status != UserStatus.ACTIVE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
+
+    # 3. DB 조회 후 Redis 캐시에 저장
+    await RedisCacheService.cache_user_info(user)
+
+    # request.state에 저장하고 반환
+    request.state.user = user
+    return user
 
 #   새로운 선택적 인증 함수 추가
 #   로직 자체는 verify_active_user와 동일

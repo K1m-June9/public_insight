@@ -43,8 +43,6 @@ class NoticesAdminRepository:
         new_notice = Notice(**notice_data)
 
         self.db.add(new_notice)
-        await self.db.commit()
-        await self.db.refresh(new_notice)
         return new_notice
     
     async def update_notice(self,notice:Notice ,update_data:dict) -> Notice:
@@ -54,8 +52,6 @@ class NoticesAdminRepository:
         for key, value in update_data.items():
             setattr(notice, key, value)
 
-        await self.db.commit()
-        await self.db.refresh(notice)
         return notice
     
     async def delete_notice(self, notice:Notice) -> bool:
@@ -64,8 +60,7 @@ class NoticesAdminRepository:
         """
         try: 
             await self.db.delete(notice)
-            await self.db.commit()
             return True
+        
         except SQLAlchemyError as e:
-            await self.db.rollback()
             return False

@@ -20,7 +20,8 @@ from app.F6_schemas.admin.organization import (
     CategoryUpdateRequest,
     OrganizationDetailResponse,
     OrganizationDeleteResponse,
-    CategoryDeleteResponse
+    CategoryDeleteResponse,
+    OrganizationCreateRequest
     )
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 from app.F7_models.users import User
@@ -61,10 +62,7 @@ async def get_organizations_list(
 async def create_organization(
     # multipart/form-data를 처리하기 위해 Form을 사용
     # 아이콘 파일이 없더라도, 텍스트 데이터를 form-data로 받는 것이 확장성에 유리
-    name: str = Form(...),
-    description: Optional[str] = Form(None),
-    website_url: Optional[str] = Form(None),
-    is_active: bool = Form(True), # 폼에서 활성화 여부를 바로 받을 수 있도록 수정
+    request: OrganizationCreateRequest, 
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
     current_user: User = Depends(verify_active_user)
 ):
@@ -73,10 +71,10 @@ async def create_organization(
     생성 시 '보도자료' 카테고리가 자동으로 함께 생성
     """
     result = await admin_service.create_organization(
-        name=name,
-        description=description,
-        website_url=website_url,
-        is_active=is_active
+        name=request.name,
+        description=request.description,
+        website_url=request.website_url,
+        is_active=request.is_active
     )
 
     if isinstance(result, ErrorResponse):

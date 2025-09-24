@@ -31,7 +31,7 @@ export default function Header() {
   // 마이페이지/관리자페이지 이동 처리
   const handleUserPageClick = () => {
     if (user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR) {
-      router.push("/admin"); // 관리자 페이지 경로로 수정 필요
+      router.push("/admin/dashboard"); // 관리자 페이지 경로로 수정 필요
     } else {
       router.push("/mypage"); // 마이페이지 경로로 수정 필요
     }

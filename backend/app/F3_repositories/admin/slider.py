@@ -36,7 +36,6 @@ class SliderAdminRepository:
 
         self.db.add(new_slider)
         await self.db.commit()
-        await self.db.refresh(new_slider)
         return new_slider 
 
     
@@ -48,7 +47,6 @@ class SliderAdminRepository:
             setattr(slider, key, value)
         
         # self.db.add(slider)
-        await self.db.commit()
         await self.db.refresh(slider)
         return slider
     
@@ -59,7 +57,6 @@ class SliderAdminRepository:
         """
         slider.is_active = is_active 
 
-        await self.db.commit()
         await self.db.refresh(slider)
         return slider
     
@@ -70,8 +67,6 @@ class SliderAdminRepository:
         """
         try:
             await self.db.delete(slider)
-            await self.db.commit()
             return True
         except SQLAlchemyError as e:
-            await self.db.rollback()
             return False

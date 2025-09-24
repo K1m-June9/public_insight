@@ -43,7 +43,7 @@ class SliderDetail(BaseSchema):
     tag: str
     content: str
     author: str
-    image: str  # Base64 인코딩된 이미지
+    image: str
     display_order: int
     is_active: bool
     start_date: Optional[datetime] = None

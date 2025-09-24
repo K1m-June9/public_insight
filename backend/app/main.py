@@ -18,6 +18,8 @@ from app.F10_tasks.scheduler import setup_scheduler, scheduler
 from app.F11_search.es_initializer import initialize_elasticsearch
 from app.F11_search.ES1_client import es_async, es_sync
 from app.F8_database.connection import engine, Base, async_session_scope
+from app.F8_database.connection import engine, Base 
+from app.F13_recommendations.dependencies import EngineManager
 
 # --- 라우터 및 미들웨어 관련 모듈 import ---
 from app.F1_routers.v1.api import router as api_v1_router
@@ -143,6 +145,8 @@ async def app_lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Async Elasticsearch ping failed on startup: {e}")
     
+    # 서버 시작 시 추천 엔진을 비동기 최초 학습
+    await EngineManager.initial_fit()
 
     # 스케줄러 설정 및 시작
     setup_scheduler()

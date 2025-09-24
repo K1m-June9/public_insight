@@ -10,6 +10,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { formatDate } from "@/lib/utils/date";
+import { ScrollToTopButton } from "@/components/ScrollToTop"
 
 export default function NoticeListPage() {
   const router = useRouter();
@@ -117,6 +118,7 @@ export default function NoticeListPage() {
         </div>
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

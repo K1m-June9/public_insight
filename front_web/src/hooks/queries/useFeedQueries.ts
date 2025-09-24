@@ -7,6 +7,7 @@ import {
     getTop5Feeds,
     getPressReleases,
     getFeedDetail,
+    getFeedRecommendations,
 } from '@/services/feedService';
 
 interface PaginationParams {
@@ -25,6 +26,7 @@ export const feedQueryKeys = {
     list: (params: any) => [...feedQueryKeys.lists(), params] as const,
     details: () => [...feedQueryKeys.all, 'detail'] as const,
     detail: (id: number) => [...feedQueryKeys.details(), id] as const,
+    recommendations: (id: number) => [...feedQueryKeys.detail(id), 'recommendations'] as const,
 };
 
 /**
@@ -104,5 +106,18 @@ export const useFeedDetailQuery = (id: number, options?: { enabled?: boolean }) 
         queryKey: feedQueryKeys.detail(id),
         queryFn: () => getFeedDetail(id),
         enabled: options?.enabled ?? !!id,
+    });
+};
+
+/**
+ * 특정 피드에 대한 추천 목록을 조회하는 useQuery 훅
+ * @param feedId - 추천의 기준이 될 피드 ID
+ */
+export const useFeedRecommendationsQuery = (feedId: number | null) => {
+    return useQuery({
+        queryKey: feedQueryKeys.recommendations(feedId!), // 👈 [수정] id가 null일 수 있으므로 non-null assertion(!) 추가
+        queryFn: () => getFeedRecommendations(feedId!),
+        enabled: !!feedId, // feedId가 있을 때만 훅을 활성화
+        staleTime: 1000 * 60 * 5, // 5분. 추천 목록은 자주 바뀌지 않음
     });
 };

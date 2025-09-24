@@ -27,8 +27,12 @@ from app.F6_schemas.feed import (
     PolicyNewsResponse, 
     PolicyNewsQuery,
     )
+from app.F6_schemas.recommendation import RecommendationResponse
 from app.F6_schemas.base import PaginationQuery, ErrorResponse, ErrorCode
 from app.F7_models.users import User
+
+from app.F13_recommendations.dependencies import get_recommendation_service
+from app.F13_recommendations.service import RecommendationService
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +208,27 @@ async def post_feed_bookmark(
             status_code=400,
             content=result.model_dump()
         )
+    return result
+
+@router.get("/detail/{id}/recommendations", response_model=RecommendationResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "RECOMMENDATION"])
+async def get_feed_recommendations(
+    id: int,
+    recommendation_service: RecommendationService = Depends(get_recommendation_service)
+):
+    """
+    콘텐츠 기반 피드 추천 API
+    
+    특정 피드 ID를 기반으로, 함께 보기 좋은 유사 콘텐츠 목록을 반환함.
+    - 현재 피드가 '정책 자료' -> 유사 정책 자료 + 관련 보도자료 추천
+    - 현재 피드가 '보도자료' -> 유사 보도자료 + 관련 정책 자료 추천
+    """
+    result = await recommendation_service.get_recommendations_for_feed(id)
+    
+    if isinstance(result, ErrorResponse):
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+        
     return result
 
 # 기관별 피드 목록 조회 엔드포인트

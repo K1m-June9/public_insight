@@ -6,6 +6,7 @@ import { useStaticPageQuery } from "@/hooks/queries/useStaticPageQueries";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { ScrollToTopButton } from "@/components/ScrollToTop"
 
 // AboutPage와 동일한 구조의 Content 컴포넌트를 재사용
 // 실제 프로젝트에서는 이 컴포넌트를 별도 파일로 분리하여 import하는 것이 더 좋긴 함
@@ -41,6 +42,7 @@ export default function PrivacyPage() {
         </div>
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

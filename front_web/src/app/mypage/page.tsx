@@ -22,6 +22,7 @@ import { useUpdateNicknameMutation, useUpdatePasswordMutation } from "@/hooks/mu
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { formatDate } from "@/lib/utils/date";
+import { ScrollToTopButton } from "@/components/ScrollToTop"
 
 // 마이페이지의 각 탭을 위한 개별 컴포넌트
 function ProfileTab() {
@@ -220,6 +221,7 @@ export default function MyPage() {
         </div>
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useStaticPageQuery } from "@/hooks/queries/useStaticPageQueries";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { ScrollToTopButton } from "@/components/ScrollToTop"
 
 function StaticPageContent({ slug }: { slug: string }) {
   const { data, isLoading, isError } = useStaticPageQuery(slug);
@@ -46,6 +47,7 @@ export default function AboutPage() {
         </div>
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

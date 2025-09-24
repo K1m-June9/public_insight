@@ -37,58 +37,55 @@ class OrganizationAdminRepository:
         
     async def get_organizations_with_categories(self) -> List[Organization]:
         """
-        관리자: 모든 기관과 각 기관에 속한 카테고리, 그리고 각각의 피드 수를 조회
-        N+1 문제를 방지하기 위해 selectinload를 사용
+        관리자: 모든 기관과 각 기관에 속한 카테고리 목록 및 피드 수를 효율적으로 조회
         """
         try:
-            # 1. 기관별 피드 수를 계산하는 서브쿼리
-            org_feed_counts = (
-                select(Feed.organization_id, func.count(Feed.id).label("feed_count"))
-                .group_by(Feed.organization_id)
-                .subquery()
-            )
-
-            # 2. 카테고리별 피드 수를 계산하는 서브쿼리
-            cat_feed_counts = (
-                select(Feed.category_id, func.count(Feed.id).label("feed_count"))
-                .group_by(Feed.category_id)
-                .subquery()
-            )
-
-            # 3. 메인 쿼리
-            stmt = (
-                select(
-                    Organization,
-                    org_feed_counts.c.feed_count.label("organization_feed_count")
-                )
-                .outerjoin(org_feed_counts, Organization.id == org_feed_counts.c.organization_id)
-                # categories 관계를 Eager Loading 하고, 그 안의 feed_count도 함께 로드
-                .options(
-                    selectinload(Organization.categories)
-                )
+            # 1. [DB 쿼리 1] 모든 기관과 그에 속한 카테고리들을 Eager Loading으로 한 번에 가져옴
+            #    'selectinload'는 N+1 문제를 방지하는 가장 효율적인 방법 중 하나
+            org_stmt = (
+                select(Organization)
+                .options(selectinload(Organization.categories))
                 .order_by(Organization.name.asc())
             )
-            
-            result = await self.db.execute(stmt)
-            organizations = result.scalars().unique().all()
-            
-            # SQLAlchemy 2.0에서는 위 쿼리만으로 관계가 로드
-            # 카테고리별 피드 카운트는 서비스단에서 계산하거나, 별도 쿼리로 가져오는 것이 더 간단할 수 있음
-            # 우선은 기관별 피드 카운트만 적용하고, 카테고리 카운트는 서비스에서 처리
-            
-            # 위 쿼리로는 카테고리별 피드 카운트를 직접 가져오기 복잡하므로,
-            # 별도 쿼리로 모든 카테고리의 피드 카운트를 가져옴
-            cat_counts_query = select(Category.id, func.count(Feed.id).label("feed_count")).join(Feed).group_by(Category.id)
-            cat_counts_result = await self.db.execute(cat_counts_query)
-            cat_counts_map = {row[0]: row[1] for row in cat_counts_result.all()}
+            org_result = await self.db.execute(org_stmt)
+            organizations = org_result.scalars().unique().all()
 
-            # 로드된 객체에 피드 카운트 정보를 추가
+            if not organizations:
+                return []
+
+            # 2. 파이썬에서 필요한 ID 목록들을 미리 추출
+            org_ids = [org.id for org in organizations]
+            all_category_ids = [cat.id for org in organizations for cat in org.categories]
+            
+            # 3. [DB 쿼리 2] 기관별 피드 수를 한 번의 쿼리로 모두 가져옴
+            org_counts_stmt = (
+                select(Feed.organization_id, func.count(Feed.id))
+                .where(Feed.organization_id.in_(org_ids))
+                .group_by(Feed.organization_id)
+            )
+            org_counts_result = await self.db.execute(org_counts_stmt)
+            # 결과를 {기관ID: 피드수} 형태의 딕셔너리(맵)으로 변환하여 조회 성능을 높임
+            org_counts_map = {org_id: count for org_id, count in org_counts_result}
+
+            # 4. [DB 쿼리 3] 카테고리별 피드 수를 한 번의 쿼리로 모두 가져옴
+            cat_counts_stmt = (
+                select(Feed.category_id, func.count(Feed.id))
+                .where(Feed.category_id.in_(all_category_ids))
+                .group_by(Feed.category_id)
+            )
+            cat_counts_result = await self.db.execute(cat_counts_stmt)
+            # 결과를 {카테고리ID: 피드수} 형태의 딕셔너리로 변환
+            cat_counts_map = {cat_id: count for cat_id, count in cat_counts_result}
+            
+            # 5. 파이썬 루프를 통해 메모리에서 데이터 최종 조합
+            #    이 과정은 DB와 통신하지 않으므로 매우 빠름
             for org in organizations:
-                org.feed_count = next((row.organization_feed_count for row in result.all() if row.Organization.id == org.id), 0) or 0
+                org.feed_count = org_counts_map.get(org.id, 0)
                 for cat in org.categories:
                     cat.feed_count = cat_counts_map.get(cat.id, 0)
+
+            return organizations
             
-            return list(organizations)
         except Exception as e:
             logger.error(f"Error getting organizations with categories: {e}", exc_info=True)
             return []
@@ -124,15 +121,11 @@ class OrganizationAdminRepository:
             self.db.add(new_organization)
             # 카테고리는 관계에 의해 자동으로 함께 추가
             
-            await self.db.commit()
-            await self.db.refresh(new_organization)
-            
             # 관계 로드를 위해 Eager Loading 옵션과 함께 다시 조회할 수도 있지만,
             # 지금은 생성된 객체만 반환해도 충분
             return new_organization
             
         except Exception as e:
-            await self.db.rollback()
             logger.error(f"Error creating organization '{name}': {e}", exc_info=True)
             raise # 서비스 레이어에서 처리하도록 예외를 다시 발생시킴
 
@@ -148,11 +141,9 @@ class OrganizationAdminRepository:
                 is_active=is_active
             )
             self.db.add(new_category)
-            await self.db.commit()
-            await self.db.refresh(new_category, attribute_names=['organization']) # 'organization' 관계 로드
+
             return new_category
         except Exception as e:
-            await self.db.rollback()
             logger.error(f"Error creating category '{name}' for org_id {organization_id}: {e}", exc_info=True)
             raise
 
@@ -167,10 +158,9 @@ class OrganizationAdminRepository:
                 .values(**update_data)
             )
             result = await self.db.execute(stmt)
-            await self.db.commit()
+            
             return result.rowcount > 0
         except Exception as e:
-            await self.db.rollback()
             logger.error(f"Error updating organization {org_id}: {e}", exc_info=True)
             return False
         
@@ -189,10 +179,9 @@ class OrganizationAdminRepository:
         try:
             stmt = update(Category).where(Category.id == cat_id).values(**update_data)
             result = await self.db.execute(stmt)
-            await self.db.commit()
             return result.rowcount > 0
+        
         except Exception as e:
-            await self.db.rollback()
             logger.error(f"Error updating category {cat_id}: {e}", exc_info=True)
             return False
         
@@ -235,10 +224,9 @@ class OrganizationAdminRepository:
                 return False
 
             await self.db.delete(org_to_delete)
-            await self.db.commit()
             return True
+        
         except Exception as e:
-            await self.db.rollback()
             logger.error(f"Error deleting organization {org_id}: {e}", exc_info=True)
             return False
         
@@ -251,9 +239,21 @@ class OrganizationAdminRepository:
             if not category_to_delete:
                 return False
             await self.db.delete(category_to_delete)
-            await self.db.commit()
             return True
+        
         except Exception as e:
-            await self.db.rollback()
             logger.error(f"Error deleting category {cat_id}: {e}", exc_info=True)
             return False
+        
+    async def get_organization_by_name(self, name: str) -> Optional[Organization]:
+        result = await self.db.execute(select(Organization).where(Organization.name == name))
+        return result.scalar_one_or_none()
+
+    async def is_category_name_duplicate(self, org_id: int, name: str) -> bool:
+        result = await self.db.execute(
+            select(func.count(Category.id)).where(
+                Category.organization_id == org_id,
+                Category.name == name
+            )
+        )
+        return result.scalar_one() > 0

@@ -3,7 +3,7 @@ import * as organizationService from '@/services/admin/organizationService';
 import { adminOrganizationQueryKeys } from '@/hooks/queries/useAdminOrganizationQueries';
 import { AxiosError } from 'axios';
 import { ErrorResponse } from '@/lib/types/base';
-import { AdminCategoryCreateRequest, AdminCategoryUpdateRequest } from '@/lib/types/admin/organization';
+import { AdminOrganizationRequest, AdminCategoryCreateRequest, AdminCategoryUpdateRequest } from '@/lib/types/admin/organization';
 
 const useInvalidateOrganizations = () => {
     const queryClient = useQueryClient();
@@ -14,7 +14,8 @@ const useInvalidateOrganizations = () => {
 export const useCreateOrganizationMutation = () => {
     const invalidate = useInvalidateOrganizations();
     return useMutation({
-        mutationFn: (formData: FormData) => organizationService.createAdminOrganization(formData),
+        // mutationFn이 FormData가 아닌 payload(AdminOrganizationRequest 타입)를 받도록 수정
+        mutationFn: (payload: AdminOrganizationRequest) => organizationService.createAdminOrganization(payload),
         onSuccess: () => { alert('기관이 생성되었습니다.'); invalidate(); },
         onError: (error: AxiosError<ErrorResponse>) => { alert(error.response?.data.error.message || '기관 생성 실패'); }
     });
@@ -22,7 +23,9 @@ export const useCreateOrganizationMutation = () => {
 export const useUpdateOrganizationMutation = () => {
     const invalidate = useInvalidateOrganizations();
     return useMutation({
-        mutationFn: ({ id, formData }: { id: number, formData: FormData }) => organizationService.updateAdminOrganization(id, formData),
+        // FormData 대신 AdminOrganizationRequest payload를 받도록 수정
+        mutationFn: ({ id, payload }: { id: number, payload: AdminOrganizationRequest }) => 
+            organizationService.updateAdminOrganization(id, payload),
         onSuccess: () => { alert('기관이 수정되었습니다.'); invalidate(); },
         onError: (error: AxiosError<ErrorResponse>) => { alert(error.response?.data.error.message || '기관 수정 실패'); }
     });

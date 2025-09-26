@@ -1,13 +1,12 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MindMapNode } from './MindMapNode';
 import { ZoomPanContainer } from './ZoomPanContainer';
 import { Button } from '@/components/ui/button';
-// [최종 수정] 헤더 범례에 사용할 아이콘들을 임포트합니다.
-import { ArrowLeft, RotateCcw, FileText, Building2, Tag } from 'lucide-react';
+import { ArrowLeft, RotateCcw, FileText, Building2, Tag, Info } from 'lucide-react';
 import type { GraphNode, GraphEdge } from '@/lib/types/graph';
 import { useExpandMutation } from '@/hooks/mutations/useGraphMutations';
 
@@ -18,6 +17,14 @@ interface MindMapDisplayNode extends GraphNode {
   parentId?: string;
   width: number;
   height: number;
+}
+
+// [1. 상태 수정] 툴팁의 좌표(x, y)도 함께 저장하도록 타입 변경
+interface FeedbackState {
+  nodeId: string | null;
+  message: string;
+  x: number;
+  y: number;
 }
 
 interface MindMapProps {
@@ -34,6 +41,8 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [nodes, setNodes] = useState<MindMapDisplayNode[]>([]);
   const [zoomPanKey, setZoomPanKey] = useState(0);
+  
+  const [feedback, setFeedback] = useState<FeedbackState>({ nodeId: null, message: '', x: 0, y: 0 });
 
   const LEVEL_SPACING = 300;
   const NODE_SPACING = 60;
@@ -54,19 +63,49 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
       if (response.success && response.data) {
         const nodeIds = new Set(allNodes.map(n => n.id));
         const newNodes = response.data.nodes.filter(n => !nodeIds.has(n.id));
-        setAllNodes(prev => [...prev, ...newNodes]);
-
-        const edgeIds = new Set(allEdges.map(e => e.id));
-        const newEdges = response.data.edges.filter(e => !edgeIds.has(e.id));
-        setAllEdges(prev => [...prev, ...newEdges]);
         
-        setExpandedNodes(prev => new Set(prev).add(variables.nodeId));
+        if (newNodes.length > 0) {
+          setAllNodes(prev => [...prev, ...newNodes]);
+          const edgeIds = new Set(allEdges.map(e => e.id));
+          const newEdges = response.data.edges.filter(e => !edgeIds.has(e.id));
+          setAllEdges(prev => [...prev, ...newEdges]);
+          setExpandedNodes(prev => new Set(prev).add(variables.nodeId));
+        } else {
+          // [2. 피드백 트리거 수정] 클릭된 노드의 좌표를 찾아서 상태에 함께 저장
+          const clickedNode = nodes.find(n => n.id === variables.nodeId);
+          if (clickedNode) {
+            setFeedback({ 
+              nodeId: variables.nodeId, 
+              message: '더 이상 확장할 내용이 없습니다.',
+              x: clickedNode.x + clickedNode.width / 2, // 노드의 중앙 x
+              y: clickedNode.y + clickedNode.height // 노드의 바로 아래 y
+            });
+          }
+        }
       }
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       console.error("노드 확장 실패:", error);
+      const clickedNode = nodes.find(n => n.id === variables.nodeId);
+      if (clickedNode) {
+        setFeedback({ 
+          nodeId: variables.nodeId,
+          message: '오류가 발생했습니다.',
+          x: clickedNode.x + clickedNode.width / 2,
+          y: clickedNode.y + clickedNode.height
+        });
+      }
     },
   });
+
+  useEffect(() => {
+    if (feedback.nodeId) {
+      const timer = setTimeout(() => {
+        setFeedback({ nodeId: null, message: '', x: 0, y: 0 });
+      }, 550);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback.nodeId]);
 
   const calculateLayout = useCallback((
     baseNodes: GraphNode[],
@@ -211,7 +250,6 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
     };
     
     return adjustForCollisions(displayNodes);
-
   }, [keyword]);
 
   useEffect(() => {
@@ -227,6 +265,8 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
   }, [keyword, initialNodes, initialEdges]);
 
   const handleNodeClick = (nodeId: string) => {
+    if (feedback.nodeId) return;
+
     const nodeToExpand = allNodes.find(n => n.id === nodeId);
     if (!nodeToExpand) return;
 
@@ -261,20 +301,18 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
     return `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
   };
 
-  const connections = allEdges.map(edge => {
-    const sourceNode = nodes.find(n => n.id === edge.source);
-    const targetNode = nodes.find(n => n.id === edge.target);
-
+  const connections = nodes.map(node => {
+    if (!node.parentId) return null;
+    const sourceNode = nodes.find(n => n.id === node.parentId);
+    const targetNode = node;
     if (!sourceNode || !targetNode) return null;
-    
     const startX = sourceNode.x + sourceNode.width;
     const startY = sourceNode.y + sourceNode.height / 2;
     const endX = targetNode.x;
     const endY = targetNode.y + targetNode.height / 2;
-
     return (
       <motion.path
-        key={edge.id}
+        key={`${sourceNode.id}->${targetNode.id}`}
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 0.4 }}
         transition={{ duration: 0.5, delay: targetNode.level * 0.05 }}
@@ -293,7 +331,6 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
     } else if (node.type === 'organization') {
       router.push(`/organization/${node.label}`);
     } else if (node.type === 'keyword' && node.level > 0) {
-      // 키워드 노드 클릭 시, 해당 키워드로 새로운 탐색 시작
       router.push(`/explore?keyword=${encodeURIComponent(node.label)}`);
     }
   };
@@ -322,9 +359,6 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
               <RotateCcw className="w-4 h-4 mr-2" />
               모두 접기
             </Button>
-            
-            {/* ================================================================= */}
-            {/* [최종 수정] 헤더에 노드 타입 범례(Legend) 추가 */}
             <div className="hidden md:flex items-center gap-4 bg-slate-100 text-slate-700 px-3 py-2 rounded-lg border border-slate-200">
               <div className="flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-blue-500" />
@@ -339,8 +373,6 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
                 <span className="text-sm">키워드</span>
               </div>
             </div>
-            {/* ================================================================= */}
-
             <div className="hidden md:block bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200">
               <p className="text-sm">💡 확장/축소 버튼을 클릭하여 탐험하세요</p>
             </div>
@@ -356,6 +388,28 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
             {connections}
           </svg>
           <div className="relative z-10 w-full h-full">
+            {/* [3. UI 렌더링] 툴팁 UI를 nodes.map 바깥에 딱 한 번만 렌더링합니다. */}
+            <AnimatePresence>
+              {feedback.nodeId && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute z-50 flex items-center gap-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-md shadow-lg"
+                  style={{
+                    left: feedback.x,
+                    top: feedback.y,
+                    transform: 'translateX(-50%)', // 중앙 정렬
+                    width: 'max-content',
+                  }}
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  <span>{feedback.message}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {nodes.map(node => (
               <MindMapNode
                 key={node.id}

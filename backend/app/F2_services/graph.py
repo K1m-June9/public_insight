@@ -128,38 +128,48 @@ class GraphService:
         return nodes, edges
         
     async def get_expanded_graph_by_node(
-        self, node_id: str, node_type: str
+        self, node_id: str, node_type: str,
+        # 🔧 [신규] 프론트엔드로부터 현재 화면에 있는 노드 ID 목록을 받음
+        #    - 문자열로 받아서 set으로 변환하여 사용
+        exclude_ids_str: str | None = None
     ) -> Union[ExploreGraphResponse, ErrorResponse]:
         """
-        클릭된 노드를 중심으로 그래프를 확장함.
-        - node_type에 따라 적절한 리포지토리 메서드를 호출하고 결과를 구조화함.
+        [ML 기반으로 리팩토링됨]
+        클릭된 노드를 중심으로 그래프를 확장하고, 비즈니스 규칙에 따라 결과를 필터링함.
         """
         try:
-            # 1. node_type에 따라 어떤 리포지토리 메서드를 호출할지 결정
-            raw_expansion_data: List[Dict[str, Any]] | None = None
-            # node_id에서 접두사(예: "feed_")를 제거하여 순수한 숫자/문자 ID를 추출
-            # 💥 중요: 이 ID 추출 방식은 프론트엔드에서 ID를 생성하는 규칙과 일치해야 함
             entity_id = node_id.split('_', 1)[-1]
+            # 쉼표로 구분된 문자열을 set으로 변환. 없으면 빈 set.
+            exclude_ids = set(exclude_ids_str.split(',')) if exclude_ids_str else set()
+
+            raw_expansion_data: Dict[str, Any] | None = None
+            rules: Dict[str, int] = {}
 
             if node_type == 'feed':
-                raw_expansion_data = await self.repo.expand_from_feed(int(entity_id))
+                raw_expansion_data = await self.repo.expand_from_feed(int(entity_id), exclude_ids)
+                rules = {'feed': 4, 'keyword': 3, 'organization': 1}
+            
             elif node_type == 'organization':
-                raw_expansion_data = await self.repo.expand_from_organization(int(entity_id))
+                raw_expansion_data = await self.repo.expand_from_organization(int(entity_id), exclude_ids)
+                rules = {'feed': 4, 'keyword': 3}
+            
             elif node_type == 'keyword':
-                raw_expansion_data = await self.repo.expand_from_keyword(str(entity_id))
+                raw_expansion_data = await self.repo.expand_from_keyword(str(entity_id), exclude_ids)
+                rules = {'feed': 4, 'keyword': 2, 'organization': 1}
+            
             else:
-                # 지원하지 않는 노드 타입인 경우 에러 반환
                 return ErrorResponse(error=ErrorDetail(code=ErrorCode.BAD_REQUEST, message="지원하지 않는 노드 타입입니다."))
 
-            # 2. 리포지토리 결과가 없는 경우 (확장할 노드가 없는 경우)
+            # 리포지토리 결과가 없는 경우
             if not raw_expansion_data:
-                # 빈 데이터를 성공적으로 반환 (에러가 아님)
                 return ExploreGraphResponse(success=True, data=ExploreGraphData(nodes=[], edges=[]))
             
-            # 3. 원시 데이터를 프론트엔드용 nodes와 edges로 '재조립'
-            nodes, edges = self._structure_expansion_for_frontend(node_id, raw_expansion_data)
+            # 1. 비즈니스 규칙에 따라 최종 노드 목록을 선별
+            final_node_infos = self._filter_and_select_nodes(raw_expansion_data, rules, exclude_ids)
             
-            # 4. 최종 성공 응답 반환
+            # 2. 선별된 노드 정보로 프론트엔드용 nodes와 edges를 최종 조립
+            nodes, edges = self._structure_expansion_for_frontend(node_id, final_node_infos)
+            
             response_data = ExploreGraphData(nodes=nodes, edges=edges)
             return ExploreGraphResponse(success=True, data=response_data)
 
@@ -167,46 +177,78 @@ class GraphService:
             logger.error(f"Error expanding graph for node '{node_id}': {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
 
+    def _filter_and_select_nodes(
+        self, 
+        raw_data: Dict[str, Any], 
+        rules: Dict[str, int],
+        exclude_ids: set[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        (Helper) ML 예측 결과와 비즈니스 규칙에 따라 최종 노드를 선별함.
+        """
+        selected_nodes_map: Dict[str, Dict[str, Any]] = {}
+        counts = {node_type: 0 for node_type in rules.keys()}
+        
+        # 1. 예측된 노드들부터 규칙에 따라 채워넣기
+        for node_id, similarity in raw_data.get("predicted_nodes", []):
+            node_type = node_id.split('_')[0]
+            
+            # 규칙에 해당하고, 할당량이 남았으며, 이미 제외 목록에 없는 경우
+            if node_type in rules and counts[node_type] < rules[node_type] and node_id not in exclude_ids:
+                # 상세 정보는 아직 없으므로, ID와 타입, 유사도만 저장
+                selected_nodes_map[node_id] = {'id': node_id, 'type': node_type, 'similarity': similarity}
+                counts[node_type] += 1
+
+        # 2. Cypher로 확정적으로 가져온 노드(기관 등) 추가
+        explicit_nodes = raw_data.get("explicit_nodes", {})
+        for node_type, node_or_list in explicit_nodes.items():
+            # organization, organizations 처럼 단수/복수형에 모두 대응
+            node_type_singular = node_type.rstrip('s') 
+            
+            if node_type_singular in rules and counts[node_type_singular] < rules[node_type_singular]:
+                # 데이터가 리스트가 아니면 리스트로 만듦
+                nodes_to_process = node_or_list if isinstance(node_or_list, list) else [node_or_list]
+                
+                for node_data in nodes_to_process:
+                    if not node_data: continue # 데이터가 null인 경우 건너뜀
+                    
+                    node_id = f"{node_type_singular}_{node_data['id']}"
+                    
+                    # 할당량이 남았고, 제외 목록에 없으며, 아직 선택되지 않은 경우
+                    if counts[node_type_singular] < rules[node_type_singular] and node_id not in exclude_ids and node_id not in selected_nodes_map:
+                        selected_nodes_map[node_id] = {'id': node_id, 'type': node_type_singular, 'data': node_data}
+                        counts[node_type_singular] += 1
+
+        return list(selected_nodes_map.values())
 
     def _structure_expansion_for_frontend(
-        self, start_node_id: str, raw_data: List[Dict[str, Any]]
+        self, start_node_id: str, final_node_infos: List[Dict[str, Any]]
     ) -> tuple[List[GraphNode], List[GraphEdge]]:
-        """ (Helper) 리포지토리의 확장 결과를 프론트엔드 스키마에 맞게 변환함. """
+        """
+        (Helper) 최종 선별된 노드 정보 목록을 프론트엔드 스키마에 맞게 변환함.
+        """
         nodes = []
         edges = []
         
-        for item in raw_data:
-            node_data = item.get('node')
-            node_type_from_db = item.get('type') # 예: 'similar_feed', 'major_keyword'
+        for item in final_node_infos:
+            node_id = item['id']
+            generic_type = item['type']
             
-            if not node_data:
-                continue
+            # 상세 정보가 있으면 사용하고, 없으면 ID에서 라벨을 유추 (예측 결과의 경우)
+            node_data = item.get('data')
+            label = node_data.get('title', node_data.get('name')) if node_data else node_id.split('_', 1)[-1]
+            
+            nodes.append(GraphNode(
+                id=node_id,
+                type=generic_type,
+                label=label,
+                metadata={} # TODO: 필요시 node_data에서 메타데이터 추가
+            ))
 
-            # DB에서 온 node_type을 프론트엔드에서 사용할 일반 타입으로 변환
-            # 예: 'similar_feed', 'recommended_feed' -> 'feed'
-            generic_type = node_type_from_db.split('_')[-1] #_
-            
-            # 노드 ID 생성 (접두사 + 실제 ID)
-            # Keyword 노드는 name이 id 역할을 함
-            node_id = f"{generic_type}_{node_data.get('name', node_data.get('id'))}"
-            
-            # 이미 생성된 노드는 추가하지 않도록 중복 체크 (선택적이지만 안정성을 높임)
-            if not any(n.id == node_id for n in nodes):
-                nodes.append(GraphNode(
-                    id=node_id,
-                    type=generic_type,
-                    label=node_data.get('title', node_data.get('name')),
-                    # TODO: 필요에 따라 metadata 추가 (예: 피드의 발행일 등)
-                    metadata={} 
-                ))
-
-            # 엣지(관계) 생성
-            # 시작 노드(클릭된 노드)와 새로 찾은 노드를 연결
             edges.append(GraphEdge(
                 id=f"{start_node_id}-EXPANDS_TO-{node_id}",
                 source=start_node_id,
-                target=node_id,
-                label=node_type_from_db # 관계 라벨에 구체적인 타입(예: '유사 피드')을 넣어주면 더 풍부한 정보 제공 가능
+                target=node_id
             ))
 
         return nodes, edges

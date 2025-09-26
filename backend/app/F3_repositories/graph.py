@@ -3,6 +3,8 @@ from typing import Dict, Any, List
 
 # neo4j Session 타입을 명확히 하기 위해 임포트
 from neo4j import AsyncDriver
+from app.F14_knowledge_graph.graph_ml import predict_similar_nodes
+from app.F7_models.feeds import ContentTypeEnum
 
 logger = logging.getLogger(__name__)
 
@@ -16,152 +18,162 @@ class GraphRepository:
 
     async def find_initial_nodes_by_keyword(self, keyword: str) -> Dict[str, Any] | None:
         """
-        특정 키워드를 중심으로, 마인드맵 초기 화면에 필요한 노드들을 조회함.
-        - 하나의 Cypher 쿼리로 중앙 키워드, 관련 피드, 관련 기관을 모두 가져옴.
-        - 반환값: {'keyword': {...}, 'feeds': [...], 'organizations': [...]} 형태의 딕셔너리
-        """
-        # [핵심] 키워드와 관련된 정보를 집계(collect)하는 Cypher 쿼리
-        cypher_query = """
-        // 1. 입력받은 $keyword와 일치하는 :Keyword 노드를 찾음
-        MATCH (k:Keyword {name: $keyword})
-
-        // 2. 이 키워드와 :CONTAINS_KEYWORD 관계로 연결된 :Feed 노드들을 찾음 (선택적)
-        //    - OPTIONAL MATCH: 관련 피드가 없더라도 쿼리가 실패하지 않음
-        OPTIONAL MATCH (f:Feed)-[:CONTAINS_KEYWORD]->(k)
-
-        // 3. 위에서 찾은 각 피드와 :PUBLISHED 관계로 연결된 :Organization 노드를 찾음 (선택적)
-        OPTIONAL MATCH (o:Organization)-[:PUBLISHED]->(f)
-
-        // 4. 찾은 모든 정보를 집계하여 반환
-        RETURN
-            // 중앙 키워드 노드의 속성을 'keyword'라는 이름으로 반환
-            k { .id, .name } AS keyword,
-            
-            // 중복을 제거(DISTINCT)하여 관련 피드 노드들의 리스트를 'feeds'라는 이름으로 반환
-            // f{.*}는 해당 노드의 모든 속성을 딕셔너리로 변환해 줌
-            collect(DISTINCT f { .*, content_type: toString(f.content_type) }) AS feeds,
-            
-            // 중복을 제거하여 관련 기관 노드들의 리스트를 'organizations'라는 이름으로 반환
-            collect(DISTINCT o { .* }) AS organizations
+        [ML + Cypher 하이브리드 방식으로 수정됨]
+        ML로 유사 피드를 예측하고, 예측된 피드와 관련된 기관을 Cypher로 조회.
         """
         try:
-            # driver를 사용하여 세션을 열고, 해당 세션으로 쿼리를 실행
-            async with self.driver.session() as session:
-                result = await session.run(cypher_query, keyword=keyword)
-                record = await result.single()
+            # 1. ML 모델을 호출하여 유사 노드 ID 목록을 예측 (피드 위주로)
+            start_node_id = f"keyword_{keyword}"
+            # 넉넉하게 상위 20개의 유사 노드를 후보로 가져옴
+            predicted_nodes = predict_similar_nodes(start_node_id, top_n=20)
+
+            if not predicted_nodes:
+                return None
             
-            if record and record.data().get("keyword"):
-                return record.data()
-            else:
-                # 키워드를 찾지 못한 경우 None을 반환
+            # 예측 결과에서 '피드' 노드의 ID만 필터링하고, 실제 DB ID(숫자)만 추출
+            predicted_feed_db_ids = [
+                int(node_id.split('_')[1]) 
+                for node_id, similarity in predicted_nodes 
+                if node_id.startswith('feed_')
+            ]
+
+            if not predicted_feed_db_ids:
                 return None
 
+            # 2. [핵심 수정] 예측된 피드 ID들을 사용하여, 해당 피드들과 관련 기관 정보를 한번에 조회
+            #    이제 쿼리는 '탐색'이 아닌, 예측 결과를 '보강'하는 역할을 함
+            cypher_query = """
+            // 1. 추천된 피드 ID 리스트를 파라미터로 받음
+            UNWIND $feed_ids as feed_id
+            MATCH (f:Feed {id: feed_id})
+            
+            // 2. 각 피드와 연결된 기관을 찾음
+            MATCH (o:Organization)-[:PUBLISHED]->(f)
+            
+            // 3. 찾은 모든 피드와 기관들을 중복 없이 집계하여 반환
+            RETURN
+                collect(DISTINCT f { .*, content_type: toString(f.content_type) }) AS feeds,
+                collect(DISTINCT o { .* }) AS organizations
+            """
+            
+            async with self.driver.session() as session:
+                result = await session.run(cypher_query, feed_ids=predicted_feed_db_ids)
+                record = await result.single()
+
+            if not record:
+                return None
+                
+            # 3. 조회된 결과를 기존 메서드의 반환 형식과 동일하게 '재조립'
+            final_result = {
+                "keyword": {"id": keyword, "name": keyword},
+                "feeds": record.data().get("feeds", []),
+                "organizations": record.data().get("organizations", [])
+            }
+            
+            return final_result
+
         except Exception as e:
-            logger.error(f"Error finding nodes for keyword '{keyword}' in Neo4j: {e}", exc_info=True)
-            # 서비스 레이어에서 처리할 수 있도록 예외를 다시 발생시킴
+            logger.error(f"Error finding ML-based nodes for keyword '{keyword}': {e}", exc_info=True)
             raise
 
-    async def expand_from_feed(self, feed_id: int) -> List[Dict[str, Any]] | None:
-        """피드 노드에서 확장을 시작함. (Neo4j 4.4 호환 쿼리로 수정)"""
-        # 🔧 [수정] 각 CALL의 결과를 WITH로 받아, 최종적으로 RETURN 하도록 구조 변경
-        cypher_query = """
-        MATCH (start_feed:Feed {id: $feed_id})
-        CALL {
-            WITH start_feed
-            MATCH (start_feed)-[r:IS_SIMILAR_TO]-(similar_feed:Feed)
-            RETURN similar_feed AS node, 'similar_feed' AS type, r.score AS meta
-            ORDER BY r.score DESC LIMIT 2
-        }
-        WITH start_feed, collect({node: node, type: type, meta: meta}) AS results1
-        
-        CALL {
-            WITH start_feed
-            MATCH (start_feed)<-[:BOOKMARKED]-(u:User)-[b:BOOKMARKED]->(rec_feed:Feed)
-            WHERE start_feed <> rec_feed
-            RETURN rec_feed AS node, 'recommended_feed' AS type, count(u) AS meta
-            ORDER BY count(u) DESC LIMIT 2
-        }
-        WITH results1 + collect({node: node, type: type, meta: meta}) AS results2, start_feed
-
-        CALL {
-            WITH start_feed
-            MATCH (start_feed)-[r:CONTAINS_KEYWORD]->(keyword:Keyword)
-            RETURN keyword AS node, 'related_keyword' AS type, r.score AS meta
-            ORDER BY r.score DESC LIMIT 2
-        }
-        WITH results2 + collect({node: node, type: type, meta: meta}) AS final_results
-        
-        UNWIND final_results AS result
-        RETURN result.node AS node, result.type AS type, result.meta AS meta
+    async def expand_from_feed(
+        self, feed_id: int, exclude_ids: set[str]
+    ) -> Dict[str, Any] | None:
         """
-        async with self.driver.session() as session:
-            result = await session.run(cypher_query, feed_id=feed_id)
-            return [record.data() async for record in result]
-
-    async def expand_from_organization(self, org_id: int) -> List[Dict[str, Any]] | None:
-        """기관 노드에서 확장을 시작함. (Neo4j 4.4 호환 쿼리로 수정)"""
-        # 🔧 [수정] 쿼리 구조 변경
-        cypher_query = """
-        MATCH (start_org:Organization {id: $org_id})
-        CALL {
-            WITH start_org
-            MATCH (start_org)-[:PUBLISHED]->(feed:Feed)
-            OPTIONAL MATCH (feed)<-[r:RATED]-(u:User)
-            OPTIONAL MATCH (feed)<-[b:BOOKMARKED]-(u2:User)
-            WITH feed, avg(r.score) AS avg_rating, count(DISTINCT b) AS bookmark_count
-            WITH feed, (coalesce(avg_rating, 0) * 10) + bookmark_count AS popularity_score
-            RETURN feed AS node, 'popular_feed' AS type, popularity_score AS meta
-            ORDER BY popularity_score DESC LIMIT 2
-        }
-        WITH start_org, collect({node: node, type: type, meta: meta}) AS results1
-
-        CALL {
-            WITH start_org
-            MATCH (start_org)-[:PUBLISHED]->(f:Feed)-[r:CONTAINS_KEYWORD]->(keyword:Keyword)
-            RETURN keyword AS node, 'major_keyword' AS type, sum(r.score) AS meta
-            ORDER BY sum(r.score) DESC LIMIT 3
-        }
-        WITH results1 + collect({node: node, type: type, meta: meta}) AS final_results
-
-        UNWIND final_results AS result
-        RETURN result.node AS node, result.type AS type, result.meta AS meta
+        [ML] 피드 노드에서 확장.
+        - ML로 유사 노드(피드, 키워드)를 예측하고, Cypher로 소속 기관을 확정적으로 조회.
         """
-        async with self.driver.session() as session:
-            result = await session.run(cypher_query, org_id=org_id)
-            return [record.data() async for record in result]
+        try:
+            start_node_id = f"feed_{feed_id}"
+            
+            # 1. ML 모델로 유사 노드 예측 (상위 20개 후보)
+            predicted_nodes = predict_similar_nodes(
+                start_node_id, top_n=20, exclude_ids=exclude_ids
+            )
+            
+            # 2. Cypher로 '소속 기관' 정보는 확정적으로 조회
+            cypher_query = """
+            MATCH (f:Feed {id: $feed_id})<-[:PUBLISHED]-(o:Organization)
+            RETURN o { .id, .name } AS organization
+            """
+            async with self.driver.session() as session:
+                result = await session.run(cypher_query, feed_id=feed_id)
+                record = await result.single()
+            
+            org_data = record.data().get("organization") if record else None
+            
+            # 3. 예측 결과와 조회 결과를 하나의 딕셔너리로 통합하여 반환
+            return {
+                "predicted_nodes": predicted_nodes,
+                "explicit_nodes": {
+                    "organization": org_data
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error expanding from feed '{feed_id}': {e}", exc_info=True)
+            raise
 
-    async def expand_from_keyword(self, keyword: str) -> List[Dict[str, Any]] | None:
-        """키워드 노드에서 확장을 시작함. (Neo4j 4.4 호환 쿼리로 수정)"""
-        # 🔧 [수정] 쿼리 구조 변경
-        cypher_query = """
-        MATCH (start_key:Keyword {name: $keyword})
-        CALL {
-            WITH start_key
-            MATCH (start_key)<-[r:CONTAINS_KEYWORD]-(feed:Feed)
-            OPTIONAL MATCH (feed)<-[rate:RATED]-(u:User)
-            OPTIONAL MATCH (feed)<-[b:BOOKMARKED]-(u2:User)
-            WITH feed, avg(rate.score) AS avg_rating, count(DISTINCT b) AS bookmark_count
-            WITH feed, (coalesce(avg_rating, 0) * 10) + bookmark_count AS popularity_score
-            RETURN feed AS node, 'popular_feed' AS type, popularity_score AS meta
-            ORDER BY popularity_score DESC LIMIT 2
-        }
-        WITH start_key, collect({node: node, type: type, meta: meta}) AS results1
 
-        CALL {
-            WITH start_key
-            MATCH (start_key)<-[:SEARCHED]-(u:User)-[:SEARCHED]->(other_key:Keyword)
-            WHERE start_key <> other_key
-            RETURN other_key AS node, 'related_keyword_by_search' AS type, count(u) AS meta
-            ORDER BY count(u) DESC LIMIT 2
-        }
-        WITH results1 + collect({node: node, type: type, meta: meta}) AS final_results
-        
-        UNWIND final_results AS result
-        RETURN result.node AS node, result.type AS type, result.meta AS meta
+    async def expand_from_organization(
+        self, org_id: int, exclude_ids: set[str]
+    ) -> Dict[str, Any] | None:
         """
-        async with self.driver.session() as session:
-            result = await session.run(cypher_query, keyword=keyword)
-            return [record.data() async for record in result]
+        [ML] 기관 노드에서 확장.
+        - ML로 기관과 문맥적으로 유사한 대표 피드와 핵심 키워드를 예측.
+        """
+        try:
+            start_node_id = f"organization_{org_id}"
+            predicted_nodes = predict_similar_nodes(
+                start_node_id, top_n=20, exclude_ids=exclude_ids
+            )
+            
+            return {"predicted_nodes": predicted_nodes}
+        except Exception as e:
+            logger.error(f"Error expanding from organization '{org_id}': {e}", exc_info=True)
+            raise
+
+
+    async def expand_from_keyword(
+        self, keyword: str, exclude_ids: set[str]
+    ) -> Dict[str, Any] | None:
+        """
+        [ML] 키워드 노드에서 확장.
+        - ML로 관련 피드, 유사 키워드를 예측하고, 예측된 피드의 소속 기관을 조회.
+        """
+        try:
+            start_node_id = f"keyword_{keyword}"
+            predicted_nodes = predict_similar_nodes(
+                start_node_id, top_n=20, exclude_ids=exclude_ids
+            )
+            if not predicted_nodes: return None
+            
+            # 예측된 노드 중 '피드' 타입의 실제 DB ID만 추출
+            predicted_feed_db_ids = [
+                int(node_id.split('_')[1]) 
+                for node_id, sim in predicted_nodes if node_id.startswith('feed_')
+            ]
+
+            organizations = []
+            if predicted_feed_db_ids:
+                # 예측된 피드들의 소속 기관 정보를 Cypher로 조회
+                cypher_query = """
+                UNWIND $feed_ids as feed_id
+                MATCH (f:Feed {id: feed_id})<-[:PUBLISHED]-(o:Organization)
+                RETURN DISTINCT o { .id, .name } AS organization
+                """
+                async with self.driver.session() as session:
+                    result = await session.run(cypher_query, feed_ids=predicted_feed_db_ids)
+                    organizations = [record.data()['organization'] async for record in result]
+
+            return {
+                "predicted_nodes": predicted_nodes,
+                "explicit_nodes": {
+                    "organizations": organizations
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error expanding from keyword '{keyword}': {e}", exc_info=True)
+            raise
 
     # 아아.. 아아....아아아아아아아아...
     # organization 도메인에서 워드클라우드 또 삭제해야하는데

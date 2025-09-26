@@ -12,6 +12,8 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from kiwipiepy import Kiwi
+from app.F14_knowledge_graph.graph_ml import fetch_graph_data_from_neo4j, train_and_save_node2vec_model
+import networkx as nx
 
 # --- SQLAlchemy 비동기 설정 ---
 from sqlalchemy import select
@@ -645,6 +647,8 @@ async def run_pipeline_for_dev():
         auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD)
     )
     
+    graph: nx.Graph | None = None # ML에 사용할 그래프 객체를 담을 변수
+
     async with AsyncSessionLocal() as db:
         try:
             # 1. Extract
@@ -657,10 +661,33 @@ async def run_pipeline_for_dev():
             # 3. Load
             await phase_load(neo4j_driver, (nodes, relationships))
 
+            # --- 🔧 [신규] 4. ML용 그래프 데이터 추출 ---
+            # Load 단계가 성공적으로 끝나 최신 데이터가 담긴 Neo4j를 대상으로 실행
+            logger.info("--- Phase 4: Machine Learning Graph Extraction 시작 ---")
+            graph = await fetch_graph_data_from_neo4j(neo4j_driver)
+            logger.info("--- Phase 4: Machine Learning Graph Extraction 종료 ---")
+
         except Exception as e:
             logger.error(f"파이프라인 실행 중 오류 발생: {e}", exc_info=True)
         finally:
             await neo4j_driver.close() # 작업이 끝나면 드라이버를 닫음
+
+    # --- 🔧 [신규] 5. Node2Vec 모델 학습 및 저장 ---
+    if graph and graph.number_of_nodes() > 0:
+        logger.info("--- Phase 5: Node2Vec Model Training 시작 ---")
+        
+        # 저장할 파일 경로 설정 (프로젝트 루트에 'ml_models' 폴더를 만들고 그 안에 저장)
+        model_dir = os.path.join(project_root_dir, "ml_models")
+        os.makedirs(model_dir, exist_ok=True)
+        embedding_save_path = os.path.join(model_dir, "node_embeddings.pkl")
+
+        # 학습 함수 호출
+        train_and_save_node2vec_model(graph, save_path=embedding_save_path)
+        
+        logger.info("--- Phase 5: Node2Vec Model Training 종료 ---")
+        logger.info("✅ 파이프라인의 모든 단계가 성공적으로 완료되었습니다.")
+    else:
+        logger.warning("❗️파이프라인이 완료되었지만, ML 모델을 학습할 그래프를 생성하지 못했습니다.")
 
     logger.info("======= Knowledge Graph ETL Pipeline (DEV) 종료 =======")
 

@@ -20,6 +20,7 @@ from app.F11_search.ES1_client import es_async, es_sync
 from app.F8_database.connection import engine, Base 
 from app.F13_recommendations.dependencies import EngineManager
 from app.F8_database.graph_db import Neo4jDriver
+from app.F14_knowledge_graph.graph_ml import load_node_embeddings
 
 # --- 라우터 및 미들웨어 관련 모듈 import ---
 from app.F1_routers.v1.api import router as api_v1_router
@@ -133,6 +134,21 @@ async def app_lifespan(app: FastAPI):
     
     #neo4j 연결
     Neo4jDriver.get_driver()
+
+    # 🔧 [신규] 지식 그래프 ML 모델 로딩
+    logger.info("Loading Knowledge Graph ML Model...")
+    # pipeline.py와 동일한 방식으로 프로젝트 루트 경로를 계산
+    project_root_dir = os.path.abspath(__file__)
+    # 'main.py'의 위치는 app/ 이므로, 두 단계 위로 올라가면 루트임
+    project_root_dir = os.path.dirname(os.path.dirname(project_root_dir))
+    embedding_path = os.path.join(project_root_dir, "ml_models", "node_embeddings.pkl")
+    
+    # 모델 로딩 함수 호출
+    model_loaded = load_node_embeddings(embedding_path)
+    if not model_loaded:
+        logger.warning("Knowledge Graph ML Model could not be loaded. Recommendation features will be disabled.")
+    else:
+        logger.info("Knowledge Graph ML Model loaded successfully.")
 
     # 서버 시작 시 추천 엔진을 비동기 최초 학습
     await EngineManager.initial_fit()

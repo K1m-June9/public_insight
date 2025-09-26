@@ -32,25 +32,35 @@ async def get_initial_graph_for_keyword(
     # 성공 시, 서비스가 반환한 ExploreGraphResponse 객체를 그대로 반환
     return result
 
-@router.get("/expand", response_model=ExploreGraphResponse, summary="지식 그래프 노드 확장", description="특정 노드를 중심으로 연결된 다음 단계의 노드와 엣지 데이터를 반환합니다.")
+@router.get(
+    "/expand",
+    response_model=ExploreGraphResponse,
+    summary="지식 그래프 노드 확장",
+    description="특정 노드를 중심으로 연결된 다음 단계의 노드와 엣지 데이터를 반환합니다."
+)
 async def get_expanded_graph_from_node(
-    # 🔧 [수정] ExpandQuery 스키마를 사용하여 node_id와 node_type을 받음
-    query: ExpandQuery = Depends(),
+    # 🔧 [수정] Pydantic 스키마 대신, 각 쿼리 파라미터를 직접 받도록 변경
+    node_id: str = Query(..., description='확장할 노드의 고유 ID (예: "feed_123")'),
+    node_type: str = Query(..., description='확장할 노드의 종류 (예: "feed")'),
+    exclude_ids: str | None = Query(None, description="추천에서 제외할 노드 ID 목록 (쉼표로 구분)"),
     graph_service: GraphService = Depends(get_graph_service)
 ):
     """
-    특정 노드를 클릭했을 때, 연결된 다음 단계의 노드와 관계를 반환하여 마인드맵을 확장
+    특정 노드를 클릭했을 때, 연결된 다음 단계의 노드와 관계를 반환하여 마인드맵을 확장합니다.
 
-    - **node_id**: 확장할 노드의 고유 ID (예: "feed_123")
-    - **node_type**: 확장할 노드의 종류 (예: "feed", "organization", "keyword")
+    - **node_id**: 확장할 노드의 고유 ID (필수)
+    - **node_type**: 확장할 노드의 종류 (필수)
+    - **exclude_ids**: (선택) 이미 화면에 표시된 노드 ID들을 쉼표로 구분하여 전달합니다.
+      (예: "feed_123,keyword_정치,organization_456")
     """
-    # 서비스 레이어의 새로운 확장 메서드를 호출
+    # 서비스 레이어의 확장 메서드에 모든 파라미터를 전달하여 호출
     result = await graph_service.get_expanded_graph_by_node(
-        node_id=query.node_id, 
-        node_type=query.node_type
+        node_id=node_id, 
+        node_type=node_type,
+        exclude_ids_str=exclude_ids
     )
 
-    # 에러 처리 패턴은 /explore와 완벽하게 동일함
+    # 에러 처리 패턴은 동일
     if isinstance(result, ErrorResponse):
         status_code = 400 if result.error.code == ErrorCode.BAD_REQUEST else 500
         return JSONResponse(status_code=status_code, content=result.model_dump())

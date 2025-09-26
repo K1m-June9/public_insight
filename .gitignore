@@ -20,6 +20,7 @@ filebeat/
 elasticsearch/Dockerfile
 elasticsearch/docker-entrypoint-es.sh
 elasticsearch/init-es.sh 
+elasticsearch/init-es.sh 
 
 
 crawler/

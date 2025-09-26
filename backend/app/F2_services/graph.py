@@ -129,8 +129,6 @@ class GraphService:
         
     async def get_expanded_graph_by_node(
         self, node_id: str, node_type: str,
-        # 🔧 [신규] 프론트엔드로부터 현재 화면에 있는 노드 ID 목록을 받음
-        #    - 문자열로 받아서 set으로 변환하여 사용
         exclude_ids_str: str | None = None
     ) -> Union[ExploreGraphResponse, ErrorResponse]:
         """
@@ -139,7 +137,6 @@ class GraphService:
         """
         try:
             entity_id = node_id.split('_', 1)[-1]
-            # 쉼표로 구분된 문자열을 set으로 변환. 없으면 빈 set.
             exclude_ids = set(exclude_ids_str.split(',')) if exclude_ids_str else set()
 
             raw_expansion_data: Dict[str, Any] | None = None
@@ -160,15 +157,18 @@ class GraphService:
             else:
                 return ErrorResponse(error=ErrorDetail(code=ErrorCode.BAD_REQUEST, message="지원하지 않는 노드 타입입니다."))
 
-            # 리포지토리 결과가 없는 경우
             if not raw_expansion_data:
                 return ExploreGraphResponse(success=True, data=ExploreGraphData(nodes=[], edges=[]))
             
-            # 1. 비즈니스 규칙에 따라 최종 노드 목록을 선별
             final_node_infos = self._filter_and_select_nodes(raw_expansion_data, rules, exclude_ids)
             
-            # 2. 선별된 노드 정보로 프론트엔드용 nodes와 edges를 최종 조립
-            nodes, edges = self._structure_expansion_for_frontend(node_id, final_node_infos)
+            # [핵심 수정 1] 리포지토리에서 온 'predicted_details'를 변수로 추출합니다.
+            predicted_details = raw_expansion_data.get("predicted_details", {})
+            
+            # [핵심 수정 2] 추출한 'predicted_details'를 헬퍼 함수에 인자로 전달합니다.
+            nodes, edges = self._structure_expansion_for_frontend(
+                node_id, final_node_infos, predicted_details
+            )
             
             response_data = ExploreGraphData(nodes=nodes, edges=edges)
             return ExploreGraphResponse(success=True, data=response_data)
@@ -185,44 +185,51 @@ class GraphService:
     ) -> List[Dict[str, Any]]:
         """
         (Helper) ML 예측 결과와 비즈니스 규칙에 따라 최종 노드를 선별함.
+        - [수정] 상세 정보가 있는 노드가 예측만 있는 노드를 덮어쓸 수 있도록 로직 변경
         """
         selected_nodes_map: Dict[str, Dict[str, Any]] = {}
         counts = {node_type: 0 for node_type in rules.keys()}
         
-        # 1. 예측된 노드들부터 규칙에 따라 채워넣기
+        # 1. 예측된 노드들부터 규칙에 따라 '자리'를 채워넣기 (상세 정보는 아직 없음)
         for node_id, similarity in raw_data.get("predicted_nodes", []):
             node_type = node_id.split('_')[0]
             
-            # 규칙에 해당하고, 할당량이 남았으며, 이미 제외 목록에 없는 경우
             if node_type in rules and counts[node_type] < rules[node_type] and node_id not in exclude_ids:
-                # 상세 정보는 아직 없으므로, ID와 타입, 유사도만 저장
                 selected_nodes_map[node_id] = {'id': node_id, 'type': node_type, 'similarity': similarity}
                 counts[node_type] += 1
 
-        # 2. Cypher로 확정적으로 가져온 노드(기관 등) 추가
+        # 2. Cypher로 확정적으로 가져온 노드(기관 등)로 '정보를 보강'하거나 '새로 추가'
         explicit_nodes = raw_data.get("explicit_nodes", {})
         for node_type, node_or_list in explicit_nodes.items():
-            # organization, organizations 처럼 단수/복수형에 모두 대응
             node_type_singular = node_type.rstrip('s') 
             
-            if node_type_singular in rules and counts[node_type_singular] < rules[node_type_singular]:
-                # 데이터가 리스트가 아니면 리스트로 만듦
+            if node_type_singular in rules:
                 nodes_to_process = node_or_list if isinstance(node_or_list, list) else [node_or_list]
                 
                 for node_data in nodes_to_process:
-                    if not node_data: continue # 데이터가 null인 경우 건너뜀
+                    if not node_data: continue
                     
                     node_id = f"{node_type_singular}_{node_data['id']}"
                     
-                    # 할당량이 남았고, 제외 목록에 없으며, 아직 선택되지 않은 경우
-                    if counts[node_type_singular] < rules[node_type_singular] and node_id not in exclude_ids and node_id not in selected_nodes_map:
+                    # [핵심 수정] 
+                    # 이미 맵에 예측 노드(자리만 있는)가 있더라도, 상세 정보가 있는 현재 노드가
+                    # 그 자리를 덮어쓰도록 'and node_id not in selected_nodes_map' 조건을 제거합니다.
+                    # 단, 할당량(counts)과 제외 목록(exclude_ids) 체크는 여전히 유지합니다.
+                    if counts[node_type_singular] < rules[node_type_singular] and node_id not in exclude_ids:
+                        
+                        # 만약 이 노드가 예측 목록에 없던 새로운 노드라면, 카운트를 증가시킵니다.
+                        if node_id not in selected_nodes_map:
+                            counts[node_type_singular] += 1
+                        
+                        # 예측만 있던 노드를 상세 정보가 있는 노드로 덮어쓰거나, 새로 추가합니다.
                         selected_nodes_map[node_id] = {'id': node_id, 'type': node_type_singular, 'data': node_data}
-                        counts[node_type_singular] += 1
 
         return list(selected_nodes_map.values())
 
     def _structure_expansion_for_frontend(
-        self, start_node_id: str, final_node_infos: List[Dict[str, Any]]
+        self, start_node_id: str, final_node_infos: List[Dict[str, Any]],
+        # [핵심 수정 3] 'predicted_details'를 받을 수 있도록 파라미터 추가
+        details_map: Dict[str, Any]
     ) -> tuple[List[GraphNode], List[GraphEdge]]:
         """
         (Helper) 최종 선별된 노드 정보 목록을 프론트엔드 스키마에 맞게 변환함.
@@ -234,15 +241,22 @@ class GraphService:
             node_id = item['id']
             generic_type = item['type']
             
-            # 상세 정보가 있으면 사용하고, 없으면 ID에서 라벨을 유추 (예측 결과의 경우)
-            node_data = item.get('data')
+            # [핵심 수정 4]
+            # 'item' 자체의 'data'가 아닌, 파라미터로 받은 'details_map'에서 상세 정보를 조회합니다.
+            # 이것이 모든 예측된 노드(feed, keyword, organization)의 이름을 찾을 수 있게 해줍니다.
+            node_data_from_details = details_map.get(node_id)
+            node_data_from_item = item.get('data')
+
+            # 상세 정보가 있으면 사용하고, 없으면 ID에서 라벨을 유추합니다.
+            # details_map에 있는 정보가 더 우선순위가 높습니다.
+            node_data = node_data_from_details or node_data_from_item
             label = node_data.get('title', node_data.get('name')) if node_data else node_id.split('_', 1)[-1]
             
             nodes.append(GraphNode(
                 id=node_id,
                 type=generic_type,
                 label=label,
-                metadata={} # TODO: 필요시 node_data에서 메타데이터 추가
+                metadata={}
             ))
 
             edges.append(GraphEdge(

@@ -17,11 +17,13 @@ from app.F5_core.config import settings
 from app.F10_tasks.scheduler import setup_scheduler, scheduler
 from app.F11_search.es_initializer import initialize_elasticsearch
 from app.F11_search.ES1_client import es_async, es_sync
+from app.F8_database.connection import engine, Base, async_session_scope
 from app.F8_database.connection import engine, Base 
 from app.F13_recommendations.dependencies import EngineManager
 
 # --- 라우터 및 미들웨어 관련 모듈 import ---
 from app.F1_routers.v1.api import router as api_v1_router
+from app.F8_database.initial_data import seed_initial_data 
 from app.F9_middlewares.logging_middleware import LoggingMiddleware
 from app.F9_middlewares.jwt_bearer_middleware import JWTBearerMiddleware
 from app.F9_middlewares.admin_paths import admin_paths, admin_regex_paths
@@ -32,6 +34,10 @@ from app.F7_models import (
     bookmarks, categories, feeds, keywords, notices, organizations, rating_history, ratings, refresh_token, search_logs, sliders, static_page_versions, static_pages, token_security_event_logs, user_activities, user_interests, users, word_clouds
     )
 
+# 운영 환경의 서버 정보를 담은 딕셔너리
+servers = [
+    {"url": "https://www.public-insight.co.kr", "description": "Production server"},
+]
 
 # ==================================
 # 1. 로깅 설정 함수
@@ -112,11 +118,20 @@ async def app_lifespan(app: FastAPI):
     logger = logging.getLogger(__name__)
     logger.info("Application startup sequence initiated...")
 
-    # DB 테이블 생성
+    
+    # 데이터베이스 테이블 생성(모든 환경 공통)
+    logger.info("Database tables checking/creating...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables checked/created.")
+    logger.info("Database tables checked/created.")
 
+    # 개발 환경에서만 초기 데이터 시딩 실행
+    if settings.ENVIRONMENT == "development":
+        logger.info("Development environment detected. Seeding initial data if necessary...")
+        async with async_session_scope() as db_session:
+            await seed_initial_data(db_session)
+    else:
+        logger.info(f"'{settings.ENVIRONMENT}' environment detected. Skipping data seeding.")
 
     # Elasticsearch 초기화 함수 호출
     initialize_elasticsearch()
@@ -189,6 +204,7 @@ def create_app() -> FastAPI:
     # FastAPI 앱 인스턴스 생성 및 라이프사이클 연결
     app = FastAPI(
         lifespan=app_lifespan,
+        servers=servers if settings.ENVIRONMENT == "production" else [],
         docs_url="/docs",
         redoc_url=None,
         title="MyProject API",

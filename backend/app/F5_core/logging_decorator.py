@@ -1,80 +1,135 @@
 import logging
-from functools import wraps
-from fastapi import Request
 import time
 import uuid
+from functools import wraps
+from fastapi import Request
+from typing import Optional 
 
+from app.F5_core.security import auth_handler
 from app.F7_models.users import User
 
 logger = logging.getLogger("app.decorator.logging")
 
 def log_event_detailed(action: str, category: list[str] = None):
     """
-    API 엔드포인트 함수의 실행 전후로 상세한 정보를 포함한 로그를 자동으로 기록하는 데코레이터.
-    - 주요 정보: Trace ID, 사용자 정보, 요청 정보, 처리 시간, 성공/실패 여부 등
-    - 로그 형식: ECS(Elastic Common Schema)를 따라 구조화하여 로그 분석 시스템과의 연동을 요이하게 함
-    
-    :param action: 로깅할 에빈트의 구체적인 행위
-    :param category: 이벤트의 기능적 분류
+    API 엔드포인트의 시작/종료(성공/실패)를 기록하는 데코레이터
+    - action: 로그에서 식별할 이벤트 이름(예: "LOGIN", "GET_PROFILE")
+    - category: 로그의 분류(리스트), Kibana나 ELK에서 필터링할 때 유용
+
+    - 로그인된 사용자가 있으면 user_id, role 기록
+    - 아니면 "unknown" 기록
+
+    동작:
+    1. wrapper가 호출되면 Request/현재 사용자 정보를 안전하게 추출
+    2. 현재 사용자가 함수 인자로 전달되면 그걸 우선 사용
+    3. 없다면 Authorization 헤더(Access Token)를 디코딩해서 user_id/role을 추출 시도
+    4. 추출 결과를 기반으로 시작 로그, 성공/실패 로그를 JSON 필드(extra)에 담아 기록
     """
-    # 데코레이터 로직을 감싸는 외부 함수
     def decorator(func):
-        # @wraps(func)는 데코레이터가 적용된 함수의 메타데이터(이름, 독스트링)를 보존
-        # 디버깅 시 원래 함수 정보를 잃지 않도록 도와주는 역할
         @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # --- 1. Request 객체 찾기 ---
+            # args에 Request가 있는지 먼저 찾고, 없으면 kwargs에서 'request' 키를 확인
+            request: Optional[Request] = next((arg for arg in args if isinstance(arg, Request)), None)
+            if request is None: 
+                request=kwargs.get("request")
+                if not isinstance(request, Request):
+                    request = None 
 
-        # 데코레이터가 감쌀 함수(API 엔드포인트 함수)와 동일한 시그니처를 가지는 wrapper
-        # *args는 위치 인자들을 튜플로, **kwargs는 키워드 인자들을 딕셔너리로 받음(패킹)
-        async def wrapper(*args, **kwargs): # 순서, 키-값
-            # --- 1. 인자 목록에서 request와 current_user 객체를 안정적으로 찾기 ---
-            # request: API 요청에 대한 모든 정보(헤더, IP 등)를 담고 있음
-            request: Request | None = next((arg for arg in args if isinstance(arg, Request)), kwargs.get("request"))
+            # --- 2. current_user가 인자로 전달되었는지 확인 ---
+            current_user = next((arg for arg in args if isinstance(arg, User)), None)
+            if current_user is None:
+                # kwargs에 'current_user'로 들어올 수도 있으므로 체크
+                current_user = kwargs.get("current_user")
+                if not isinstance(current_user, User):
+                    current_user = None
 
-            # User: 인증 미들웨어를 통해 주입된 현재 로그인한 사용자 정보
-            current_user: User | None = next((arg for arg in args if isinstance(arg, User)), kwargs.get("current_user"))
+            # --- 3. 기본 사용자 정보 초기값 설정 ---
+            user_id = "unknown"
+            role = "unknown"
+
+            # -- 3-1. 만약 current_user가 있으면 우선 사용(DB로부터 얻은 User 객체 --
+            if current_user: 
+                user_id = getattr(current_user, "user_id", "unknown")
+                role = getattr(current_user, "role", "unknown")
+
+            # -- 3-2. current_user가 없고 Request가 있으면 Authorization 헤더에서 Access Token 파싱 시도
+            elif request:
+                auth_header = request.headers.get("Authorization")
+                if auth_header and auth_header.startswith("Bearer "):
+                    token = auth_header.split(" ", 1)[1].strip()
+                    # auth_handler.decode_access_token은 Access Token 유효성 검증 및 payload 반환
+                    payload = auth_handler.decode_access_token(token)
+                    if payload:
+                        # JWT payload 표준: sub로 사용자 식별자를 담는 관례
+                        user_id = payload.get("sub", "unknown")
+                        # role이 enum 값으로 들어있을 수도 있으니 그대로 기록(문자열 또는 enum.value)
+                        role = payload.get("role", "unknown")
+
+
+            # --- 4. 로그에 공통으로 담을 기본 정보 구성 ---
+            # trace id: 요청 단위로 고유 id를 만ㄷ르어 추적에 활용
+            # client IP, user-agent: 운영에서 유용
+            start_time = time.perf_counter()
+            trace_id = str(uuid.uuid4())
             
-            # --- 2. 로그에 포함할 풍부한 정보(extra) 구성 ---
-            start_time = time.perf_counter() # 함수 실행 시작 시간 기록(정확한 시간 측정용)
-            trace_id = str(uuid.uuid4()) # 이 요청/응답 사이클을 고유하게 식별할 ID 생성
+            # request.client는 없을 수도 있으므로 안전하게 접근
+            client_ip = "unknown"
+            try:
+                if request and getattr(request, "client", None):
+                    client_ip = request.client.host or "unknown"
+            except Exception:
+                client_ip = "unknown"
 
-            # ECS (Elastic Common Schema) 형식을 참고하여 로그 데이터를 구조화
-            # Elasticsearch, Kibana 등에서 데이터를 분석하고 시각화하기 매우 용이함
+            user_agent = "unknown"
+            try:
+                if request:
+                    user_agent = request.headers.get("user-agent", "unknown")
+            except Exception:
+                user_agent = "unknown"
+
+            request_method = request.method if request else "unknown"
+            request_path = request.url.path if request else "unknown"
+            request_query = str(request.url.query) if request and request.url.query else None
 
             base_log_extra = {
-                "trace": {"id": trace_id}, # 분산 환경에서 요청의 흐름을 추적하기 위한 ID
-                "event": {"action": action, "category": category or ["custom"]}, # 이벤트의 종류와 분류
-                "user": {"id": current_user.user_id if current_user else "unknown"}, # 요청을 보낸 사용자 
-                "client": {"ip": request.client.host if request else "unknown"}, # 클라이언트 IP 주소
+                "trace": {"id": trace_id},
+                "event": {"action": action, "category": category or ["custom"]},
+                "user": {"id": user_id, "role": role},
+                "client": {"ip": client_ip},
                 "http": {
                     "request": {
-                        "method": request.method if request else "unknown", # HTTP 메소드 (GET, POST 등)
-                        "user_agent": request.headers.get("user-agent") if request else "unknown" # 클라이언트 정보 (브라우저, OS 등)
+                        "method": request_method,
+                        "user_agent": user_agent
                     }
-                }, 
+                },
                 "url": {
-                    "path": request.url.path if request else "unknown", # 요청 경로 (예: /api/v1/feeds/detail/3070/bookmark)
-                    "query": str(request.url.query) if request and request.url.query else None # 쿼리 파라미터
+                    "path": request_path,
+                    "query": request_query
                 }
             }
 
+
+            # --- 5. 함수 실행 전/후로 로그 기록 ---
+            # 시작 로그: type: start 
+            # 성공 로그: type: end, outcome: success 
+            # 실패 로그: type: end, outcome: failure, error 포함
             try:
-                # --- 3. 함수 시작 로그 기록 ---
-                # 공통 로그 정보(base_log_extra)에 이벤트 타입을 'start'로 추가하여 시작 로그를 구성
-
-                # '**' 연산자를 사용하여 딕셔너리를 병합
-                start_log = {"json_fields": {**base_log_extra, "event": {**base_log_extra["event"], "type": "start"}}}
-
-                # 'extra' 인자를 통해 구조화된 로그 데이터를 기록
+                # 시작 로그: 여기서는 extra에 JSON 구조를 담아 ELK로 전송할 수 있게 함
+                start_log = {
+                    "json_fields": {
+                        **base_log_extra,
+                        "event": {**base_log_extra["event"], "type": "start"}
+                    }
+                }
+                # 실제 로깅
                 logger.info(f"Action '{action}' started.", extra=start_log)
-                
-                # --- 4. 원래 함수 실행 ---
-                # 데코레이터의 핵심 역할: 원래 함수를 호출하고 그 결과를 받아옴
-                result = await func(*args, **kwargs)
-                
-                # --- 5. 함수 성공 로그 ---
-                duration_ms = (time.perf_counter() - start_time) * 1000 # 총 실행 시간을 밀리초(ms) 단위로 계산
 
-                # 성공 로그에는 이벤트 타입을 'end', 결과를 'success', 실행시간 추가
+                # --- 원래 엔드포인트 함수 실행 ---
+                result = await func(*args, **kwargs)
+
+                # 성공 로그: 실행 시간 측정 포함
+                duration_ms = (time.perf_counter() - start_time) * 1000
                 success_log = {
                     "json_fields": {
                         **base_log_extra,
@@ -82,15 +137,11 @@ def log_event_detailed(action: str, category: list[str] = None):
                     }
                 }
                 logger.info(f"Action '{action}' finished successfully.", extra=success_log)
-                
-                # 결과 반환
                 return result
-                
-            except Exception as e:
-                # --- 6. 함수 실패 로그 ---
-                duration_ms = (time.perf_counter() - start_time) * 1000 # 실패까지 걸린 시간 계산 
 
-                # 실패 로그에는 결과를 'failure', 발생한 에러 정보를 추가
+            except Exception as e:
+                # 실패 로그: 예외 정보 포함
+                duration_ms = (time.perf_counter() - start_time) * 1000
                 failure_log = {
                     "json_fields": {
                         **base_log_extra,
@@ -98,9 +149,10 @@ def log_event_detailed(action: str, category: list[str] = None):
                         "error": {"type": e.__class__.__name__, "message": str(e)}
                     }
                 }
-
-                # 'exc_info=True'를 설정하여 스택 트레이스까지 함께 로깅
+                # exc_info=True로 스택트레이스도 로깅 (Elasticsearch로 전송 시에는 메시지 길이/용량 주의)
                 logger.error(f"Action '{action}' failed.", exc_info=True, extra=failure_log)
+                # 원래 예외를 다시 던져서 FastAPI가 적절히 처리하게 함
                 raise e
+
         return wrapper
     return decorator

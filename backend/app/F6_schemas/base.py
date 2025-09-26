@@ -371,6 +371,7 @@ class Message:
     DUPLICATE_CATEGORY_NAME = "해당 기관에 이미 존재하는 카테고리명입니다."
     DUPLICATE_NICKNAME = "이미 사용 중인 닉네임입니다."
     DUPLICATE_PASSWROD = "새 비밀번호는 기존 비밀번호와 달라야 합니다."
+    DUPLICATE_KEY_NAME = "이미 존재하는 key_name입니다."
 
     #ErrorCode.ALEADY_EXIST
     RATING_ALEADY_EXIST = "이미 별점을 준 피드입니다"

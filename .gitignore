@@ -15,7 +15,14 @@ esdata_ha/
 nginx_dev/
 
 fluentd/
+filebeat/
 
 elasticsearch/Dockerfile
 elasticsearch/docker-entrypoint-es.sh
 elasticsearch/init-es.sh 
+elasticsearch/init-es.sh 
+
+
+crawler/
+db_init/
+mysql_conf/

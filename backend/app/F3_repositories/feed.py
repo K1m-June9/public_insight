@@ -100,6 +100,8 @@ class FeedRepository:
     #   category_id가 제공된 경우 해당 카테고리로 추가 필터링
     #   published_date 기준 내림차순으로 정렬하여 최신 피드부터 반환
     #   평점이 없는 피드의 경우 average_rating은 None으로 처리
+
+#####################정책뉴스도 추가해야해명수야#####################################
     async def get_feeds_by_organization_name(self, organization_name: str, category_id: Optional[int] = None) -> List[Dict[str, Any]]:
         # 피드, 기관, 카테고리, 평균별점을 한 번에 조회하는 JOIN 쿼리 구성
         query = select(
@@ -135,7 +137,9 @@ class FeedRepository:
             # 특정 기관의 피드만 조회
             Organization.name == organization_name,
             # '보도자료' 카테고리 제외 (항상 적용)
-            Category.name != '보도자료'
+            Category.name.notin_(['보도자료', '정책뉴스'])
+            # Category.name != '보도자료',
+            # Category.name != '정책뉴스'
         )
         
         # category_id가 제공된 경우 해당 카테고리로 추가 필터링
@@ -967,3 +971,145 @@ class FeedRepository:
             )
         )
         return result.scalar_one_or_none()
+    
+
+
+    # =====================
+    # [정책뉴스]
+    # =====================
+    async def get_organization_news( 
+        self, organization_name: str, offset: int, limit: int
+    ) -> Optional[Dict[str, Any]]:
+        """"
+        메인 쿼리: 기관의 정책뉴스 조회(평균 별점 포함)
+        - 특정 기관(organization_name)의 '정책뉴스' 카테고리에 속하는 Feed(정책뉴스)를 조회한다.
+        - 각 피드에 대해 평균 평점(average_rating)과 북마크 수(bookmark_count)를 함께 가져온다.
+        - 페이징을 위해 limit + 1를 조회해서 '다음 페이지 존재 여부(has_more)'를 판단한다.
+
+        - 반환: 
+            - 결과가 없으면 None 
+            - 결과가 있으면 dict: { 'organization': {id, name}, 'policy_news': [...], 'has_more': bool}
+        
+        """
+
+        # ------------------------
+        # 1) 메인 SQL 쿼리 생성
+        # ------------------------
+        # select(...) 내부에는 반환하려는 컬럼(도는 집계)을 나열
+        # func.avg / func.count 같은 집계 결과는 group_by와 함께 사용
+        stmt = select( 
+            Feed.id,
+            Feed.title,
+            Feed.summary,
+            Feed.published_date,
+            Feed.view_count,
+            Feed.organization_id,
+            Organization.name.label('organization_name'),
+            Category.id.label('category_id'),
+            Category.name.label('category_name'),
+            func.avg(Rating.score).label('average_rating'), # 평균 평점(NULL 가능)
+            func.count(Bookmark.id).label('bookmark_count') # 북마크 수(0이상 정수)
+        ).select_from( # select_from(...): 위 select 문에서 기준이 되는 테이블을 지정
+            # Feed를 기준으로 Organization, Category는 INNER JOIN(해당 조건이 있어야만 정책뉴스로 간주)
+            # .__table__ 해당 테이블 가져오기
+            Feed.__table__.join( # INNER JOIN
+                Organization.__table__,
+                Feed.organization_id == Organization.id
+            ).join( # INNER JOIN
+                Category.__table__,
+                Feed.category_id == Category.id
+            ).
+            # Rating, Bookmark는 해당 피드에 없을 수도 있으므로 OUTER JOIN 사용
+            outerjoin( 
+                Rating.__table__,
+                Feed.id == Rating.feed_id
+            ).outerjoin(
+            Bookmark.__table__,
+            Feed.id == Bookmark.feed_id
+            )
+        ).where(
+            # 특정 기관명으로 필터링
+            Organization.name == organization_name,     # 요청한 기관명으로 필터
+            # '정책뉴스' 카테고리만 필터링                     # '정책뉴스' 카테고리만
+            Category.name == '정책뉴스',                   # 활성화된 피드만
+            # 활성화된 피드만 대상
+            Feed.is_active == True
+        ).group_by(
+            Feed.id, 
+            Feed.title, 
+            Feed.summary, 
+            Feed.view_count, 
+            Feed.published_date,
+            Feed.organization_id, 
+            Organization.name,
+            Category.id, Category.name
+        ).order_by(
+            Feed.published_date.desc(),
+            Feed.created_at.desc()
+        ).offset(offset).limit(limit + 1)  # limit + 1개 조회 (다음 페이지 확인용)
+
+
+        # ------------------------
+        # 2) 쿼리 실행 및 결과 수집
+        # ------------------------
+        result = await self.db.execute(stmt)    # 비동기 DB 실행(SQLAlchemy 비동기 엔진 가정)
+        rows = result.fetchall()                # 모든 행을 가져옴(리스트 형태의 Row 객체들)
+
+        # 결과가 없는 경우 None 반환
+        if not rows: 
+            return None 
+        
+        # ------------------------
+        # 3) 페이징 처리
+        # ------------------------
+        # has_more: 실제 반환할 limit 개수보다 1개 더 받아서 더 많은 결과가 있는지 판단
+        has_more = len(rows) > limit 
+
+        # 실제 반환할 데이터는 처음 limit개만 사용
+        actual_rows = rows[:limit]
+
+        if not actual_rows: 
+            return {
+                'organization': None, 
+                'policy_news': [],
+                'has_more': False
+            }
+        # ------------------------
+        # 4) 기관 정보 추출
+        # ------------------------
+        # 모든 행에 동일한 organization_id/name
+        first_row = actual_rows[0]
+        organization_info = {
+            'id': first_row.organization_id,
+            'name': first_row.organization_name
+        }
+
+        # ------------------------
+        # 5) 보도자료 리스트 구성
+        # ------------------------
+        policy_news_data = []
+        for row in actual_rows: 
+            # SQLAlchemy Row에서 컬럼값을 꺼내서 dict로 변환
+            policy_news_dict = {
+                'id': row.id,
+                'title': row.title, 
+                'summary': row.summary,
+                'published_date': row.published_date,
+                'view_count': row.view_count,
+                # 평균 평점이 None이면 0.0으로 기본값 지정 (원래 None을 반환할 수도 있음)
+                'average_rating': float(row.average_rating) if row.average_rating is not None else 0.0,
+                'category_id': row.category_id,
+                'category_name': row.category_name,
+                'bookmark_count': row.bookmark_count
+            }
+            policy_news_data.append(policy_news_dict)
+
+        # ------------------------
+        # 6) 반환 구조
+        # ------------------------
+        return {
+            'organization': organization_info,
+            'policy_news': policy_news_data,
+            'has_more': has_more
+        }
+    

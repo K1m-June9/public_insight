@@ -141,12 +141,21 @@ async def refresh_token(
     response: Response,
     auth_service: AuthService = Depends(get_auth_service)
 ):
+    try:
+        body = await request.json()
+    except Exception: 
+        body = {}
+
     # 1. 쿠키 또는 JSON에서 refresh_token 추출
     # 웹 브라우저 -> 쿠키에서 추출
     # 모바일 웹 -> JSON body에서 추출
-    refresh_token = request.cookies.get("refresh_token") or (
-        (await request.json()).get("refresh_token") if request.method == "POST" else None
-    )
+    refresh_token = request.cookies.get("refresh_token")
+    if request.method == "POST" and not refresh_token:
+        try:
+            body = await request.json()
+            refresh_token = body.get("refresh_token")
+        except Exception:
+            refresh_token = None
 
     if not refresh_token:
         error = base.ErrorResponse(

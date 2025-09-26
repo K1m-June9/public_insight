@@ -29,6 +29,12 @@ export default function SliderDetailPage() {
     router.back();
   };
 
+  // --- 파일명 -> URL 변환 함수 ---
+  const getSlideImageUrl = (filename: string) => {
+    if (!filename) return 'https://www.public-insight.co.kr/static/sliders/default.jpg'; // 기본 이미지
+    return `https://www.public-insight.co.kr/static/sliders/${filename}`; // public/static/sliders/ 아래 실제 파일 위치
+  };
+
   if (isLoading) {
     return (
       <div className="container px-4 py-8 md:px-6">
@@ -61,7 +67,13 @@ export default function SliderDetailPage() {
 
         {/* 배경 이미지 */}
         <div className="relative h-[400px] w-full mb-6 rounded-lg overflow-hidden">
-          <Image src={slider.imageUrl ? `${slider.imageUrl}` : "/placeholder.svg"} alt={slider.title} fill className="object-cover" />
+          {/* Base64 이미지를 사용 */}
+          <Image
+              src={getSlideImageUrl(slider.imageUrl)}
+              alt={slider.title}
+              fill
+              className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-8">
             <Badge className="mb-3 self-start">{slider.tag}</Badge>
             <h1 className="text-3xl font-bold text-white mb-2">{slider.title}</h1>
@@ -80,10 +92,10 @@ export default function SliderDetailPage() {
             또는 Tailwind CSS의 whitespace-pre-wrap 클래스를 사용하여 줄바꿈을 유지할 수 있음.
             현재는 그냥 평문
             <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: slider.content }} /> <- 예전거(나중에 필요해지면 쓸까 싶어서 그냥 남겨둠)
+          */}
+          <div className="prose max-w-none">
             <p className="whitespace-pre-wrap">{slider.content}</p>
           </div>
-          */}
-          <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: slider.content }} />
         </div>
       </div>
     </div>

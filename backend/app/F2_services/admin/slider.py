@@ -2,6 +2,7 @@ from typing import Union, Optional
 from sqlalchemy.exc import SQLAlchemyError 
 from pathlib import Path
 from fastapi import UploadFile, BackgroundTasks
+from datetime import datetime
 
 import uuid
 import logging
@@ -243,6 +244,9 @@ class SliderAdminService:
 
             new_slider = await self.repo.create_slider(slider_data_dict)
 
+            await self.repo.db.commit()
+            await self.repo.db.refresh(new_slider)
+
             # --- 4. 성공 응답 데이터 생성 ---
             slider_response_data = SliderDetail(
                 id=new_slider.id,
@@ -259,8 +263,6 @@ class SliderAdminService:
                 created_at=new_slider.created_at,
                 updated_at=new_slider.updated_at
                 )
-
-            await self.repo.db.commit()
 
             return SliderCreateResponse(
                 success=True,
@@ -439,9 +441,16 @@ class SliderAdminService:
                 is_active=is_active
             )
 
+            # --- 4. update_at이 None이면 현재 시간으로 채움 ---
+            if not getattr(updated_slider, "updated_at", None):
+                updated_slider.updated_at = datetime.utcnow()
 
-            # --- 4. 성공 응답 데이터 생성 ---
-            response_data = SliderStatusUpdateResponseData.model_validate(updated_slider, from_attributes=True)
+            # --- 5. 성공 응답 데이터 생성 ---
+            response_data = SliderStatusUpdateResponseData(
+                id=updated_slider.id,
+                is_active=updated_slider.is_active,
+                updated_at=updated_slider.updated_at
+            )
 
             await self.repo.db.commit()
 

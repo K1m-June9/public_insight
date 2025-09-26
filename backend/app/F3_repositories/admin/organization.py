@@ -119,11 +119,18 @@ class OrganizationAdminRepository:
             )
             
             self.db.add(new_organization)
-            # 카테고리는 관계에 의해 자동으로 함께 추가
+            # await self.db.commit()
+            await self.db.flush()
+
+            result = await self.db.execute(
+                select(Organization)
+                .options(selectinload(Organization.categories))
+                .where(Organization.id == new_organization.id)
+            )
+
+            org_with_cateogires = result.scalar_one()
+            return org_with_cateogires
             
-            # 관계 로드를 위해 Eager Loading 옵션과 함께 다시 조회할 수도 있지만,
-            # 지금은 생성된 객체만 반환해도 충분
-            return new_organization
             
         except Exception as e:
             logger.error(f"Error creating organization '{name}': {e}", exc_info=True)
@@ -134,14 +141,25 @@ class OrganizationAdminRepository:
         새로운 카테고리를 생성
         """
         try:
+            # 1. Organization 객체 가져오기
+            org = await self.db.get(Organization, organization_id)
+            if not org: 
+                raise ValueError(f"Organization {organization_id} not found")
+            
+
+            # 2. Category 객체 생성 시 관계 연결
             new_category = Category(
                 name=name,
                 description=description,
-                organization_id=organization_id,
+                organization=org,
                 is_active=is_active
             )
             self.db.add(new_category)
 
+            # 3. flush 해서 PK 확보
+            await self.db.flush()
+
+            # 4. 반환
             return new_category
         except Exception as e:
             logger.error(f"Error creating category '{name}' for org_id {organization_id}: {e}", exc_info=True)

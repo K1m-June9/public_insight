@@ -23,7 +23,7 @@ export const getMyProfile = async (): Promise<UserProfileResponse> => {
         setAccessToken(null);
         console.error('Failed to get user profile:', error);
         throw error;
-    }
+    } 
 };
 
 /**

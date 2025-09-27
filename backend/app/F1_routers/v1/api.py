@@ -19,10 +19,14 @@ from .admin import dashboard as admin_dashboard_router
 from .admin import app_settings as admin_app_settings_router
 from .admin import org_crawler as admin_org_crawler_trigger_router
 from .admin import crawl_task_redis as admin_crawl_task_redis_router
-
+from .graph import router as graph_router
 from .internal import org_crawler as internal_crawler_router
+
 # 메인 API 라우터 설정
 router = APIRouter()
+
+#PoC
+router.include_router(graph_router, prefix="/graph")
 
 # /auth 엔드포인트 하위에 인증 라우터 연결
 router.include_router(auth_router, prefix="/auth")

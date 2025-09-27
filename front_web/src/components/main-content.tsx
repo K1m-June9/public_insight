@@ -7,6 +7,7 @@ import { Notices } from "@/components/Notices";
 import { Slider } from "@/components/Slider";
 import { FeedList } from "@/components/feed-list";
 import { RelatedFeeds } from "@/components/RelatedFeeds"; // "관련 정보" 컴포넌트 추가, 나중에 제대로 만들 예정
+import { InsightNavigator } from "@/components/InsightNavigator";
 
 // 2. 필요한 모든 훅을 임포트
 import { useOrganizationsForChartQuery } from "@/hooks/queries/useOrganizationQueries";
@@ -69,6 +70,7 @@ export default function MainContent() {
         
         {/* Right Sidebar */}
         <div className="lg:col-span-1 space-y-8">
+          <InsightNavigator />
           <RelatedFeeds />
         </div>
         

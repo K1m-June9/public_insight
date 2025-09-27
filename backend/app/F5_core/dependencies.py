@@ -12,6 +12,7 @@ from app.F2_services.organization import OrganizationService
 from app.F2_services.feed import FeedService
 from app.F2_services.users import UserService
 from app.F2_services.notice import NoticeService
+from app.F2_services.graph import GraphService
 
 from app.F2_services.admin.static_page import StaticPageAdminService
 from app.F2_services.admin.users import UsersAdminService
@@ -33,7 +34,7 @@ from app.F3_repositories.feed import FeedRepository
 from app.F3_repositories.users import UserRepository
 from app.F3_repositories.static_page import StaticPageRepository
 from app.F3_repositories.notice import NoticeRepository
-
+from app.F3_repositories.graph import GraphRepository
 
 from app.F3_repositories.admin.static_page import StaticPageAdminRepository
 from app.F3_repositories.admin.users import UsersAdminRepository
@@ -56,6 +57,8 @@ from app.F6_schemas.base import UserRole
 from app.F7_models.users import UserStatus, User
 from app.F8_database.session import get_db
 from app.F11_search.ES1_client import es_async
+from app.F8_database.graph_db import Neo4jDriver
+from neo4j import AsyncDriver
 
 # --- 일반 ---
 def get_es_client() -> AsyncElasticsearch:
@@ -113,6 +116,23 @@ async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeServic
 
 async def get_auth_handler() -> AuthHandler:
     return AuthHandler()
+
+def get_neo4j_driver() -> AsyncDriver:
+    """Neo4j 드라이버 싱글톤 인스턴스를 반환하는 의존성 함수."""
+    return Neo4jDriver.get_driver()
+
+def get_graph_repository(
+    driver: AsyncDriver = Depends(get_neo4j_driver)
+) -> GraphRepository:
+    """
+    그래프 DB 리포지토리 의존성 주입.
+    - 이제 Repository는 Driver 객체를 직접 주입받음.
+    """
+    return GraphRepository(driver)
+
+def get_graph_service(repo: GraphRepository = Depends(get_graph_repository)) -> GraphService:
+    """그래프 DB 서비스 의존성 주입."""
+    return GraphService(repo)
 
 
 # --- 관리자 ---

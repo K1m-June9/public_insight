@@ -44,6 +44,7 @@ exempt_regex_paths = [
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+/latest",
     r"^/api/v1/feeds/[\uAC00-\uD7A3]+/press",
     # r"^/api/v1/feeds/\d+$"
+    r"^/api/v1/graph/feeds/[\uAC00-\uD7A3]+/related",
 ]
 
 

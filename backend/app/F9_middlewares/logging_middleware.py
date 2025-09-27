@@ -14,14 +14,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         start_time = time.time()
         
-        # 다음 미들웨어 또는 라우터 함수를 호출합니다.
+        # 다음 미들웨어 또는 라우터 함수를 호출
         response = await call_next(request)
         
         process_time = (time.time() - start_time) * 1000  # 밀리초
         
-        # 의존성 주입 단계에서 request.state에 저장된 사용자 정보를 가져옵니다.
-        user_info = getattr(request.state, "user", None)
-        user_id = user_info.user_id if user_info else "anonymous"
+        # --- 🔧 수정 지점 1: 사용자 ID 가져오는 방식 변경 ---
+        # request.state에 'user' 객체가 아닌 'user_id'가 직접 저장되므로, 이를 직접 가져옴
+        user_id = getattr(request.state, "user_id", "anonymous")
 
         # ECS 형식에 맞는 구조화된 로그 데이터를 구성합니다.
         log_extra = {
@@ -34,8 +34,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             },
             "url": { "path": str(request.url.path) },
             "client": { "ip": request.client.host if request.client else "unknown" },
-            "user": { "id": user_id }
+            "user": { "id": str(user_id) } # user_id가 int일 수 있으므로 str로 변환
         }
+
+        # --- 🔧 수정 지점 2: 검색어(Query Parameter) 로깅 추가 ---
+        # request.url.query가 존재할 경우에만 로그에 추가
+        if request.url.query:
+            log_extra["url"]["query"] = str(request.url.query)
         
         message = f"HTTP {request.method} {request.url.path} - {response.status_code}"
 

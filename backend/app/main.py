@@ -20,6 +20,9 @@ from app.F11_search.ES1_client import es_async, es_sync
 from app.F8_database.connection import engine, Base, async_session_scope
 from app.F8_database.connection import engine, Base 
 from app.F13_recommendations.dependencies import EngineManager
+from app.F8_database.graph_db import Neo4jDriver
+from app.F14_knowledge_graph.graph_ml import load_node_embeddings
+from app.F14_knowledge_graph.pipeline import run_pipeline
 
 # --- 라우터 및 미들웨어 관련 모듈 import ---
 from app.F1_routers.v1.api import router as api_v1_router
@@ -145,6 +148,44 @@ async def app_lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Async Elasticsearch ping failed on startup: {e}")
     
+    #neo4j 연결
+    Neo4jDriver.get_driver()
+
+    # # 🔧 [신규] 지식 그래프 ML 모델 로딩
+    # logger.info("Loading Knowledge Graph ML Model...")
+    # # pipeline.py와 동일한 방식으로 프로젝트 루트 경로를 계산
+    # project_root_dir = os.path.abspath(__file__)
+    # # 'main.py'의 위치는 app/ 이므로, 두 단계 위로 올라가면 루트임
+    # project_root_dir = os.path.dirname(os.path.dirname(project_root_dir))
+    # embedding_path = os.path.join(project_root_dir, "ml_models", "node_embeddings.pkl")
+    
+    # # 모델 로딩 함수 호출
+    # model_loaded = load_node_embeddings(embedding_path)
+    # if not model_loaded:
+    #     logger.warning("Knowledge Graph ML Model could not be loaded. Recommendation features will be disabled.")
+    # else:
+    #     logger.info("Knowledge Graph ML Model loaded successfully.")
+
+    # 🔧 [핵심 수정] 앱 시작 시 파이_x20;프라인 1회 실행 및 모델 로딩
+    logger.info("Initiating first-run Knowledge Graph pipeline...")
+    try:
+        # 서버가 시작될 때, 파이_x20;프라인을 *비동기적으로* 1회 실행함.
+        # 이렇게 하면 Neo4j와 ML 모델이 항상 준비된 상태로 시작됨.
+        await run_pipeline() 
+        logger.info("Knowledge Graph pipeline initial run completed.")
+    except Exception as e:
+        logger.error(f"Initial pipeline run failed: {e}", exc_info=True)
+        # 💥 중요: 초기 실행 실패 시 어떻게 할지 결정해야 함 (일단은 경고만 하고 서버는 계속 실행)
+
+    # 파이_x20;프라인 실행 후, 생성된 모델 파일을 로드
+    logger.info("Loading Knowledge Graph ML Model...")
+    embedding_path = "/app/ml_models/node_embeddings.pkl"
+    model_loaded = load_node_embeddings(embedding_path)
+    if not model_loaded:
+        logger.warning("Knowledge Graph ML Model could not be loaded.")
+    else:
+        logger.info("Knowledge Graph ML Model loaded successfully.")
+
     # 서버 시작 시 추천 엔진을 비동기 최초 학습
     await EngineManager.initial_fit()
 
@@ -176,6 +217,9 @@ async def app_lifespan(app: FastAPI):
     if es_sync:
         es_sync.close()
         logger.info("Sync Elasticsearch connection closed.")
+
+    #neo4j 연결 끗
+    await Neo4jDriver.close_driver()
 
     # await client_redis.close()
     # await email_redis.close()

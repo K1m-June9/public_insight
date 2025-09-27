@@ -20,8 +20,9 @@ filebeat/
 elasticsearch/Dockerfile
 elasticsearch/docker-entrypoint-es.sh
 elasticsearch/init-es.sh 
-elasticsearch/init-es.sh 
 
+neo4j/
+ml_models/
 
 crawler/
 db_init/

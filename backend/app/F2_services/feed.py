@@ -658,8 +658,10 @@ class FeedService:
                 title=feed_data['title'],
                 organization=organization_info,
                 category=category_info,
+                summary=feed_data['summary'],
                 average_rating=feed_data['average_rating'],
                 view_count=feed_data['view_count'] + 1, # 조회수 증가를 즉시 반영
+                bookmark_count=feed_data['bookmark_count'],
                 published_date=feed_data['published_date'],
                 source_url=feed_data['source_url'],
                 # 수정된 스키마에 맞춰 데이터 전달

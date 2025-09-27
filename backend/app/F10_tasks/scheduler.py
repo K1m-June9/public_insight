@@ -5,6 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.F8_database.connection import AsyncSessionLocal
 from app.F3_repositories.refresh_token import RefreshTokenRepository
 from app.F13_recommendations.dependencies import EngineManager
+from app.F14_knowledge_graph.pipeline import run_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,16 @@ def setup_scheduler():
         name="Refit recommendation engine with fresh data daily at 3 AM"
     )
     logger.info("Scheduler job 'refit_recommendation_engine_job' has been added.")
+
+    scheduler.add_job(
+        run_pipeline,
+        'cron',         # cron 형식으로 시간 지정
+        hour=4,         # 매일 새벽 4시
+        minute=0,
+        id='run_knowledge_graph_pipeline_job', # 작업 고유 ID
+        replace_existing=True
+    )
+    logger.info("Scheduler job 'run_knowledge_graph_pipeline_job' has been added.")
 
 
 # ----------------------------------------------

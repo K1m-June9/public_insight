@@ -65,14 +65,15 @@ def kiwi_tokenizer(text: str) -> List[str]:
 # ---------- 스크립트 실행 위치에 상관없이 항상 올바른 경로를 찾도록 초기에 설정 ----------
 # 1. 현재 이 파일(pipeline.py)의 절대 경로를 찾음
 #    ex: /home/pumpkinbee/public_insight/app/F14_knowledge_graph/pipeline.py
-project_root_dir = os.path.abspath(__file__)
+# project_root_dir = os.path.abspath(__file__)
 
-while os.path.basename(project_root_dir) != 'backend':
-    project_root_dir = os.path.dirname(project_root_dir)
-project_root_dir = os.path.dirname(project_root_dir) # backend 상위 디렉토리로 한번 더 이동
+# while os.path.basename(project_root_dir) != 'backend':
+#     project_root_dir = os.path.dirname(project_root_dir)
+# project_root_dir = os.path.dirname(project_root_dir) # backend 상위 디렉토리로 한번 더 이동
 
-PDF_BASE_PATH = os.path.join(project_root_dir, "backend", "static", "feeds_pdf")
-print(f"계산된 PDF 기본 경로: {PDF_BASE_PATH}")
+# PDF_BASE_PATH = os.path.join(project_root_dir, "backend", "static", "feeds_pdf")
+# print(f"계산된 PDF 기본 경로: {PDF_BASE_PATH}")
+PDF_BASE_PATH = "/app/static/feeds_pdf"  #뤼얼로 가는거
 
 # --- MySQL 연결 설정 (개발/테스트용) ---
 # DATABASE_URL = (
@@ -633,21 +634,78 @@ async def phase_load(driver: AsyncDriver, transformed_data: TransformedData):
 
 
 # --- 메인 실행 함수 (개발/테스트용) ---
-async def run_pipeline_for_dev():
-    """
-    개발 환경에서 파이프라인을 단독으로 실행하기 위한 비동기 함수.
-    """
-    print(f"DEBUG: Connecting to Neo4j with User = '{settings.NEO4J_USERNAME}'")
-    print(f"DEBUG: Connecting to Neo4j with Password = '{settings.NEO4J_PASSWORD}'")
-    logger.info("======= Knowledge Graph ETL Pipeline (DEV) 시작 =======")
-    NEO4J_URI_FOR_SCRIPT = "bolt://localhost:7687"
-    # Neo4j 드라이버는 외부에서 생성하여 주입하는 것이 좋음
-    neo4j_driver = AsyncGraphDatabase.driver(
-        NEO4J_URI_FOR_SCRIPT,
-        auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD)
-    )
+# async def run_pipeline_for_dev():
+#     """
+#     개발 환경에서 파이프라인을 단독으로 실행하기 위한 비동기 함수.
+#     """
+#     print(f"DEBUG: Connecting to Neo4j with User = '{settings.NEO4J_USERNAME}'")
+#     print(f"DEBUG: Connecting to Neo4j with Password = '{settings.NEO4J_PASSWORD}'")
+#     logger.info("======= Knowledge Graph ETL Pipeline (DEV) 시작 =======")
+#     NEO4J_URI_FOR_SCRIPT = "bolt://localhost:7687"
+#     # Neo4j 드라이버는 외부에서 생성하여 주입하는 것이 좋음
+#     neo4j_driver = AsyncGraphDatabase.driver(
+#         NEO4J_URI_FOR_SCRIPT,
+#         auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD)
+#     )
     
-    graph: nx.Graph | None = None # ML에 사용할 그래프 객체를 담을 변수
+#     graph: nx.Graph | None = None # ML에 사용할 그래프 객체를 담을 변수
+
+#     async with AsyncSessionLocal() as db:
+#         try:
+#             # 1. Extract
+#             mysql_data, pdf_texts, search_logs = await phase_extract(db)
+            
+#             # 2. Transform
+#             # transformed_data 튜플을 명시적으로 분리하여 전달
+#             nodes, relationships = phase_transform(mysql_data, pdf_texts, search_logs)
+            
+#             # 3. Load
+#             await phase_load(neo4j_driver, (nodes, relationships))
+
+#             # --- 🔧 [신규] 4. ML용 그래프 데이터 추출 ---
+#             # Load 단계가 성공적으로 끝나 최신 데이터가 담긴 Neo4j를 대상으로 실행
+#             logger.info("--- Phase 4: Machine Learning Graph Extraction 시작 ---")
+#             graph = await fetch_graph_data_from_neo4j(neo4j_driver)
+#             logger.info("--- Phase 4: Machine Learning Graph Extraction 종료 ---")
+
+#         except Exception as e:
+#             logger.error(f"파이프라인 실행 중 오류 발생: {e}", exc_info=True)
+#         finally:
+#             await neo4j_driver.close() # 작업이 끝나면 드라이버를 닫음
+
+#     # --- 🔧 [신규] 5. Node2Vec 모델 학습 및 저장 ---
+#     if graph and graph.number_of_nodes() > 0:
+#         logger.info("--- Phase 5: Node2Vec Model Training 시작 ---")
+        
+#         # 저장할 파일 경로 설정 (프로젝트 루트에 'ml_models' 폴더를 만들고 그 안에 저장)
+#         model_dir = os.path.join(project_root_dir, "ml_models")
+#         os.makedirs(model_dir, exist_ok=True)
+#         embedding_save_path = os.path.join(model_dir, "node_embeddings.pkl")
+
+#         # 학습 함수 호출
+#         train_and_save_node2vec_model(graph, save_path=embedding_save_path)
+        
+#         logger.info("--- Phase 5: Node2Vec Model Training 종료 ---")
+#         logger.info("✅ 파이프라인의 모든 단계가 성공적으로 완료되었습니다.")
+#     else:
+#         logger.warning("❗️파이프라인이 완료되었지만, ML 모델을 학습할 그래프를 생성하지 못했습니다.")
+
+#     logger.info("======= Knowledge Graph ETL Pipeline (DEV) 종료 =======")
+
+async def run_pipeline():
+    """
+    운영 환경에서 APScheduler에 의해 실행될 메인 파이프라인 함수.
+    - DB 세션과 Neo4j 드라이버를 외부에서 주입받아 사용함.
+    """
+    logger.info("======= Knowledge Graph ETL Pipeline 시작 =======")
+    
+    # 🔧 [핵심 수정] DB 연결을 직접 생성하지 않고, FastAPI의 의존성 주입 시스템을 활용할 준비.
+    #    실제 세션과 드라이버는 스케줄러 설정 파일에서 주입해 줄 것임.
+    from app.F8_database.session import AsyncSessionLocal # SQLAlchemy 세션
+    from app.F8_database.graph_db import Neo4jDriver   # Neo4j 드라이버
+    
+    neo4j_driver = Neo4jDriver.get_driver()
+    graph: nx.Graph | None = None
 
     async with AsyncSessionLocal() as db:
         try:
@@ -655,43 +713,40 @@ async def run_pipeline_for_dev():
             mysql_data, pdf_texts, search_logs = await phase_extract(db)
             
             # 2. Transform
-            # transformed_data 튜플을 명시적으로 분리하여 전달
             nodes, relationships = phase_transform(mysql_data, pdf_texts, search_logs)
             
             # 3. Load
             await phase_load(neo4j_driver, (nodes, relationships))
 
-            # --- 🔧 [신규] 4. ML용 그래프 데이터 추출 ---
-            # Load 단계가 성공적으로 끝나 최신 데이터가 담긴 Neo4j를 대상으로 실행
-            logger.info("--- Phase 4: Machine Learning Graph Extraction 시작 ---")
+            # 4. ML용 그래프 데이터 추출
+            logger.info("--- Phase 4: ML 모델용 그래프 데이터 추출 시작 ---")
             graph = await fetch_graph_data_from_neo4j(neo4j_driver)
-            logger.info("--- Phase 4: Machine Learning Graph Extraction 종료 ---")
+            logger.info("--- Phase 4: ML 모델용 그래프 데이터 추출 종료 ---")
 
         except Exception as e:
             logger.error(f"파이프라인 실행 중 오류 발생: {e}", exc_info=True)
-        finally:
-            await neo4j_driver.close() # 작업이 끝나면 드라이버를 닫음
-
-    # --- 🔧 [신규] 5. Node2Vec 모델 학습 및 저장 ---
+            # Neo4j 드라이버는 main.py의 lifespan에서 관리되므로 여기서 닫지 않음.
+    
+    # 5. Node2Vec 모델 학습 및 저장
     if graph and graph.number_of_nodes() > 0:
-        logger.info("--- Phase 5: Node2Vec Model Training 시작 ---")
+        logger.info("--- Phase 5: Node2Vec 모델 학습 시작 ---")
         
-        # 저장할 파일 경로 설정 (프로젝트 루트에 'ml_models' 폴더를 만들고 그 안에 저장)
-        model_dir = os.path.join(project_root_dir, "ml_models")
+        # 🔧 [핵심 수정] 도커 컨테이너 내부의 절대 경로를 사용하도록 변경
+        #    - /app은 docker-compose.yml에서 마운트한 backend 폴더의 루트임.
+        model_dir = "/app/ml_models"
         os.makedirs(model_dir, exist_ok=True)
         embedding_save_path = os.path.join(model_dir, "node_embeddings.pkl")
 
-        # 학습 함수 호출
         train_and_save_node2vec_model(graph, save_path=embedding_save_path)
         
-        logger.info("--- Phase 5: Node2Vec Model Training 종료 ---")
+        logger.info("--- Phase 5: Node2Vec 모델 학습 종료 ---")
         logger.info("✅ 파이프라인의 모든 단계가 성공적으로 완료되었습니다.")
     else:
         logger.warning("❗️파이프라인이 완료되었지만, ML 모델을 학습할 그래프를 생성하지 못했습니다.")
 
-    logger.info("======= Knowledge Graph ETL Pipeline (DEV) 종료 =======")
+    logger.info("======= Knowledge Graph ETL Pipeline 종료 =======")
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(run_pipeline_for_dev())
+# if __name__ == "__main__":
+#     logging.basicConfig(level=logging.INFO)
+#     asyncio.run(run_pipeline_for_dev())

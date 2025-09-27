@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import { MindMapNode } from './MindMapNode';
 import { ZoomPanContainer } from './ZoomPanContainer';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RotateCcw, FileText, Building2, Tag, Info } from 'lucide-react';
+import { ArrowLeft, RotateCcw, FileText, Building2, Tag, Info, Home } from 'lucide-react';
 import type { GraphNode, GraphEdge } from '@/lib/types/graph';
 import { useExpandMutation } from '@/hooks/mutations/useGraphMutations';
+import Link from "next/link";
 
 interface MindMapDisplayNode extends GraphNode {
   x: number;
@@ -349,6 +350,12 @@ export function MindMap({ keyword, initialNodes, initialEdges, onBack }: MindMap
               <ArrowLeft className="w-4 h-4 mr-2" />
               이전으로
             </Button>
+            <Link href="/">
+              <Button variant="outline" className="bg-white/80 hover:bg-white shadow-md">
+                <Home className="w-4 h-4 mr-2" />
+                홈으로
+              </Button>
+            </Link>
             <div>
               <h1 className="text-xl font-semibold text-1200 text-primary">{keyword}</h1>
               <p className="text-sm text-gray-500">마인드맵</p>

@@ -24,8 +24,8 @@ from app.F7_models.user_activities import UserActivity
 from app.F8_database.session import get_standalone_session
 
 class DashboardAdminRepository:
-    # def __init__(self, db: AsyncSession):
-    #     self.db = db
+    def __init__(self, db: AsyncSession):
+        self.db = db
 
 
     async def get_overview_stats(self) -> Dict[str, int]:

@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from app.F2_services.admin.org_crawler import OrgCrawlerTriggerAdminService
 
 from app.F5_core.logging_decorator import log_event_detailed
-from app.F5_core.dependencies import get_admin_org_crawler_trigger_service
+from app.F5_core.dependencies import get_admin_org_crawler_trigger_service 
 
 from app.F6_schemas.admin.org_crawler import (
     OrgPressReleaseCrawlOptions, 

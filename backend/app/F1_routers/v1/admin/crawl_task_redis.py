@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.F5_core.redis import CrawlTaskRedisService
 from app.F5_core.logging_decorator import log_event_detailed
-from app.F5_core.dependencies import get_admin_crawl_task_redis_service
+from app.F5_core.dependencies import get_admin_crawl_task_redis_service 
 
 from app.F6_schemas.admin.crawl_task_redis import (
     CrawlTaskResponse, 

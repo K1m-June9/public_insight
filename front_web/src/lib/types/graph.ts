@@ -49,3 +49,16 @@ export interface GraphData {
  * Explore/Expand API의 전체 응답 타입
  */
 export type GraphResponse = DataResponse<GraphData>;
+
+/**
+ * GET /feeds/{feed_id}/related-keywords API가 반환하는 개별 키워드 항목의 타입
+ */
+export interface RelatedKeywordItem {
+  text: string;
+  score: number; // 0-100 사이의 정수 점수
+}
+
+/**
+ * GET /feeds/{feed_id}/related-keywords API의 전체 응답 타입
+ */
+export type RelatedKeywordsResponse = DataResponse<RelatedKeywordItem[]>;

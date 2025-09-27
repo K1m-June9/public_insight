@@ -10,7 +10,9 @@ from app.F6_schemas.graph import (
     GraphNode, 
     GraphEdge,
     WordCloudItem,
-    WordCloudResponse
+    WordCloudResponse,
+    RelatedKeywordItem,
+    RelatedKeywordsResponse
 )
 from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message
 
@@ -289,6 +291,40 @@ class GraphService:
         except Exception as e:
             # 리포지토리에서 발생한 예외를 포함한 모든 에러를 처리
             logger.error(f"Error in get_wordcloud_data service: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                )
+            )
+        
+    async def get_related_keywords_for_feed(
+        self, feed_id: int, limit: int = 10
+    ) -> Union[RelatedKeywordsResponse, ErrorResponse]:
+        """
+        특정 피드와 연관된 키워드 목록을 ML 모델을 통해 조회하고 구조화함.
+        """
+        try:
+            # 1. 리포지토리를 호출하여 (키워드, 유사도) 튜플 리스트를 가져옴
+            similar_keywords = await self.repo.get_similar_keywords_for_feed(feed_id, limit)
+            
+            # 2. [핵심 비즈니스 로직]
+            #    - 각 키워드의 유사도(0.0 ~ 1.0)를 연관도 점수(0 ~ 100)로 변환
+            #    - Pydantic 스키마(RelatedKeywordItem) 객체 리스트로 재조립
+            response_data = [
+                RelatedKeywordItem(
+                    text=keyword,
+                    score=int(similarity * 100) # 👈 0.98 -> 98점으로 변환
+                ) 
+                for keyword, similarity in similar_keywords
+            ]
+            
+            # 3. 최종 성공 응답 객체를 생성하여 반환
+            return RelatedKeywordsResponse(success=True, data=response_data)
+
+        except Exception as e:
+            # 리포지토리에서 발생한 예외를 포함한 모든 에러를 처리
+            logger.error(f"Error getting related keywords for feed '{feed_id}': {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR,

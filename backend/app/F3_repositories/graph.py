@@ -301,3 +301,39 @@ class GraphRepository:
         except Exception as e:
             logger.error(f"Error getting keywords by popularity: {e}", exc_info=True)
             raise
+
+    async def get_similar_keywords_for_feed(
+            self, feed_id: int, limit: int = 10
+        ) -> List[Tuple[str, float]]:
+            """
+            [ML] 특정 피드와 문맥적으로 가장 유사한 키워드 목록을 예측하여 반환함.
+
+            :param feed_id: 기준이 되는 피드의 DB ID.
+            :param limit: 반환할 최대 키워드 개수.
+            :return: [('keyword_name', similarity_score), ...] 형태의 튜플 리스트.
+            """
+            try:
+                # 1. ML 모델이 사용하는 형식으로 시작 노드 ID를 생성
+                start_node_id = f"feed_{feed_id}"
+
+                # 2. ML 모델을 호출하여 유사 노드를 넉넉하게 예측 (top_n=50)
+                #    - 나중에 키워드가 아닌 노드들을 필터링해야 하므로, 요청량보다 많이 가져옴
+                predicted_nodes = predict_similar_nodes(start_node_id, top_n=50)
+
+                if not predicted_nodes:
+                    return []
+                
+                # 3. 예측 결과에서 'keyword' 타입의 노드만 필터링
+                similar_keywords = [
+                    # (keyword_이름, 유사도 점수) 형태로 추출
+                    (node_id.split('_', 1)[-1], similarity)
+                    for node_id, similarity in predicted_nodes
+                    if node_id.startswith('keyword_')
+                ]
+                
+                # 4. 최종적으로 limit 개수만큼만 잘라서 반환
+                return similar_keywords[:limit]
+
+            except Exception as e:
+                logger.error(f"Error predicting similar keywords for feed '{feed_id}': {e}", exc_info=True)
+                raise

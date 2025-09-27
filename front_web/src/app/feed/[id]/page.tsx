@@ -13,6 +13,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { ScrollToTopButton } from "@/components/ScrollToTop"
 import { FeedRecommendations } from "@/components/feed/FeedRecommendations";
+import KeywordSection from "@/components/feed/KeywordSection";
 
 // 2. PdfViewer 컴포넌트를 dynamic import
 const PdfViewer = dynamic(() => import('@/components/PdfViewer').then(mod => mod.PdfViewer), {
@@ -69,7 +70,7 @@ export default function FeedDetailPage() {
     
     return (
       // --- 👇 [수정] 이 부분이 새로운 레이아웃의 핵심입니다. ---
-      <div className="max-w-3xl mx-auto relative">
+      <div className="grid grid-cols-1 lg:grid-cols-[288px_minmax(0,1fr)_288px] lg:gap-8 xl:gap-12">
         {/* --- 1. 추천 섹션 (Absolute Position) --- */}
         {/* 
           - `absolute`: 문서 흐름에서 벗어나 자유롭게 위치함
@@ -78,7 +79,7 @@ export default function FeedDetailPage() {
           - `w-72`: 추천 섹션의 너비를 고정
           - `hidden lg:block`: 모바일/태블릿에서는 숨기고, 데스크탑에서만 표시
         */}
-        <aside className="absolute right-full mr-8 w-72 hidden lg:block">
+        <aside className="hidden lg:block">
           <div className="sticky top-24">
             <FeedRecommendations feedId={feed.id} isSourcePressRelease={isPressRelease} />
           </div>
@@ -86,7 +87,7 @@ export default function FeedDetailPage() {
         
         {/* --- 2. 피드 본문 섹션 (기존 중앙 정렬 유지) --- */}
         {/* 이 div는 이전과 동일하게 mx-auto 효과를 받아 중앙에 위치합니다. */}
-        <div>
+        <div className="min-w-0">
           <Button variant="ghost" onClick={goBack} className="mb-6 flex items-center gap-1"><ArrowLeft className="h-4 w-4" /><span>뒤로가기</span></Button>
           <h1 className="text-3xl font-bold mb-4 text-gray-900">{feed.title}</h1>
           <div className="flex flex-wrap items-center gap-3 mb-6 text-sm text-gray-500">
@@ -117,6 +118,12 @@ export default function FeedDetailPage() {
             <a href={feed.source_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{feed.source_url}</a>
           </div>
         </div>
+        <aside className="hidden lg:block">
+          <div className="sticky top-24">
+            {/* 우리가 만든 KeywordSection 컴포넌트를 여기에 삽입! */}
+            <KeywordSection feedId={feed.id} />
+          </div>
+        </aside>
       </div>
     );
   };

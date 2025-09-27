@@ -1,10 +1,10 @@
 import logging
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Path
 from fastapi.responses import JSONResponse
 
 from app.F2_services.graph import GraphService
 from app.F5_core.dependencies import get_graph_service
-from app.F6_schemas.graph import ExploreGraphResponse, ExploreQuery, ExpandQuery, WordCloudResponse
+from app.F6_schemas.graph import ExploreGraphResponse, ExploreQuery, ExpandQuery, WordCloudResponse, RelatedKeywordsResponse
 from app.F6_schemas.base import ErrorResponse, ErrorCode, Message
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,33 @@ async def get_wordcloud(
     """
     # 서비스 레이어의 워드클라우드 데이터 조회 메서드를 호출
     result = await graph_service.get_wordcloud_data(organization_name, limit)
+    
+    # 에러 처리 패턴은 다른 API들과 완벽하게 동일함
+    if isinstance(result, ErrorResponse):
+        return JSONResponse(status_code=500, content=result.model_dump())
+        
+    return result
+
+@router.get(
+    "/feeds/{feed_id}/related-keywords",
+    response_model=RelatedKeywordsResponse,
+    summary="피드 상세 페이지의 연관 키워드 조회 (ML 기반)",
+    description="특정 피드와 문맥적으로 가장 유사한 키워드 목록을 연관도 점수와 함께 반환합니다."
+)
+async def get_related_keywords_for_feed(
+    # 경로 파라미터 유효성 검사: feed_id는 0보다 큰 정수여야 함
+    feed_id: int = Path(..., gt=0, description="관련 키워드를 조회할 피드의 ID"),
+    limit: int = Query(10, ge=5, le=15, description="반환할 최대 키워드 개수"),
+    graph_service: GraphService = Depends(get_graph_service)
+):
+    """
+    피드 상세 페이지 우측의 '관련 토픽' 섹션에 사용될 데이터를 제공합니다.
+
+    - **feed_id**: (필수) 대상 피드의 고유 ID.
+    - **limit**: (선택) 반환할 키워드 개수 (기본값: 10, 최소: 5, 최대: 15).
+    """
+    # 서비스 레이어의 새로운 메서드를 호출
+    result = await graph_service.get_related_keywords_for_feed(feed_id, limit)
     
     # 에러 처리 패턴은 다른 API들과 완벽하게 동일함
     if isinstance(result, ErrorResponse):

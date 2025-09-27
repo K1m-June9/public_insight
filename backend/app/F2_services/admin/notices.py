@@ -160,6 +160,10 @@ class NoticesAdminService:
 
             new_notice = await self.repo.create_notice(notice_data_dict)
 
+            await self.repo.db.commit()
+            await self.repo.db.refresh(new_notice)
+
+            
             # --- 3. 성공 응답 데이터 생성 ---
             notice_response_data = NoticeDetail(
                 id=new_notice.id,
@@ -173,8 +177,6 @@ class NoticesAdminService:
                 updated_at=new_notice.updated_at
             )
 
-            await self.repo.db.commit()
-            await self.repo.db.refresh(new_notice)
 
             return NoticeCreateResponse(
                 success=True,

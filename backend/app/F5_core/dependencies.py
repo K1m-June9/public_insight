@@ -4,8 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 
-from app.F5_core.config import settings
-
 from app.F2_services.auth import AuthService
 from app.F2_services.slider import SliderService
 from app.F2_services.session import SessionService
@@ -19,10 +17,14 @@ from app.F2_services.graph import GraphService
 from app.F2_services.admin.static_page import StaticPageAdminService
 from app.F2_services.admin.users import UsersAdminService
 from app.F2_services.admin.slider import SliderAdminService
-# from app.F2_services.admin.feed import FeedAdminService
+from app.F2_services.admin.feed import FeedAdminService
 from app.F2_services.admin.organization import OrganizationAdminService
 from app.F2_services.admin.notices import NoticesAdminService
 from app.F2_services.admin.dashboard import DashboardAdminService
+from app.F2_services.admin.app_settings import AppSettingService
+from app.F2_services.admin.org_crawler import OrgCrawlerTriggerAdminService
+
+from app.F2_services.internal.org_crawler import OrgCrawlerDataReceiverService
 
 from app.F3_repositories.auth import AuthRepository
 from app.F3_repositories.slider import SliderRepository
@@ -38,14 +40,18 @@ from app.F3_repositories.admin.static_page import StaticPageAdminRepository
 from app.F3_repositories.admin.users import UsersAdminRepository
 from app.F3_repositories.admin.activity_log import UsersActivityRepository
 from app.F3_repositories.admin.slider import SliderAdminRepository
-# from app.F3_repositories.admin.feed import FeedAdminRepository
+from app.F3_repositories.admin.feed import FeedAdminRepository
 from app.F3_repositories.admin.organization import OrganizationAdminRepository
 from app.F3_repositories.admin.notices import NoticesAdminRepository
 from app.F3_repositories.admin.dashboard import DashboardAdminRepository
 from app.F3_repositories.admin.dashboard_activity import DashboardActivityRepository
+from app.F3_repositories.admin.app_settings import AppSettingRepository
+from app.F3_repositories.admin.org_crawler import OrgCrawlerTriggerRepository 
+
+from app.F3_repositories.internal.org_crawler import OrgCrawlerRepository
 
 from app.F4_utils.email import EmailVerificationService
-from app.F5_core.redis import RedisCacheService, PasswordResetRedisService
+from app.F5_core.redis import RedisCacheService, PasswordResetRedisService, CrawlTaskRedisService
 from app.F5_core.security import AuthHandler
 from app.F6_schemas.base import UserRole
 from app.F7_models.users import UserStatus, User
@@ -98,6 +104,7 @@ async def get_user_service(
     """사용자 관련 서비스 의존성 주입용 함수"""
     
     user_repo = UserRepository(db)
+    return UserService(repo=user_repo, session_service=session_service)
 
 async def get_user_service(db: AsyncSession = Depends(get_db),session_service: SessionService = Depends(get_session_service)) -> UserService:
     """사용자 관련 서비스 의존성 주입용 함수"""    
@@ -145,9 +152,9 @@ async def get_admin_users_service(
     activity_repo = UsersActivityRepository(es=es)
     return UsersAdminService(user_repo=user_repo, activity_repo=activity_repo)
 
-# async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
-#     """관리자 피드 관련 의존성 주입용 함수"""
-#     return FeedAdminService(FeedAdminRepository(db))
+async def get_admin_feed_service(db: AsyncSession = Depends(get_db)) -> FeedAdminService:
+    """관리자 피드 관련 의존성 주입용 함수"""
+    return FeedAdminService(FeedAdminRepository(db))
 
 async def get_admin_organization_service(db: AsyncSession = Depends(get_db)) -> OrganizationAdminService:
     """관리자 기관/카테고리 관련 의존성 주입용 함수"""
@@ -157,90 +164,57 @@ async def get_admin_notices_service(db: AsyncSession=Depends(get_db)) -> Notices
     """관리자 공지사항 관련 의존성 주입용 함수"""
     return NoticesAdminService(NoticesAdminRepository(db))
 
+async def get_admin_app_setting_service(db: AsyncSession=Depends(get_db)) -> AppSettingService:
+    """구글 코랩 NLP 서버 관리"""
+    return AppSettingService(AppSettingRepository(db))
+
+async def get_admin_crawl_task_redis_service() -> CrawlTaskRedisService:
+    """관리자 크롤 태스크 Redis 서비스 의존성 주입용 함수"""
+    return CrawlTaskRedisService()
+
+
+async def get_crawler_org_data_receiver_service(db: AsyncSession = Depends(get_db)) -> OrgCrawlerDataReceiverService:
+    """"""
+    return OrgCrawlerDataReceiverService(OrgCrawlerRepository(db))
+
+async def get_admin_org_crawler_trigger_service(
+    db: AsyncSession = Depends(get_db),
+    data_receiver_service: OrgCrawlerDataReceiverService = Depends(get_crawler_org_data_receiver_service),
+    crawl_redis_service: CrawlTaskRedisService = Depends(get_admin_crawl_task_redis_service),
+) -> OrgCrawlerTriggerAdminService:
+    ct_repo = OrgCrawlerTriggerRepository(db)
+    return OrgCrawlerTriggerAdminService(
+        ct_repo=ct_repo,
+        data_receiver_service=data_receiver_service,
+        crawl_redis_service=crawl_redis_service
+    )
+
 
 async def get_admin_dashboard_service(
-        #db: AsyncSession=Depends(get_db),
+        db: AsyncSession=Depends(get_db),
         es: AsyncElasticsearch = Depends(get_es_client)
 ) -> DashboardAdminService:
     """관리자 대시보드 관련 의존성 주입용 함수"""
-    dash_repo = DashboardAdminRepository()
+    dash_repo = DashboardAdminRepository(db=db)
     es_repo = DashboardActivityRepository(es=es)
     return DashboardAdminService(dash_repo=dash_repo, es_repo=es_repo)
 
 
 
-
-
-# async def verify_active_user(
-#     request: Request,
-#     db: AsyncSession = Depends(get_db),
-# ) -> User:
-#     """요청에 인증된 사용자가 활성 상태인지 검증하는 함수(Redis 캐시 사용)"""
-    
-#     user_id = getattr(request.state, "user_id", None)
-#     if not user_id:
-#         # user_id가 없으면 안 된 상태
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-
-#     # 1. Redis 캐시 조회 시도
-#     cached = await RedisCacheService.get_cached_user_info(user_id)
-
-#     if cached:
-#         required_fields = ("user_id", "nickname", "email", "status", "role")
-#         if not all(field in cached and cached[field] is not None for field in required_fields):
-#             cached = None
-
-#     if cached:
-#         # 캐시가 존재하면 상태만 검사
-#         if cached.get("status") != UserStatus.ACTIVE.value:
-#             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
-    
-    
-#     # 2. 캐시가 없으면 DB 조회
-#     auth_repo = AuthRepository(db)
-#     user = await auth_repo.get_user_by_user_id(user_id)
-#     if not user:
-#         # DB에 해당 사용자 없음
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-#     if user.status != UserStatus.ACTIVE:
-#         # 사용자 상태가 활성 상태가 아님(예: 차단, 비활성)
-#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
-
-#     # 3. DB 조회 후 Redis 캐시에 저장
-#     await RedisCacheService.cache_user_info(user)
-
-#     return user
-
-
-
-#####################################################
-# swaggerUI를 위해 수정된 상태
-from fastapi.security import OAuth2PasswordBearer
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
 async def verify_active_user(
     request: Request,
-    # 수정된 부분
-    token: str = Depends(oauth2_scheme),
-    
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """요청에 인증된 사용자가 활성 상태인지 검증하고, request.state에 사용자 정보를 저장합니다."""
-    # JWT 미들웨어에서 user_id를 전달받았다고 가정합니다.
+    """요청에 인증된 사용자가 활성 상태인지 검증하는 함수(Redis 캐시 사용)"""
+    
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"}, # 401 응답 표준 헤더 추가
-        )
+        # user_id가 없으면 안 된 상태
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     # 1. Redis 캐시 조회 시도
     cached = await RedisCacheService.get_cached_user_info(user_id)
 
-    # 캐시 데이터 유효성 검사 (선택사항이지만 좋은 습관)
     if cached:
         required_fields = ("user_id", "nickname", "email", "status", "role")
         if not all(field in cached and cached[field] is not None for field in required_fields):
@@ -250,36 +224,95 @@ async def verify_active_user(
         # 캐시가 존재하면 상태만 검사
         if cached.get("status") != UserStatus.ACTIVE.value:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
-        
-        # 캐시된 데이터로 User 객체를 생성하여 일관성을 유지
-        user = User(
-            user_id=cached.get("user_id"),
-            nickname=cached.get("nickname"),
-            email=cached.get("email"),
-            status=UserStatus(cached.get("status")),
-            role=UserRole(cached.get("role"))
-        )
-        
-        # request.state에 저장하고 반환
-        request.state.user = user
-        return user
+    
     
     # 2. 캐시가 없으면 DB 조회
     auth_repo = AuthRepository(db)
     user = await auth_repo.get_user_by_user_id(user_id)
-    
     if not user:
+        # DB에 해당 사용자 없음
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     if user.status != UserStatus.ACTIVE:
+        # 사용자 상태가 활성 상태가 아님(예: 차단, 비활성)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
 
     # 3. DB 조회 후 Redis 캐시에 저장
     await RedisCacheService.cache_user_info(user)
 
-    # request.state에 저장하고 반환
-    request.state.user = user
     return user
+
+
+
+#####################################################
+# swaggerUI를 위해 수정된 상태
+# from fastapi.security import OAuth2PasswordBearer
+
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+# async def verify_active_user(
+#     request: Request,
+#     # 수정된 부분
+#     token: str = Depends(oauth2_scheme),
+    
+#     db: AsyncSession = Depends(get_db),
+# ) -> User:
+#     """요청에 인증된 사용자가 활성 상태인지 검증하고, request.state에 사용자 정보를 저장합니다."""
+    
+#     # JWT 미들웨어에서 user_id를 전달받았다고 가정합니다.
+#     user_id = getattr(request.state, "user_id", None)
+#     if not user_id:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED, 
+#             detail="Not authenticated",
+#             headers={"WWW-Authenticate": "Bearer"}, # 401 응답 표준 헤더 추가
+#         )
+
+#     # 1. Redis 캐시 조회 시도
+#     cached = await RedisCacheService.get_cached_user_info(user_id)
+
+#     # 캐시 데이터 유효성 검사 (선택사항이지만 좋은 습관)
+#     if cached:
+#         required_fields = ("user_id", "nickname", "email", "status", "role")
+#         if not all(field in cached and cached[field] is not None for field in required_fields):
+#             cached = None
+
+#     if cached:
+#         # 캐시가 존재하면 상태만 검사
+#         if cached.get("status") != UserStatus.ACTIVE.value:
+#             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
+        
+#         # 캐시된 데이터로 User 객체를 생성하여 일관성을 유지
+#         user = User(
+#             user_id=cached.get("user_id"),
+#             nickname=cached.get("nickname"),
+#             email=cached.get("email"),
+#             status=UserStatus(cached.get("status")),
+#             role=UserRole(cached.get("role"))
+#         )
+        
+#         # request.state에 저장하고 반환
+#         request.state.user = user
+#         return user
+    
+#     # 2. 캐시가 없으면 DB 조회
+#     auth_repo = AuthRepository(db)
+#     user = await auth_repo.get_user_by_user_id(user_id)
+    
+#     if not user:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+#     if user.status != UserStatus.ACTIVE:
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive or blocked")
+
+#     # 3. DB 조회 후 Redis 캐시에 저장
+#     await RedisCacheService.cache_user_info(user)
+
+#     # request.state에 저장하고 반환
+#     request.state.user = user
+#     return user
+
+
 
 
 #   새로운 선택적 인증 함수 추가

@@ -35,7 +35,10 @@ class OrganizationAdminService:
         try:
             organizations = await self.repo.get_simple_organization_list()
             org_items = [SimpleOrganizationItem(id=org['id'], name=org['name']) for org in organizations]
-            return SimpleOrganizationListResponse(data=org_items)
+            return SimpleOrganizationListResponse(
+                success=True,
+                data=org_items
+            )
         except Exception as e:
             logger.error(f"Error in get_simple_list: {e}", exc_info=True)
             return ErrorResponse(
@@ -124,6 +127,9 @@ class OrganizationAdminService:
                 # 우선은 모델의 기본값을 따르는 것으로 진행
             )
             
+            await self.repo.db.commit()
+            # await self.repo.db.refresh(new_org)
+            
             # 3. 생성된 객체를 응답 스키마로 변환
             # 새로 생성되었으므로, categories는 '보도자료' 하나만 존재
             # feed_count는 0입니다.
@@ -152,8 +158,6 @@ class OrganizationAdminService:
                 categories=created_categories
             )
 
-            await self.repo.db.commit()
-            await self.repo.db.refresh(new_org)
             
             return OrganizationCreateResponse(success=True, data=create_result)
 

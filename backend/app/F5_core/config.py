@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     ELASTICSEARCH_SYNONYMS_PATH: Optional[str] = "/etc/elasticsearch/synonym-set.txt"
     ELASTICSEARCH_STOPWORDS_PATH: Optional[str] = "/etc/elasticsearch/stopwords.txt"
 
+    # 크롤러 설정
+    CRAWLER_API_KEY: str
+    PDF_SUMMARY_KEY: str
+    HWPX_KEY: str
+
     # 환경 설정
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "DEBUG"
@@ -68,7 +73,7 @@ class Settings(BaseSettings):
                 return f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}@localhost:{self.DB_PORT}/{self.DB_NAME}"
             else:
                 # 도커 환경에서 개발 실행 (예: 도커 컴포즈에서 'db'라는 서비스명으로 DB 접속)
-                return f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+                return f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
         else:
             # 운영 환경 
             return f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

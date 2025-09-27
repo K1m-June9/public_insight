@@ -259,3 +259,33 @@ class FeedPathParams(BaseModel):
 class OrganizationPathParams(BaseModel):
     """기관명 경로 파라미터"""
     organization_name: str = Field(..., min_length=1, description="기관명")
+
+# ============================================================================
+# 10. 정책뉴스 관련 스키마
+# ============================================================================
+
+class PolicyNewsItem(BaseSchema):
+    """보도자료 항목"""
+    id: int
+    title: str
+    category: CategoryInfo
+    summary: str
+    published_date: datetime
+    view_count: int
+    average_rating: float
+    bookmark_count: int
+
+class PolicyNewsData(BaseModel):
+    """보도자료 데이터"""
+    organization: OrganizationInfo
+    press_releases: List[PolicyNewsItem]
+    pagination: PaginationInfo
+
+class PolicyNewsResponse(BaseResponse):
+    """보도자료 응답"""
+    data: PolicyNewsData
+
+class PolicyNewsQuery(BaseModel):
+    """보도자료 쿼리 파라미터"""
+    page: int = Field(default=1, ge=1, description="페이지 번호 (1부터 시작)")
+    limit: int = Field(default=15, ge=1, le=100, description="페이지당 항목 수 (최대 100)")

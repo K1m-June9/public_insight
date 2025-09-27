@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from app.F2_services.admin.static_page import StaticPageAdminService
@@ -60,14 +60,15 @@ async def get_static_page_detail(
 @log_event_detailed(action="UPDATE", category=["ADMIN", "STATIC_PAGE"])
 async def update_static_page(
     slug: str,
-    request: StaticPageUpdateRequest,
+    request: Request,
+    payload: StaticPageUpdateRequest,
     admin_service: StaticPageAdminService = Depends(get_admin_static_page_service),
     current_user: User = Depends(verify_active_user)
 ):
     """
     관리자: 특정 정적 페이지의 내용을 수정
     """
-    result = await admin_service.update_static_page(slug, request.content)
+    result = await admin_service.update_static_page(slug, payload.content)
 
     if isinstance(result, ErrorResponse):
         if result.error.code == ErrorCode.NOT_FOUND:

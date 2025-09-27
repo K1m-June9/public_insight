@@ -28,7 +28,7 @@ class NoticeListItem(BaseSchema):
     is_active: bool
     view_count: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
 class NoticeDetail(BaseSchema):
     """공지사항 상세 정보"""

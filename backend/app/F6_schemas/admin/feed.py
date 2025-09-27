@@ -131,6 +131,18 @@ class FeedUpdateRequest(BaseModel):
     source_url: str = Field(..., description="원본 URL")
     is_active: bool = Field(True, description="활성화 여부")
 
+class FeedManualCreateRequest(BaseModel):
+    title: str = Field(..., description="피드 제목")
+    organization_id: int = Field(..., description="기관 ID")
+    category_id: int = Field(..., description="카테고리 ID")
+    summary: Optional[str] = Field(None, description="요약문")
+    source_url: str = Field(..., description="원본 콘텐츠 URL")
+    published_date: str = Field(..., description="발행 일시 (YYYY-MM-DD)")
+    content_type: ContentType = Field(..., description="콘텐츠 타입")
+    original_text: Optional[str] = Field(None, description="원본 텍스트")
+    is_active: bool = Field(True, description="활성화 여부")
+
+
 # ============================================================================
 # 4. 응답 스키마
 # ============================================================================
@@ -185,6 +197,15 @@ class OrganizationCategoriesResponse(BaseResponse):
     """기관별 카테고리 응답"""
     success: bool = True
     data: List[OrganizationCategory]
+
+class FeedManualCreateResult(BaseModel):
+    id: int
+    title: str
+    processing_status: str
+
+class FeedManualCreateResponse(BaseResponse):
+    success: bool 
+    data: List[FeedManualCreateResult]
 
 # ============================================================================
 # 5. 경로 파라미터 스키마

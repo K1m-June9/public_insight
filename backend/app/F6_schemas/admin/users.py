@@ -59,7 +59,7 @@ class UserDetail(BaseSchema):
     privacy_agreed: bool
     notification_agreed: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     statistics: "UserStatistics"
 
 class UserStatistics(BaseSchema):

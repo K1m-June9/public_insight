@@ -94,7 +94,7 @@ async def get_notice_detail(
 @log_event_detailed(action="CREATE", category=["ADMIN", "NOTICE_MANAGEMENT"])
 async def create_notice(
     requet:Request,
-    request_data: NoticeCreateRequest = Depends(),
+    request_data: NoticeCreateRequest,
     current_user: User = Depends(verify_active_user),
     admin_service: NoticesAdminService = Depends(get_admin_notices_service),
 ):

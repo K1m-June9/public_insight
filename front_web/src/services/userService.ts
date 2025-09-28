@@ -4,6 +4,7 @@ import {
     UserProfileResponse,
     UserRatingListResponse,
     UserBookmarkListResponse,
+    UserRecommendationResponse,
 } from '@/lib/types/user';
 import { BaseResponse } from '@/lib/types/base';
 
@@ -73,5 +74,14 @@ export const getMyRatings = async (params: PaginationParams): Promise<UserRating
 */
 export const getMyBookmarks = async (params: PaginationParams): Promise<UserBookmarkListResponse> => {
     const response = await apiClient.get<UserBookmarkListResponse>('/users/bookmarks', { params });
+    return response.data;
+};
+
+/**
+* 현재 로그인한 사용자를 위한 맞춤 추천(피드, 키워드) 목록을 조회.
+* @returns Promise<UserRecommendationResponse>
+*/
+export const getUserRecommendations = async (): Promise<UserRecommendationResponse> => {
+    const response = await apiClient.get<UserRecommendationResponse>('/users/me/recommendations');
     return response.data;
 };

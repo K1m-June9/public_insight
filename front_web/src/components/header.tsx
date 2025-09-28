@@ -65,7 +65,7 @@ export default function Header() {
             height={28} // 원하는 로고 높이 (픽셀)
             className="h-10 w-10" // Tailwind 클래스로도 크기 지정 가능
           />
-        <h1>PublicInsight</h1>
+        <h1 className="text-primary">PublicInsight</h1>
       </Link>
         </div>
 

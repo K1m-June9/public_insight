@@ -98,6 +98,12 @@ export function InsightNavigator() {
             <p>현재 인기있는 토픽이 없습니다.</p>
           </div>
         )}
+        <div className="mt-6 pt-4 border-t">
+          <p className="text-xs text-muted-foreground text-center">
+            키워드 선택 시<br />
+          마인드맵 페이지로 이동합니다
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

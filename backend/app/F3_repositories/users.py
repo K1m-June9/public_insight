@@ -211,8 +211,6 @@ class UserRepository:
         cypher_query = """
         MATCH (u:User {id: $user_pk})-[r:SEARCHED]->(k:Keyword)
         RETURN k.id AS keyword
-        // --- ▼ [수정] elementId()는 Neo4j 5.x 이상 버전 함수이므로, 4.4 버전에 맞는 id()로 변경합니다. ▼ ---
-        // id(r)은 관계의 내부 ID를 반환하므로, 최신순을 근사적으로 정렬하는 데 동일하게 사용할 수 있습니다.
         ORDER BY id(r) DESC 
         LIMIT $limit
         """

@@ -1,5 +1,3 @@
-// src/components/PdfViewer.tsx
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -60,9 +58,6 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
           <Button variant="outline" size="sm" onClick={() => setIsFullScreen(true)}><Expand className="h-4 w-4 mr-2" /> 전체보기</Button>
         )}
       </div>
-      
-      {/* --- ▼ [수정] 일반 모드 뷰어의 컨테이너에 overflow-auto를 적용합니다. ▼ --- */}
-      {/* 기존 overflow-hidden을 제거하고, 자식 요소가 커졌을 때 스크롤이 생기도록 변경합니다. */}
       <div className="border border-gray-300 rounded-lg w-full overflow-auto">
         <Document
           file={fileUrl}
@@ -70,7 +65,6 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
           loading={<div className="text-center p-10">PDF 파일을 불러오는 중...</div>}
           error={<div className="text-center p-10 text-red-500">PDF 파일을 불러오는 데 실패했습니다.</div>}
         >
-          {/* 페이지를 중앙 정렬하기 위해 flex 컨테이너를 추가할 수 있습니다. */}
           <div className="flex justify-center">
             <Page pageNumber={pageNumber} scale={scale} renderTextLayer={true} />
           </div>
@@ -90,7 +84,6 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
             >
               <div className="flex flex-col items-center gap-4">
                 {Array.from({ length: numPages }, (_, i) => i + 1).map(page => (
-                  // --- ▼ [수정] 전체보기 모드의 각 페이지도 스크롤 가능한 div로 감싸줍니다. ▼ ---
                   <div key={`page_wrapper_${page}`} className="overflow-auto bg-white shadow-lg">
                     <Page
                       pageNumber={page}

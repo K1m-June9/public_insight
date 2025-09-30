@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-// 🔧 1. '탐색'의 의미를 담은 Compass 아이콘을 사용
 import { Compass } from "lucide-react";
-// 🔧 2. 우리가 새로 만든 useWordCloudQuery 훅을 임포트
 import { useWordCloudQuery } from "@/hooks/queries/useGraphQueries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { WordCloudItem } from "@/lib/types/graph"; // 🔧 3. 키워드 아이템 타입을 임포트
+import { WordCloudItem } from "@/lib/types/graph";
 
 // 4. 아이템 렌더링을 위한 별도의 컴포넌트로 분리 (TopFeeds 패턴과 동일)
 interface TopicGuideItemProps {
@@ -23,7 +21,6 @@ function TopicGuideItem({ item, rank }: TopicGuideItemProps) {
     "bg-muted text-muted-foreground";
 
   return (
-    // 5. 각 아이템을 클릭하면 /explore 페이지로 이동하는 링크
     <Link href={`/explore?keyword=${encodeURIComponent(item.text)}`} className="block group">
       <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -45,10 +42,7 @@ function TopicGuideItem({ item, rank }: TopicGuideItemProps) {
   );
 }
 
-// 6. 메인 InsightNavigator 컴포넌트
 export function InsightNavigator() {
-  // 7. useWordCloudQuery 훅을 호출하여 '전체' 인기 키워드 상위 10개를 가져옴
-  //    organizationName을 전달하지 않으면 메인 페이지용 데이터를 가져옴
   const { data: response, isLoading, isError } = useWordCloudQuery({
     limit: 10,
   });

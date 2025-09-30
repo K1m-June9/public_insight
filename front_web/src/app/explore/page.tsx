@@ -2,14 +2,12 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useRouter } from 'next/navigation'; // [추가] 뒤로가기 버튼을 위해 import
+import { useRouter } from 'next/navigation';
 
-// [수정] 데이터 로딩을 위한 커스텀 훅 임포트
 import { useExploreQuery } from '@/hooks/queries/useGraphQueries';
 
-// [수정] 실제 데이터와 연동될 MindMap 컴포넌트 임포트
 import { MindMap } from '@/components/mind-map/MindMap';
-import { Button } from '@/components/ui/button'; // [추가] 에러 화면에서 사용
+import { Button } from '@/components/ui/button';
 
 /**
  * useSearchParams 훅을 사용하고 실제 컨텐츠를 렌더링하는 내부 컴포넌트
@@ -53,7 +51,6 @@ function ExplorePageContent() {
     );
   }
 
-  // [수정] 데이터 로딩 성공 시, MindMap 컴포넌트에 keyword와 API 데이터를 props로 전달
   return (
     <MindMap
       keyword={keyword}

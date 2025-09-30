@@ -1,5 +1,3 @@
-// src/components/mypage/RecommendationTab.tsx
-
 "use client";
 
 import Link from "next/link";
@@ -88,12 +86,11 @@ export default function RecommendationTab() {
                       </p>
                     )}
                     
-                    {/* --- ▼ [신규 추가] 피드 하단에 상세 정보를 표시하는 부분입니다. ▼ --- */}
                     <div className="flex items-center justify-between pt-3 border-t text-sm text-muted-foreground">
                       {feed.published_date ? (
                         <span>{formatDate(feed.published_date)}</span>
                       ) : (
-                        <span></span> // 날짜가 없을 경우 공간을 차지하지 않도록 빈 span
+                        <span></span> 
                       )}
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center gap-1">

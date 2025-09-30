@@ -1,4 +1,3 @@
-//import { motion } from 'motion/react';
 import { motion } from 'framer-motion';
 import { useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ interface ZoomPanContainerProps {
 
 export function ZoomPanContainer({ children, className = '' }: ZoomPanContainerProps) {
   const [scale, setScale] = useState(1);
-  // 초기 위치를 기본값으로 설정 (나중에 조정됨)
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -30,7 +28,6 @@ export function ZoomPanContainer({ children, className = '' }: ZoomPanContainerP
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       
-      // 마우스 위치를 중심으로 줌
       const scaleRatio = newScale / scale;
       const newPosition = {
         x: mouseX - (mouseX - position.x) * scaleRatio,

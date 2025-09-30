@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Literal
 
-# 우리 프로젝트의 기본 응답 구조를 임포트
 from app.F6_schemas.base import BaseResponse, ErrorDetail
 
 # ====================================================================
@@ -27,14 +26,12 @@ class GraphEdge(BaseModel):
 
 class ExploreGraphData(BaseModel):
     """GET /explore API의 성공 응답의 'data' 필드에 들어갈 내용."""
-    # 🔧 [패턴 적용] XxxData 스키마 정의
     nodes: List[GraphNode]
     edges: List[GraphEdge]
 
 
 class ExploreGraphResponse(BaseResponse):
     """GET /explore API의 최종 응답 스키마."""
-    # 🔧 [패턴 적용] XxxResponse 스키마 정의. BaseResponse 상속.
     data: ExploreGraphData | None = None
 # ====================================================================
 # 쿼리 파라미터를 위한 스키마

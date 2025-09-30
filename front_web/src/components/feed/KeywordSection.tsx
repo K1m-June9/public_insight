@@ -1,28 +1,24 @@
 "use client";
 
-import Link from "next/link"; // 1. 페이지 이동을 위해 Link 컴포넌트를 임포트
-import { useRelatedKeywordsQuery } from "@/hooks/queries/useGraphQueries"; // 2. 우리가 만든 커스텀 훅을 임포트
+import Link from "next/link"; 
+import { useRelatedKeywordsQuery } from "@/hooks/queries/useGraphQueries"; 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // 3. 더 나은 구조를 위해 Card 컴포넌트 활용
-import { Sparkles } from "lucide-react"; // 4. '인사이트'의 의미를 담은 아이콘
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles } from "lucide-react";
 
 interface KeywordSectionProps {
-  feedId: number; // 5. 이제 feedId는 필수로 받음
+  feedId: number; 
 }
 
 export default function KeywordSection({ feedId }: KeywordSectionProps) {
-  // 6. TanStack Query 훅을 호출하여 서버 상태를 가져옴
+  
   const { data: response, isLoading, isError } = useRelatedKeywordsQuery(feedId, {
-    // feedId가 유효한 숫자일 때만 쿼리가 실행되도록 보장
     enabled: !!feedId && feedId > 0,
-    // 이 컴포넌트에서는 7개의 키워드를 요청
     limit: 7,
   });
 
-  // 7. API 응답에서 실제 데이터 배열을 추출 (없으면 빈 배열)
   const keywords = response?.data || [];
 
-  // --- 8. 로딩 상태 UI ---
   if (isLoading) {
     return (
       <Card>
@@ -41,14 +37,10 @@ export default function KeywordSection({ feedId }: KeywordSectionProps) {
     );
   }
 
-  // --- 9. 에러 상태 UI ---
   if (isError) {
-    // 에러가 발생하면 컴포넌트 자체를 렌더링하지 않음 (선택적)
-    // 또는 에러 메시지를 보여줄 수 있음
     return null;
   }
   
-  // --- 10. 데이터가 없는 경우 UI ---
   if (keywords.length === 0) {
       return (
           <Card>
@@ -67,7 +59,6 @@ export default function KeywordSection({ feedId }: KeywordSectionProps) {
       )
   }
 
-  // --- 11. 성공 상태 UI ---
   return (
     <Card>
       <CardHeader>

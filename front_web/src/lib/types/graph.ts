@@ -13,10 +13,6 @@ export interface WordCloudItem {
  */
 export type WordCloudResponse = DataResponse<WordCloudItem[]>;
 
-// --------------------------------------------------------------------
-// [미래 준비] Explore 및 Expand API를 위한 타입도 미리 정의해 둡니다.
-// --------------------------------------------------------------------
-
 /**
  * 마인드맵의 개별 노드를 나타내는 타입
  */

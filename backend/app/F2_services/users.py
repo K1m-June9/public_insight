@@ -380,7 +380,7 @@ class UserService:
             if not user_pk:
                 return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.USER_NOT_FOUND))
 
-            # --- Step 1: 추천의 '씨앗(Seed)'이 될 노드 ID 수집 ---
+            # --- Step 1: 추천의 'Seed'가 될 노드 ID 수집 ---
             seed_node_ids: List[str] = []
             is_personalized = True
 
@@ -395,7 +395,7 @@ class UserService:
                 if searched_keywords:
                     seed_node_ids.extend([f"keyword_{kw}" for kw in searched_keywords])
             
-            # 3순위: 폴백 로직 (씨앗이 전혀 없는 경우)
+            # 3순위: 폴백 로직 (Seed가 전혀 없는 경우)
             if not seed_node_ids:
                 is_personalized = False
                 popular_feeds = await self.repo.get_popular_feeds_for_fallback()
@@ -407,7 +407,7 @@ class UserService:
 
             # --- Step 2: ML 모델로 유사 노드 확장 ---
             all_predictions = []
-            # 여러 개의 씨앗에서 나온 예측 결과를 하나로 합침
+            # 여러 개의 Seed에서 나온 예측 결과를 하나로 합침
             for seed_node in set(seed_node_ids): # 중복된 씨앗 제거
                 predictions = predict_similar_nodes(start_node_id=seed_node, top_n=30)
                 all_predictions.extend(predictions)
@@ -430,12 +430,10 @@ class UserService:
                 if node_id.startswith('feed_')
             }
             
-            # --- ▼ [핵심 수정] MySQL에서 상세 정보를 일괄 조회 (데이터 보강) ▼ ---
             if predicted_feed_info:
                 feed_details_map = await self.repo.get_rich_feed_details_by_ids(list(predicted_feed_info.keys()))
             else:
                 feed_details_map = {}
-            # --- ▲ [핵심 수정] ▲ ---
 
             # 예측된 키워드 목록 채우기 (최대 8개)
             predicted_keywords = [
@@ -465,7 +463,6 @@ class UserService:
                     category_name=details.get('category_name', '정보 없음'),
                     published_date=details.get('published_date'),
                     score=round(score, 4),
-                    # --- ▼ [신규 추가] 보강된 상세 정보를 스키마에 채워 넣음 ▼ ---
                     view_count=details.get('view_count', 0),
                     average_rating=float(details.get('average_rating', 0.0)),
                     bookmark_count=details.get('bookmark_count', 0)

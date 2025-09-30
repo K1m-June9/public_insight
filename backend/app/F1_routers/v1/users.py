@@ -90,7 +90,7 @@ async def update_nickname(
     return result
 
 # =================================
-# 사용자 맞춤 추천
+# 사용자 맞춤 추천 (@log_event_detailed()는 일단 생략해둠. 나중에 추가해야함)
 # =================================
 @router.get("/me/recommendations", response_model=UserRecommendationResponse)#@log_event_detailed(action="LIST", category=["USER", "RECOMMENDATION"])
 async def get_my_recommendations(

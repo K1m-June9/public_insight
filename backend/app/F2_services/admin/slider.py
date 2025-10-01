@@ -2,6 +2,7 @@ from typing import Union, Optional
 from sqlalchemy.exc import SQLAlchemyError 
 from pathlib import Path
 from fastapi import UploadFile, BackgroundTasks
+from datetime import datetime
 
 import uuid
 import logging
@@ -21,7 +22,6 @@ from app.F6_schemas.admin.slider import (
     SliderStatusUpdateResponse,
     SliderStatusUpdateResponseData,
     SliderDeleteResponse,
-
 )
 
 from app.F6_schemas.base import (
@@ -31,6 +31,8 @@ from app.F6_schemas.base import (
     Message, 
     Settings,
 )
+
+from app.F7_models.sliders import Slider
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +244,9 @@ class SliderAdminService:
 
             new_slider = await self.repo.create_slider(slider_data_dict)
 
+            await self.repo.db.commit()
+            await self.repo.db.refresh(new_slider)
+
             # --- 4. 성공 응답 데이터 생성 ---
             slider_response_data = SliderDetail(
                 id=new_slider.id,
@@ -348,7 +353,7 @@ class SliderAdminService:
 
             # 만약 테스트와 이미지 모두 수정할 데이터가 없다면
             # 현재 데이터를 그대로 반환하여 불필요한 DB 업데이트 방지
-            if not update_data_dict:
+            if not update_data_dict and not image_file:
                 logger.info(f"No fields to update for slider ID: {slider_id}. Returning current data.")
 
 
@@ -356,7 +361,7 @@ class SliderAdminService:
                 response_data_without_update = SliderDetail.model_validate(slider_to_update, from_attributes=True)
 
                 response_data_without_update.image = self._create_image_url(slider_to_update.image_path)
-
+                await self.repo.db.commit()
                 return SliderUpdateResponse(
                     success=True, 
                     data=response_data_without_update
@@ -386,6 +391,9 @@ class SliderAdminService:
                 )
 
             response_data = SliderDetail.model_dump(response_data_dict)
+            
+            await self.repo.db.commit()
+
             return SliderUpdateResponse(
                 success=True,
                 data=response_data
@@ -414,7 +422,7 @@ class SliderAdminService:
 
     async def update_slider_status(self, slider_id: int, is_active: bool) -> Union[SliderStatusUpdateResponse, ErrorResponse]:
         """특정 슬라이더의 is_active 상태만 업데이트"""
-        try:
+        try: 
             # --- 1. DB에서 수정할 슬라이더 찾기 ---
             slider_to_update = await self.repo.get_slider_by_id(slider_id)
             
@@ -427,15 +435,28 @@ class SliderAdminService:
                     )
                 )
 
+
             # --- 3. 리포지토리를 통해 상태 업데이트 ---
             updated_slider = await self.repo.update_slider_status(
                 slider=slider_to_update,
                 is_active=is_active
             )
 
-            # --- 4. 성공 응답 데이터 생성 ---
-            response_data = SliderStatusUpdateResponseData.model_validate(updated_slider, from_attributes=True)
+            await self.repo.db.commit()
 
+
+            # --- 4. update_at이 None이면 현재 시간으로 채움 ---
+            if not getattr(updated_slider, "updated_at", None):
+                updated_slider.updated_at = datetime.utcnow()
+
+
+
+            # --- 5. 성공 응답 데이터 생성 ---
+            response_data = SliderStatusUpdateResponseData(
+                id=updated_slider.id,
+                is_active=updated_slider.is_active,
+                updated_at=updated_slider.updated_at
+            )
 
             return SliderStatusUpdateResponse(
                 success=True,
@@ -499,6 +520,7 @@ class SliderAdminService:
                 )
             
             else:
+                await self.repo.db.commit()
                 return SliderDeleteResponse(
                     success=True,
                     message=Message.DELETED
@@ -507,6 +529,7 @@ class SliderAdminService:
 
             # --- 5. 성공 응답 반환 ---
         except SQLAlchemyError as e:
+            await self.repo.db.rollback()
             logger.error(f"Database error in Admin delete_slider service:{e}", exc_info=True)
             return ErrorResponse(
                 error = ErrorDetail(
@@ -516,6 +539,7 @@ class SliderAdminService:
             )
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in Admin delete_slider service: {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(

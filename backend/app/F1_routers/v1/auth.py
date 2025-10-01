@@ -141,12 +141,21 @@ async def refresh_token(
     response: Response,
     auth_service: AuthService = Depends(get_auth_service)
 ):
+    try:
+        body = await request.json()
+    except Exception: 
+        body = {}
+
     # 1. 쿠키 또는 JSON에서 refresh_token 추출
     # 웹 브라우저 -> 쿠키에서 추출
     # 모바일 웹 -> JSON body에서 추출
-    refresh_token = request.cookies.get("refresh_token") or (
-        (await request.json()).get("refresh_token") if request.method == "POST" else None
-    )
+    refresh_token = request.cookies.get("refresh_token")
+    if request.method == "POST" and not refresh_token:
+        try:
+            body = await request.json()
+            refresh_token = body.get("refresh_token")
+        except Exception:
+            refresh_token = None
 
     if not refresh_token:
         error = base.ErrorResponse(
@@ -410,11 +419,11 @@ async def register(
 @router.post("/check-id", response_model=base.BaseResponse)
 @log_event_detailed(action="VALIDATE", category=["AUTH", "USER_ID_CHECK"])
 async def check_user_id_availability(
-    request: UserCheckID,
+    payload: UserCheckID,
     auth_service: AuthService = Depends(get_auth_service)
 ):
     # user_id 중복 및 규칙 검사
-    if not await auth_service.is_user_id_available(request.user_id):
+    if not await auth_service.is_user_id_available(payload.user_id):
         return base.BaseResponse(success=False)
     
     return base.BaseResponse(success=True)
@@ -424,12 +433,12 @@ async def check_user_id_availability(
 @router.post("/check-email/send", response_model=EmailSendSuccessResponse)
 @log_event_detailed(action="SEND", category=["AUTH", "EMAIL_VERIFICATION"])
 async def send_verification_code(
-    request: UserCheckEmail,
+    payload: UserCheckEmail,
     auth_service: AuthService = Depends(get_auth_service),
     email_service: EmailVerificationService = Depends(get_email_verification_services)
 ):
     # 1. user_id 중복 및 규칙 검사
-    if not await auth_service.is_email_available(request.email):
+    if not await auth_service.is_email_available(payload.email):
         error = base.ErrorResponse(
             error = base.ErrorDetail(
                 code="EMAIL_INVALID_OR_DUPLICATE",
@@ -440,7 +449,7 @@ async def send_verification_code(
         return JSONResponse(status_code=400, content=error.model_dump())
     
     # 2. 인증코드 발송
-    await email_service.send_code(request.email)
+    await email_service.send_code(payload.email)
     return EmailSendSuccessResponse()
 
 

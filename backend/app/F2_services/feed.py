@@ -36,7 +36,11 @@ from app.F6_schemas.feed import (
     RatingData,
     BookmarkResponse,
     BookmarkData,
-    BookmarkRequest
+    BookmarkRequest,
+    PolicyNewsQuery,
+    PolicyNewsResponse, 
+    PolicyNewsItem,
+    PolicyNewsData,
 )
 
 from app.F6_schemas.base import PaginationInfo, ErrorResponse, ErrorDetail, ErrorCode, Message, Settings
@@ -654,8 +658,10 @@ class FeedService:
                 title=feed_data['title'],
                 organization=organization_info,
                 category=category_info,
+                summary=feed_data['summary'],
                 average_rating=feed_data['average_rating'],
                 view_count=feed_data['view_count'] + 1, # 조회수 증가를 즉시 반영
+                bookmark_count=feed_data['bookmark_count'],
                 published_date=feed_data['published_date'],
                 source_url=feed_data['source_url'],
                 # 수정된 스키마에 맞춰 데이터 전달
@@ -804,5 +810,88 @@ class FeedService:
                     is_bookmarked=True,
                     bookmark_count=bookmark_count,
                     message=Message.SUCCESS
+                )
+            )
+    # ============================
+    # [정책뉴스] 
+    # ============================
+    async def get_organization_policy_news(self, organization_name: str, query: PolicyNewsQuery) -> PolicyNewsResponse:
+        try: 
+            # offset 계산(페이지네이션용)
+            offset = (query.page - 1) * query.limit 
+
+            # Repository를 통해 기관별 정책뉴스 데이터 조회
+            news_data = await self.feed_repository.get_organization_news(
+                organization_name, offset, query.limit
+            )
+
+            # Repository에서 None 반환 시 (데이터 없음) 에러 응답
+            if news_data is None:
+                return ErrorResponse( 
+                    error=ErrorDetail(
+                        code=ErrorCode.NOT_FOUND,
+                        message=Message.NOT_FOUND
+                    )
+                )
+            
+            # 기관 정보 객체 생성 
+            organization_info = OrganizationInfo(
+                id=news_data['organization']['id'],
+                name=news_data['organization']['name']
+            )
+
+            # Repository 정책뉴스 데이터를 스키마에 맞게 변환
+            policy_news_items = []
+            for policy_news in news_data['policy_news']:
+                # 카테고리 정보 객체 생성 
+                category_info = CategoryInfo(
+                    id=policy_news['category_id'],
+                    name=policy_news['category_name']
+                )
+
+                # 정책뉴스 항목 객체 생성 
+                news_item = PolicyNewsItem(
+                    id=policy_news['id'],
+                    title=policy_news['title'],
+                    category=category_info,
+                    summary=policy_news['summary'],
+                    published_date=policy_news['published_date'],
+                    view_count=policy_news['view_count'],
+                    average_rating=policy_news['average_rating'],  # Repository에서 0.0 처리됨
+                    bookmark_count=policy_news['bookmark_count']
+                )
+                policy_news_items.append(news_item)
+            
+            # 페이지네이션 정보 생성(더보기 방식 고려)
+            pagination_info = PaginationInfo( 
+                current_page=query.page,
+                total_pages=0,  # 더보기 방식이므로 의미 없음
+                total_count=0,  # 더보기 방식이므로 의미 없음
+                limit=query.limit,
+                has_next=news_data['has_more'],  # Repository의 has_more 사용
+                has_previous=query.page > 1
+            )
+
+            # 정책뉴스 데이터 객체 생성 
+            policy_news_data = PolicyNewsData(
+                organization=organization_info,
+                policy_news=policy_news_items,
+                pagination=pagination_info
+            )
+
+            # 성공 응답 반환
+            return PolicyNewsResponse(
+                success=True,
+                message=Message.SUCCESS,
+                data=policy_news_data
+            )
+
+        except Exception as e:
+            # 예외 발생 시 로깅 및 표준화된 에러 응답 반환
+            logger.error(f"Error in get_organization_policy_news: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
                 )
             )

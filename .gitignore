@@ -1,6 +1,7 @@
 docker-compose.yml
 docker-compose_*.txt
 test-compose.yml
+docker-compose.test.yml
 
 certbot-etc/
 certbot-webroot/
@@ -14,7 +15,15 @@ esdata_ha/
 nginx_dev/
 
 fluentd/
+filebeat/
 
 elasticsearch/Dockerfile
 elasticsearch/docker-entrypoint-es.sh
 elasticsearch/init-es.sh 
+
+neo4j/
+ml_models/
+
+crawler/
+db_init/
+mysql_conf/

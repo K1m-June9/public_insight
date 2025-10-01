@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Union
 import logging
+import markdown
 
 from app.F3_repositories.slider import SliderRepository
 from app.F6_schemas.slider import SliderListResponse, SliderListData, SliderListItem, SliderDetail, SliderDetailData, SliderDetailResponse
@@ -12,6 +13,24 @@ class SliderService:
     def __init__(self, slider_repository: SliderRepository):
         self.slider_repository = slider_repository
         # image_converter 더이상 사용 안함(이미지 전송 방식 변경)
+
+        # Markdown 변환기 초기화 (테이블, 코드 하이라이팅 등 확장 기능 포함)
+        self.markdown_converter = markdown.Markdown(
+            extensions=[
+                'tables',           # 테이블 지원
+                'codehilite',       # 코드 하이라이팅
+                'fenced_code',      # 펜스 코드 블록
+                'toc',              # 목차 생성
+                'nl2br',            # 줄바꿈 처리
+                'sane_lists'        # 리스트 처리 개선
+            ],
+            extension_configs={
+                'codehilite': {
+                    'css_class': 'highlight',
+                    'use_pygments': True
+                }
+            }
+        )
 
     def _create_image_url(self, image_path: str | None) -> str:
         """파일 경로를 완전한 웹 URL로 변환하는 헬퍼 함수"""
@@ -75,11 +94,12 @@ class SliderService:
                 )
 
             image_url = self._create_image_url(slider.image_path)
-            
+            html_content = self.markdown_converter.convert(slider.content)
+
             slider_detail = SliderDetail(
                 id=slider.id,
                 title=slider.title,
-                content=slider.content or "",
+                content=html_content or "",
                 imageURL=image_url,
                 author=slider.author,
                 tag=slider.tag,

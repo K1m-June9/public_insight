@@ -139,23 +139,9 @@ async def create_slider(
     request: Request,
     # form_data: SliderCreateRequest = Depends(parse_slider_form_data),
     form_data: SliderCreateForm = Depends(),
-    # current_user: User = Depends(verify_active_user),
     admin_service: SliderAdminService = Depends(get_admin_slider_service),
     image: Optional[UploadFile] = File(None)
 ):
-    """새로운 슬라이더를 생성"""
-    # if current_user.role != UserRole.ADMIN:
-    #     error_response = ErrorResponse(
-    #         success=False,
-    #         error=ErrorDetail(
-    #             code=ErrorCode.FORBIDDEN,
-    #             message=Message.FORBIDDEN
-
-    #         )
-    #     )
-    #     return JSONResponse(
-    #         status_code=403, content=error_response.model_dump()
-    #     )
     
 
     result = await admin_service.create_slider(
@@ -242,22 +228,8 @@ async def update_slider_status (
     request:Request,
     payload: SliderStatusUpdateRequest,
     path_params: SliderPathParams = Depends(), 
-    # current_user: User = Depends(verify_active_user),
     admin_service: SliderAdminService = Depends(get_admin_slider_service)
 ):
-    """특정 슬라이더의 활성/비활성 상태를 변경"""
-    # if current_user.role != UserRole.ADMIN:
-    #     error_response = ErrorResponse(
-    #         success=False,
-    #         error=ErrorDetail(
-    #             code=ErrorCode.FORBIDDEN,
-    #             message=Message.FORBIDDEN
-
-    #         )
-    #     )
-    #     return JSONResponse(
-    #         status_code=403, content=error_response.model_dump()
-    #     )
 
     result = await admin_service.update_slider_status(
         slider_id=path_params.id,
@@ -265,24 +237,21 @@ async def update_slider_status (
     )
 
     if isinstance(result, ErrorResponse):
-        if result.error.code == ErrorCode.INTERNAL_ERROR:
-            status_code = 500
-        elif result.error.code == ErrorCode.UNAUTHORIZED:
-            status_code = 401
-        elif result.error.code == ErrorCode.FORBIDDEN:
-            status_code = 403
-        elif result.error.code == ErrorCode.NOT_FOUND:
-            status_code = 404
-        elif result.error.code == ErrorCode.FILE_TOO_LARGE:
-            status_code = 413
-        elif result.error.code == ErrorCode.VALIDATION_ERROR:
-            status_code = 422
+        status_code_map = {
+            ErrorCode.INTERNAL_ERROR: 500,
+            ErrorCode.UNAUTHORIZED: 401,
+            ErrorCode.FORBIDDEN: 403,
+            ErrorCode.NOT_FOUND: 404,
+            ErrorCode.FILE_TOO_LARGE: 413,
+            ErrorCode.VALIDATION_ERROR: 422,
+        }
+        status_code = status_code_map.get(result.error.code, 500)
         return JSONResponse(status_code=status_code, content=result.model_dump())
     
 
     return result 
 
-
+# 슬라이드 삭제
 @router.delete("/{id}", response_model=SliderDeleteResponse)
 @log_event_detailed(action="DELETE", category=["ADMIN", "SLIDER_MANAGEMENT"])
 async def delete_slider(

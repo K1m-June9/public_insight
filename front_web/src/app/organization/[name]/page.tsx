@@ -11,6 +11,7 @@ import CategoryChart from "@/components/organization/CategoryChart";
 import OrganizationWordCloud from "@/components/organization/OrganizationWordCloud";
 import LatestPolicyFeeds from "@/components/organization/LatestPolicyFeeds";
 import OrganizationTabs from "@/components/organization/OrganizationTabs";
+import { ScrollToTopButton } from "@/components/ScrollToTop"
 
 export default function OrganizationPage() {
   const params = useParams();
@@ -63,6 +64,7 @@ export default function OrganizationPage() {
         </div>
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

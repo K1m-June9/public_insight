@@ -50,36 +50,38 @@ class DashboardAdminService:
         self.es_repo = es_repo
 
 
-    async def get_dashboard_stats(self, current_user:User ) -> Union[DashboardResponse, ErrorResponse]:
+    async def get_dashboard_stats(self, current_user: User) -> Union[DashboardResponse, ErrorResponse]:
         try:
-            # --- 1. 계정 ADMIN 인지 체크(권한 검증) ---
-            if current_user.role != UserRole.ADMIN:
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.FORBIDDEN,
-                        message=Message.FORBIDDEN
-                    )
-                )
-            
 
-            # ---2. 각 통계 데이터를 순차적으로 조회 ---
-            # -- DB 기반 통계 --
-            overview_stats = await self.dash_repo.get_overview_stats()
-            monthly_signups = await self.dash_repo.get_monthly_signups()
-            organization_stats = await self.dash_repo.get_organization_stats()
-            slider_stats = await self.dash_repo.get_slider_stats()
-            notice_stats = await self.dash_repo.get_notice_stats()
-            top_bookmarked_feeds = await self.dash_repo.get_top_bookmarked_feeds()
-            top_rated_feeds = await self.dash_repo.get_top_rated_feeds()
-            
-            # -- Elasticsearch 기반 통계 (환경에 따라 분기) --
-            # 운영 환경일 때만 Elasticsearch 관련 작업을 추가
+            # 2. 모든 비동기 작업을 리스트로 묶어 asyncio.gather로 동시에 실행
+            tasks = [
+                self.dash_repo.get_overview_stats(),
+                self.dash_repo.get_monthly_signups(),
+                self.dash_repo.get_organization_stats(),
+                self.dash_repo.get_slider_stats(),
+                self.dash_repo.get_notice_stats(),
+                self.dash_repo.get_top_bookmarked_feeds(),
+                self.dash_repo.get_top_rated_feeds(),
+            ]
+
+            # 환경에 따라 ES 관련 작업 추가
             if settings.ENVIRONMENT == "production":
                 logger.info("Production environment detected. Including Elasticsearch stats.")
-                popular_keywords = await self.es_repo.get_popular_keywords()
-                recent_activities = await self.es_repo.get_recent_activities()
+                tasks.append(self.es_repo.get_popular_keywords())
+                tasks.append(self.es_repo.get_recent_activities())
             else:
-                logger.info("Dev env: Skipping Elasticsearch stats, returning empty values.")
+                logger.info("Dev env: Skipping Elasticsearch stats.")
+
+            # 3. 모든 작업이 완료될 때까지 기다리고 결과를 한 번에 받음
+            results = await asyncio.gather(*tasks)
+
+            # 4. 결과 언패킹 (순서가 보장됨)
+            overview_stats, monthly_signups, organization_stats, slider_stats, notice_stats, top_bookmarked_feeds, top_rated_feeds = results[:7]
+            
+            if settings.ENVIRONMENT == "production":
+                popular_keywords = results[7]
+                recent_activities = results[8]
+            else:
                 popular_keywords = []
                 recent_activities = []
 

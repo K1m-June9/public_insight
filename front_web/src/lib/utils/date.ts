@@ -4,25 +4,36 @@
 */
 
 /**
-* 날짜를 YYYY-MM-DD 형식으로 포맷팅
-* @param date - 포맷팅할 날짜 (Date 객체 또는 ISO 문자열)
-* @returns 포맷팅된 날짜 문자열
-*/
-export function formatDate(date: Date | string | number | null | undefined): string {
-    if (!date) return '';
-    
-    const dateObj = typeof date === 'object' ? date : new Date(date);
-    
-    if (isNaN(dateObj.getTime())) {
-        console.warn('Invalid date provided to formatDate:', date);
-        return '';
-    }
-    
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}`;
+ * 날짜를 지정된 형식으로 포맷팅
+ * @param date - 포맷팅할 날짜 (Date 객체 또는 ISO 문자열, 숫자)
+ * @param format - 포맷 문자열 (기본값: 'YYYY-MM-DD')
+ *                 'YYYY-MM-DD HH:mm'도 지원
+ * @returns 포맷팅된 날짜 문자열
+ */
+export function formatDate(
+  date: Date | string | number | null | undefined,
+  format: 'YYYY-MM-DD' | 'YYYY-MM-DD HH:mm' = 'YYYY-MM-DD' // 👈 포맷 옵션 추가
+): string {
+  if (!date) return '';
+  
+  const dateObj = new Date(date);
+  
+  if (isNaN(dateObj.getTime())) {
+    console.warn('Invalid date provided to formatDate:', date);
+    return '';
+  }
+  
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  
+  if (format === 'YYYY-MM-DD HH:mm') {
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  }
+  
+  return `${year}-${month}-${day}`;
 }
 
 /**

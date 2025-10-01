@@ -8,10 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { UserRole } from "@/lib/types/base";
+import AuthGuard from "@/components/admin/authGuard";
 
 // 1. 네비게이션 아이템 데이터
 const navItems = [
-  { href: "/admin", icon: BarChart3, label: "대시보드" },
+  { href: "/admin/dashboard", icon: BarChart3, label: "대시보드" },
+  { href: "/admin/monitoring", icon: BarChart3, label: "운영 대시보드" },
   { href: "/admin/static-pages", icon: FileEdit, label: "정적 페이지" },
   { href: "/admin/sliders", icon: Sliders, label: "슬라이더" },
   { href: "/admin/notices", icon: Megaphone, label: "공지사항" },
@@ -42,32 +44,19 @@ function AdminSidebar() {
 
 // 3. 관리자 페이지 전용 레이아웃
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">권한 확인 중...</div>;
-  }
-
-  // 관리자가 아니면 메인 페이지로 리디렉션
-  if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.MODERATOR)) {
-    // router.replace('/')는 서버 컴포넌트에서 직접 사용 불가하므로, 클라이언트 측에서 처리
-    useEffect(() => {
-      router.replace('/');
-    }, [router]);
-    return null; // 리디렉션 중에는 아무것도 렌더링하지 않음
-  }
-  
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <div className="flex flex-1">
-        <AdminSidebar />
-        <main className="flex-1 p-8 bg-gray-50">
-          {children}
-        </main>
+    <AuthGuard>
+      {/* AuthGuard가 모든 권한 체크를 통과해야만 이 부분이 렌더링됩니다. */}
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <div className="flex flex-1">
+          <AdminSidebar />
+          <main className="flex-1 p-8 bg-gray-50">
+            {children}
+          </main>
+        </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
+    </AuthGuard>
   );
 }

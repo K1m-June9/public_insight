@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi import Form
 from typing import Optional
@@ -20,7 +20,8 @@ from app.F6_schemas.admin.organization import (
     CategoryUpdateRequest,
     OrganizationDetailResponse,
     OrganizationDeleteResponse,
-    CategoryDeleteResponse
+    CategoryDeleteResponse,
+    OrganizationCreateRequest
     )
 from app.F6_schemas.base import ErrorResponse, ErrorCode
 from app.F7_models.users import User
@@ -61,10 +62,8 @@ async def get_organizations_list(
 async def create_organization(
     # multipart/form-data를 처리하기 위해 Form을 사용
     # 아이콘 파일이 없더라도, 텍스트 데이터를 form-data로 받는 것이 확장성에 유리
-    name: str = Form(...),
-    description: Optional[str] = Form(None),
-    website_url: Optional[str] = Form(None),
-    is_active: bool = Form(True), # 폼에서 활성화 여부를 바로 받을 수 있도록 수정
+    request: Request,
+    payload: OrganizationCreateRequest, 
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
     current_user: User = Depends(verify_active_user)
 ):
@@ -73,10 +72,10 @@ async def create_organization(
     생성 시 '보도자료' 카테고리가 자동으로 함께 생성
     """
     result = await admin_service.create_organization(
-        name=name,
-        description=description,
-        website_url=website_url,
-        is_active=is_active
+        name=payload.name,
+        description=payload.description,
+        website_url=payload.website_url,
+        is_active=payload.is_active
     )
 
     if isinstance(result, ErrorResponse):
@@ -88,14 +87,15 @@ async def create_organization(
 @router.post("/categories", response_model=CategoryCreateResponse, status_code=201)
 @log_event_detailed(action="CREATE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "CATEGORY"])
 async def create_category(
-    request: CategoryCreateRequest,
+    request: Request,
+    payload: CategoryCreateRequest,
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
     current_user: User = Depends(verify_active_user)
 ):
     """
     관리자: 새로운 카테고리를 생성
     """
-    result = await admin_service.create_category(request)
+    result = await admin_service.create_category(payload)
 
     if isinstance(result, ErrorResponse):
         status_code = 409 if result.error.code == ErrorCode.DUPLICATE else 500
@@ -107,7 +107,8 @@ async def create_category(
 @log_event_detailed(action="UPDATE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "ORGANIZATION"])
 async def update_organization(
     id: int,
-    request: OrganizationUpdateRequest, # JSON Body로 받음
+    request: Request,
+    payload: OrganizationUpdateRequest, # JSON Body로 받음
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
     current_user: User = Depends(verify_active_user)
 ):
@@ -117,10 +118,10 @@ async def update_organization(
     # multipart/form-data가 아니므로, Pydantic 모델을 바로 사용
     result = await admin_service.update_organization(
         org_id=id,
-        name=request.name,
-        description=request.description,
-        website_url=request.website_url,
-        is_active=request.is_active
+        name=payload.name,
+        description=payload.description,
+        website_url=payload.website_url,
+        is_active=payload.is_active
     )
 
     if isinstance(result, ErrorResponse):
@@ -149,14 +150,15 @@ async def get_category_detail(
 @log_event_detailed(action="UPDATE", category=["ADMIN", "ORGANIZATION_MANAGEMENT", "CATEGORY"])
 async def update_category(
     id: int,
-    request: CategoryUpdateRequest,
+    request: Request,
+    payload: CategoryUpdateRequest,
     admin_service: OrganizationAdminService = Depends(get_admin_organization_service),
     current_user: User = Depends(verify_active_user)
 ):
     """
     관리자: 특정 카테고리의 정보를 수정
     """
-    result = await admin_service.update_category(id, request)
+    result = await admin_service.update_category(id, payload)
     if isinstance(result, ErrorResponse):
         status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 400
         return JSONResponse(status_code=status_code, content=result.model_dump())

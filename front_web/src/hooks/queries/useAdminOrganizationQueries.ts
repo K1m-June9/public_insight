@@ -10,7 +10,7 @@ export const adminOrganizationQueryKeys = {
   simpleList: () => [...adminOrganizationQueryKeys.lists(), 'simple'] as const,
   fullList: () => [...adminOrganizationQueryKeys.lists(), 'full'] as const,
   details: () => [...adminOrganizationQueryKeys.all, 'detail'] as const,
-  detail: (id: number) => [...adminOrganizationQueryKeys.details(), id] as const,
+  detail: (id: number | null) => [...adminOrganizationQueryKeys.details(), id] as const,
   categoryDetails: () => [...adminOrganizationQueryKeys.all, 'category-detail'] as const,
   categoryDetail: (id: number) => [...adminOrganizationQueryKeys.categoryDetails(), id] as const,
 };

@@ -21,7 +21,9 @@ class UsersActivityRepository:
             # 1. [조회대상 지정]: 어떤 문서들을 대상으로 할지 정의하는 부분
             # 'term' 쿼리: 특정 필드에서 정확히 일치하는 값을 가진 문서를 찾음
             # user.user_id 필드가 입력받은 user_id와 일치하는 모든 로그를 대상으로 함
-            "term": {"user.id.keyword": user_id},
+            "query": {
+                "term": {"user.id.keyword": user_id},
+            },
 
             # 2. [결과 크기 설정]: 검색 결과를 몇 개나 가져올지 설정
             # 'size'를 0으로 설정하여 실제 검색된 문서는 반환하지 않도록 함(성능 최적화)

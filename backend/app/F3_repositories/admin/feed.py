@@ -6,6 +6,7 @@ import logging
 from app.F7_models.categories import Category
 from app.F7_models.feeds import Feed, ProcessingStatusEnum
 from app.F7_models.organizations import Organization
+from app.F7_models.app_settings import AppSettings
 
 logger = logging.getLogger(__name__)
 
@@ -286,3 +287,8 @@ class FeedAdminRepository:
             await self.db.rollback()
             logger.error(f"Error deactivating feed {feed_id}: {e}", exc_info=True)
             return False
+        
+    async def get_by_key_name(self, key_name: str):
+        stmt = select(AppSettings).where(AppSettings.key_name == key_name)
+        result = await self.db.execute(stmt)
+        return result.scalars().first()

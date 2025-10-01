@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getMyProfile, getMyRatings, getMyBookmarks } from '@/services/userService';
+import { getMyProfile, getMyRatings, getMyBookmarks, getUserRecommendations } from '@/services/userService';
 
 interface PaginationParams {
     page?: number;
@@ -13,6 +13,7 @@ export const userQueryKeys = {
   lists: () => [...userQueryKeys.all, 'lists'] as const,
   ratings: (params: PaginationParams) => [...userQueryKeys.lists(), 'ratings', params] as const,
   bookmarks: (params: PaginationParams) => [...userQueryKeys.lists(), 'bookmarks', params] as const,
+  recommendations: () => [...userQueryKeys.me(), 'recommendations'] as const,
 };
 
 /**
@@ -56,5 +57,20 @@ export const useMyBookmarksQuery = (params: PaginationParams) => {
     queryKey: userQueryKeys.bookmarks(params),
     queryFn: () => getMyBookmarks(params),
     placeholderData: (previousData) => previousData,
+  });
+};
+
+/**
+ * 현재 로그인된 사용자의 맞춤 추천 목록을 조회하는 useQuery 훅
+ * @returns {data, isLoading, ...}
+ */
+export const useUserRecommendationsQuery = () => {
+  return useQuery({
+    // << [추가] 새로 정의한 쿼리 키를 사용
+    queryKey: userQueryKeys.recommendations(),
+    // << [추가] 새로 정의한 서비스 함수를 호출
+    queryFn: getUserRecommendations,
+    // 추천 데이터는 자주 바뀌지 않으므로, 10분 정도 staleTime을 설정하여 불필요한 API 호출을 줄임
+    staleTime: 1000 * 60 * 10,
   });
 };

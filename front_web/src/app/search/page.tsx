@@ -14,6 +14,8 @@ import { SearchParams, SortOption, AggregationItem, SearchData } from "@/lib/typ
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useSearch } from "@/contexts/SearchContext";
+import { ScrollToTopButton } from "@/components/ScrollToTop"
+import { Scroll } from "lucide-react";
 
 // 필터 사이드바 컴포넌트
 function FilterSidebar({ aggregations, params, updateSearch }: { aggregations: SearchData['aggregations'], params: SearchParams, updateSearch: (p: Partial<SearchParams>) => void }) {
@@ -174,6 +176,7 @@ export default function SearchPage() {
         </div>
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

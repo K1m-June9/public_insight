@@ -12,14 +12,21 @@ from .search import router as search_router
 from .admin import static_page as admin_static_page_router
 from .admin import users as admin_users_router
 from .admin import slider as admin_slider_router
-# from .admin import feed as admin_feed_router
+from .admin import feed as admin_feed_router
 from .admin import organization as admin_organization_router
 from .admin import notices as admin_notices_router
 from .admin import dashboard as admin_dashboard_router
-
+from .admin import app_settings as admin_app_settings_router
+from .admin import org_crawler as admin_org_crawler_trigger_router
+from .admin import crawl_task_redis as admin_crawl_task_redis_router
+from .graph import router as graph_router
+from .internal import org_crawler as internal_crawler_router
 
 # 메인 API 라우터 설정
 router = APIRouter()
+
+#PoC
+router.include_router(graph_router, prefix="/graph")
 
 # /auth 엔드포인트 하위에 인증 라우터 연결
 router.include_router(auth_router, prefix="/auth")
@@ -48,13 +55,20 @@ router.include_router(search_router, prefix="/search")
 # admin API 그룹을 /admin prefix로 연결
 #======================================================================
 router.include_router(admin_static_page_router.router, prefix="/admin")
-# router.include_router(admin_feed_router.router, prefix="/admin")
+router.include_router(admin_feed_router.router, prefix="/admin")
 
 router.include_router(admin_organization_router.router, prefix="/admin")
 router.include_router(admin_users_router.router, prefix="/admin")
 router.include_router(admin_slider_router.router, prefix="/admin")
 router.include_router(admin_notices_router.router, prefix="/admin")
 router.include_router(admin_dashboard_router.router, prefix="/admin")
+router.include_router(admin_app_settings_router.router, prefix="/admin")
+router.include_router(admin_org_crawler_trigger_router.router, prefix="/admin")
+router.include_router(admin_crawl_task_redis_router.router, prefix="/admin")
+
+#======================================================================
+# interanl_crawler API 그룹을 /internal prefix로 연결
+router.include_router(internal_crawler_router.router, prefix="/internal")
 
 #======================================================================
 # 미들웨어와 verify_active_user 동작 테스트

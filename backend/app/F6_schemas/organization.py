@@ -114,5 +114,5 @@ class OrganizationSummaryData(BaseSchema):
     website_url: Optional[str] = None # 웹사이트 URL도 함께 보내주면 유용하지만 쓸까말까쓸까말까쓸래말래쓸래말래
     stats: OrganizationStats
 
-class OrganizationSummaryResponse(BaseSchema):
+class OrganizationSummaryResponse(BaseResponse):
     data: OrganizationSummaryData

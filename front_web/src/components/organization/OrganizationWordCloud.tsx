@@ -1,25 +1,43 @@
 "use client";
 
 import { Cloud } from "lucide-react";
-import { useOrganizationWordCloudQuery } from "@/hooks/queries/useOrganizationQueries";
+import { useWordCloudQuery } from "@/hooks/queries/useGraphQueries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+
+const COLOR_PALETTE = [
+  "hsl(var(--primary))",
+  "hsl(var(--secondary-foreground))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+];
+const FONT_WEIGHTS = [300, 400, 500, 600, 700];
 
 interface OrganizationWordCloudProps {
   organizationName: string;
 }
 
 export default function OrganizationWordCloud({ organizationName }: OrganizationWordCloudProps) {
-  const { data: wordCloudData, isLoading, isError } = useOrganizationWordCloudQuery(organizationName);
+  // 🔧 [3. 수정] 새로운 useWordCloudQuery 훅을 사용
+  const { data: response, isLoading, isError } = useWordCloudQuery(
+    {
+      organizationName,
+      limit: 20, // 기관 페이지에서는 20개 정도가 적당해 보임 (튜닝 가능)
+    },
+    {
+      enabled: !!organizationName, // organizationName이 있을 때만 쿼리 실행
+    }
+  );
 
-  // 1. API 응답에서 키워드 목록을 가져옵니다.
-  const keywords = wordCloudData?.data.keywords || [];
+  const keywords = response?.data || [];
 
-  // 로딩 상태 UI
+  // 로딩 상태 UI (기존과 동일)
   if (isLoading) {
     return <div className="bg-gray-200 h-[300px] rounded-lg shadow-sm border border-gray-200 animate-pulse"></div>;
   }
 
-  // 에러 상태 UI
+  // 에러 상태 UI (기존과 동일)
   if (isError) {
     return (
       <Card className="shadow-sm">
@@ -38,7 +56,7 @@ export default function OrganizationWordCloud({ organizationName }: Organization
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow p-6">
-      <CardHeader className="p-0 mb-0">
+      <CardHeader className="p-0 mb-4"> {/* 👈 mb-4로 간격 살짝 조정 */}
         <div className="flex items-center space-x-2">
           <Cloud className="w-5 h-5 text-primary" />
           <CardTitle className="text-primary text-lg font-medium">주요 키워드</CardTitle>
@@ -46,19 +64,25 @@ export default function OrganizationWordCloud({ organizationName }: Organization
       </CardHeader>
       <CardContent className="p-0">
         {keywords.length > 0 ? (
-          <div className="relative h-64 flex flex-wrap items-center justify-center gap-2 overflow-hidden">
-            {keywords.map((word) => (
-              <span
-                key={word.text}
-                className="inline-block transition-all duration-300 hover:scale-110 cursor-pointer"
-                style={{
-                  fontSize: `${word.size}px`,
-                  color: word.color,
-                  fontWeight: word.weight,
-                }}
-              >
-                {word.text}
-              </span>
+          <div className="relative h-64 flex flex-wrap content-center items-center justify-center gap-x-4 gap-y-2 overflow-hidden">
+            {/* 🔧 [5. 수정] 새로운 데이터(text, value)를 사용하고, 동적으로 스타일과 링크를 적용 */}
+            {keywords.map((word, index) => (
+              <Link href={`/explore?keyword=${encodeURIComponent(word.text)}`} key={word.text}>
+                <span
+                  className="inline-block transition-all duration-300 hover:scale-110 hover:z-10 cursor-pointer"
+                  style={{
+                    // 'value' (인기 점수)를 기반으로 폰트 크기를 동적으로 계산 (12px ~ 28px)
+                    // value의 최대/최소값을 알면 더 정교한 스케일링 가능
+                    fontSize: `${12 + Math.min(word.value / 5, 16)}px`,
+                    // 미리 정의된 색상 팔레트에서 순환하며 색상 적용
+                    color: COLOR_PALETTE[index % COLOR_PALETTE.length],
+                    // 폰트 굵기도 순환하며 적용
+                    fontWeight: FONT_WEIGHTS[index % FONT_WEIGHTS.length],
+                  }}
+                >
+                  {word.text}
+                </span>
+              </Link>
             ))}
           </div>
         ) : (
@@ -66,6 +90,12 @@ export default function OrganizationWordCloud({ organizationName }: Organization
             <p className="text-muted-foreground">표시할 주요 키워드가 없습니다.</p>
           </div>
         )}
+        <div className="mt-6 pt-4 border-t">
+          <p className="text-xs text-muted-foreground text-center">
+            키워드 선택 시<br />
+          마인드맵 페이지로 이동합니다
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

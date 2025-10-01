@@ -73,9 +73,5 @@ class StaticPageAdminRepository:
 
         # 3. 기존 페이지의 content를 업데이트
         page.content = new_content
-        # 'updated_at'은 onupdate 설정으로 자동 갱신 ㅖㅖ
-
-        await self.db.commit()
-        await self.db.refresh(page)
         
         return page

@@ -17,10 +17,16 @@ from app.F5_core.config import settings
 from app.F10_tasks.scheduler import setup_scheduler, scheduler
 from app.F11_search.es_initializer import initialize_elasticsearch
 from app.F11_search.ES1_client import es_async, es_sync
+from app.F8_database.connection import engine, Base, async_session_scope
 from app.F8_database.connection import engine, Base 
+from app.F13_recommendations.dependencies import EngineManager
+from app.F8_database.graph_db import Neo4jDriver
+from app.F14_knowledge_graph.graph_ml import load_node_embeddings
+from app.F14_knowledge_graph.pipeline import run_pipeline
 
 # --- 라우터 및 미들웨어 관련 모듈 import ---
 from app.F1_routers.v1.api import router as api_v1_router
+from app.F8_database.initial_data import seed_initial_data 
 from app.F9_middlewares.logging_middleware import LoggingMiddleware
 from app.F9_middlewares.jwt_bearer_middleware import JWTBearerMiddleware
 from app.F9_middlewares.admin_paths import admin_paths, admin_regex_paths
@@ -31,6 +37,10 @@ from app.F7_models import (
     bookmarks, categories, feeds, keywords, notices, organizations, rating_history, ratings, refresh_token, search_logs, sliders, static_page_versions, static_pages, token_security_event_logs, user_activities, user_interests, users, word_clouds
     )
 
+# 운영 환경의 서버 정보를 담은 딕셔너리
+servers = [
+    {"url": "https://www.public-insight.co.kr", "description": "Production server"},
+]
 
 # ==================================
 # 1. 로깅 설정 함수
@@ -56,7 +66,7 @@ class DevFormatter(logging.Formatter):
         
         # extra에 json_fields가 있으면, 그 내용을 JSON으로 변환하여 추가
         if hasattr(record, 'json_fields') and record.json_fields:
-            extra_data = json.dumps(record.json_fields, indent=2, ensure_ascii=False)
+            extra_data = json.dumps(record.json_fields, indent=2, ensure_ascii=False, default=str)
             formatted_message += f"\n--- EXTRA CONTEXT ---\n{extra_data}\n---------------------"
             
         return formatted_message
@@ -111,11 +121,20 @@ async def app_lifespan(app: FastAPI):
     logger = logging.getLogger(__name__)
     logger.info("Application startup sequence initiated...")
 
-    # DB 테이블 생성
+    
+    # 데이터베이스 테이블 생성(모든 환경 공통)
+    logger.info("Database tables checking/creating...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables checked/created.")
+    logger.info("Database tables checked/created.")
 
+    # 개발 환경에서만 초기 데이터 시딩 실행
+    if settings.ENVIRONMENT == "development":
+        logger.info("Development environment detected. Seeding initial data if necessary...")
+        async with async_session_scope() as db_session:
+            await seed_initial_data(db_session)
+    else:
+        logger.info(f"'{settings.ENVIRONMENT}' environment detected. Skipping data seeding.")
 
     # Elasticsearch 초기화 함수 호출
     initialize_elasticsearch()
@@ -129,6 +148,46 @@ async def app_lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Async Elasticsearch ping failed on startup: {e}")
     
+    #neo4j 연결
+    Neo4jDriver.get_driver()
+
+    # # 🔧 [신규] 지식 그래프 ML 모델 로딩
+    # logger.info("Loading Knowledge Graph ML Model...")
+    # # pipeline.py와 동일한 방식으로 프로젝트 루트 경로를 계산
+    # project_root_dir = os.path.abspath(__file__)
+    # # 'main.py'의 위치는 app/ 이므로, 두 단계 위로 올라가면 루트임
+    # project_root_dir = os.path.dirname(os.path.dirname(project_root_dir))
+    # embedding_path = os.path.join(project_root_dir, "ml_models", "node_embeddings.pkl")
+    
+    # # 모델 로딩 함수 호출
+    # model_loaded = load_node_embeddings(embedding_path)
+    # if not model_loaded:
+    #     logger.warning("Knowledge Graph ML Model could not be loaded. Recommendation features will be disabled.")
+    # else:
+    #     logger.info("Knowledge Graph ML Model loaded successfully.")
+
+    # 🔧 [핵심 수정] 앱 시작 시 파이_x20;프라인 1회 실행 및 모델 로딩
+    logger.info("Initiating first-run Knowledge Graph pipeline...")
+    try:
+        # 서버가 시작될 때, 파이_x20;프라인을 *비동기적으로* 1회 실행함.
+        # 이렇게 하면 Neo4j와 ML 모델이 항상 준비된 상태로 시작됨.
+        await run_pipeline() 
+        logger.info("Knowledge Graph pipeline initial run completed.")
+    except Exception as e:
+        logger.error(f"Initial pipeline run failed: {e}", exc_info=True)
+        # 💥 중요: 초기 실행 실패 시 어떻게 할지 결정해야 함 (일단은 경고만 하고 서버는 계속 실행)
+
+    # 파이_x20;프라인 실행 후, 생성된 모델 파일을 로드
+    logger.info("Loading Knowledge Graph ML Model...")
+    embedding_path = "/app/ml_models/node_embeddings.pkl"
+    model_loaded = load_node_embeddings(embedding_path)
+    if not model_loaded:
+        logger.warning("Knowledge Graph ML Model could not be loaded.")
+    else:
+        logger.info("Knowledge Graph ML Model loaded successfully.")
+
+    # 서버 시작 시 추천 엔진을 비동기 최초 학습
+    await EngineManager.initial_fit()
 
     # 스케줄러 설정 및 시작
     setup_scheduler()
@@ -159,6 +218,9 @@ async def app_lifespan(app: FastAPI):
         es_sync.close()
         logger.info("Sync Elasticsearch connection closed.")
 
+    #neo4j 연결 끗
+    await Neo4jDriver.close_driver()
+
     # await client_redis.close()
     # await email_redis.close()
     # await token_redis.close()
@@ -186,6 +248,7 @@ def create_app() -> FastAPI:
     # FastAPI 앱 인스턴스 생성 및 라이프사이클 연결
     app = FastAPI(
         lifespan=app_lifespan,
+        servers=servers if settings.ENVIRONMENT == "production" else [],
         docs_url="/docs",
         redoc_url=None,
         title="MyProject API",

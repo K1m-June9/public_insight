@@ -23,10 +23,16 @@ from app.F6_schemas.feed import (
     RatingResponse,
     BookmarkResponse,
     BookmarkData,
-    BookmarkRequest
+    BookmarkRequest,
+    PolicyNewsResponse, 
+    PolicyNewsQuery,
     )
+from app.F6_schemas.recommendation import RecommendationResponse
 from app.F6_schemas.base import PaginationQuery, ErrorResponse, ErrorCode
 from app.F7_models.users import User
+
+from app.F13_recommendations.dependencies import get_recommendation_service
+from app.F13_recommendations.service import RecommendationService
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +210,27 @@ async def post_feed_bookmark(
         )
     return result
 
+@router.get("/detail/{id}/recommendations", response_model=RecommendationResponse)
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "RECOMMENDATION"])
+async def get_feed_recommendations(
+    id: int,
+    recommendation_service: RecommendationService = Depends(get_recommendation_service)
+):
+    """
+    콘텐츠 기반 피드 추천 API
+    
+    특정 피드 ID를 기반으로, 함께 보기 좋은 유사 콘텐츠 목록을 반환함.
+    - 현재 피드가 '정책 자료' -> 유사 정책 자료 + 관련 보도자료 추천
+    - 현재 피드가 '보도자료' -> 유사 보도자료 + 관련 정책 자료 추천
+    """
+    result = await recommendation_service.get_recommendations_for_feed(id)
+    
+    if isinstance(result, ErrorResponse):
+        status_code = 404 if result.error.code == ErrorCode.NOT_FOUND else 500
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+        
+    return result
+
 # 기관별 피드 목록 조회 엔드포인트
 # HTTP 메서드: GET
 # 경로: /api/feeds/{name}
@@ -262,6 +289,7 @@ async def get_organization_feeds(
     # FastAPI가 자동으로 JSON 직렬화 및 응답 스키마 검증 수행
     return result
 
+
 @router.get("/{name}/latest", response_model=OrganizationLatestFeedResponse)
 @log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "BY_ORGANIZATION", "LATEST"])
 async def get_organization_feeds_latest(
@@ -318,3 +346,31 @@ async def get_press_releases(
     
     return result
 
+
+@router.get("/{name}/policy-news", response_model=PolicyNewsResponse) 
+@log_event_detailed(action="LIST", category=["PUBLIC", "FEED", "BY_ORGANIZATION", "POLICY_NEWS"])
+async def get_policy_news(
+    name: str, 
+    query: PolicyNewsQuery = Depends(),
+    feed_service: FeedService = Depends(get_feed_service)
+) -> PolicyNewsResponse:
+    """
+    기관 페이지 [정책뉴스] 목록 조회
+
+    각 기관의 정책뉴스 목록을 페이지네이션과 함께 제공
+    기관 페이지 좌측 하단 정책뉴스 리스트에서 사용 
+    """
+    # Service를 통해 기관별 정책뉴스 데이터 조회
+    result = await feed_service.get_organization_policy_news(name, query)
+
+    # Service에서 에러 응답이 반환된 경우 처리 
+    if isinstance(result, ErrorResponse):
+        if result.error.code == ErrorCode.NOT_FOUND:
+            status_code = 404
+        elif result.error.code == ErrorCode.INTERNAL_ERROR:
+            status_code = 500
+        else:
+            status_code = 400
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+    
+    return result

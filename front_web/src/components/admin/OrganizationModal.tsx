@@ -46,19 +46,22 @@ export function OrganizationModal({ editingOrg, onClose }: OrganizationModalProp
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // API는 multipart/form-data를 기대하지만, 아이콘이 없으므로 FormData로 변환
-    const submissionData = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      submissionData.append(key, String(value));
-    });
+      e.preventDefault();
+      
+      // formData state 객체를 직접 payload로 사용
+      const payload: AdminOrganizationRequest = {
+          name: formData.name,
+          description: formData.description || null,
+          website_url: formData.website_url || null,
+          is_active: formData.is_active,
+      };
 
-    if (isEditMode) {
-      updateOrg({ id: editingOrg.id, formData: submissionData }, { onSuccess: onClose });
-    } else {
-      createOrg(submissionData, { onSuccess: onClose });
-    }
+      if (isEditMode) {
+          updateOrg({ id: editingOrg.id, payload }, { onSuccess: onClose });
+      } else {
+          // 생성 API도 JSON을 받도록 수정했으므로, payload를 그대로 전달
+          createOrg(payload, { onSuccess: onClose });
+      }
   };
 
   return (

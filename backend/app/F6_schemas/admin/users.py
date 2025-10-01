@@ -59,7 +59,7 @@ class UserDetail(BaseSchema):
     privacy_agreed: bool
     notification_agreed: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     statistics: "UserStatistics"
 
 class UserStatistics(BaseSchema):
@@ -145,7 +145,7 @@ class UserStatusChangeRequest(BaseModel):
 class UserListData(BaseSchema):
     """사용자 목록 데이터"""
     users: List[UserListItem]
-    pagination: PaginatedResponse
+    pagination: PaginationInfo
     statistics: UserListStatistics
 
 class UserListResponse(BaseResponse):

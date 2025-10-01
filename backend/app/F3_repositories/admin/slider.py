@@ -36,7 +36,6 @@ class SliderAdminRepository:
 
         self.db.add(new_slider)
         await self.db.commit()
-        await self.db.refresh(new_slider)
         return new_slider 
 
     
@@ -48,7 +47,6 @@ class SliderAdminRepository:
             setattr(slider, key, value)
         
         # self.db.add(slider)
-        await self.db.commit()
         await self.db.refresh(slider)
         return slider
     
@@ -58,9 +56,11 @@ class SliderAdminRepository:
         주어진 Slider 객체의 is_active 상태를 업데이트하고 DB에 커밋
         """
         slider.is_active = is_active 
+        
+        await self.db.flush()
 
-        await self.db.commit()
         await self.db.refresh(slider)
+        
         return slider
     
     async def delete_slider(self, slider:Slider) -> bool:
@@ -70,8 +70,6 @@ class SliderAdminRepository:
         """
         try:
             await self.db.delete(slider)
-            await self.db.commit()
             return True
         except SQLAlchemyError as e:
-            await self.db.rollback()
             return False

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import Image from 'next/image';
 
 import { useLogoutMutation } from "@/hooks/mutations/useAuthMutations";
 import { SearchInput } from "@/components/SearchInput"
@@ -30,13 +31,12 @@ export default function Header() {
   // 마이페이지/관리자페이지 이동 처리
   const handleUserPageClick = () => {
     if (user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR) {
-      router.push("/admin"); // 관리자 페이지 경로로 수정 필요
+      router.push("/admin/dashboard"); //관리자 페이지(대시보드) 이동
     } else {
-      router.push("/mypage"); // 마이페이지 경로로 수정 필요
+      router.push("/mypage"); // 마이페이지 이동
     }
   };
 
-  // 로딩 중에는 헤더의 일부만 간단히 보여줄 수 있습니다. (선택사항)
   if (isLoading) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-white">
@@ -55,9 +55,16 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* 로고 */}
         <div className="text-xl font-semibold text-gray-900">
-        <Link href="/" className="flex items-center">
-          <h1 className="text-primary">PublicInsight</h1>
-        </Link>
+          <Link href="/" className="flex items-center space-x-2 text-primary">
+          <Image 
+            src="/logo.svg" // public 폴더 기준 경로
+            alt="PublicInsight Logo"
+            width={28} // 원하는 로고 너비 (픽셀)
+            height={28} // 원하는 로고 높이 (픽셀)
+            className="h-10 w-10" // Tailwind 클래스로도 크기 지정 가능
+          />
+        <h1 className="text-primary">PublicInsight</h1>
+      </Link>
         </div>
 
         <Suspense fallback={<div className="hidden md:block h-8 w-1/3 bg-gray-100 rounded-md"></div>}>

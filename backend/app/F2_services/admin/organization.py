@@ -35,7 +35,10 @@ class OrganizationAdminService:
         try:
             organizations = await self.repo.get_simple_organization_list()
             org_items = [SimpleOrganizationItem(id=org['id'], name=org['name']) for org in organizations]
-            return SimpleOrganizationListResponse(data=org_items)
+            return SimpleOrganizationListResponse(
+                success=True,
+                data=org_items
+            )
         except Exception as e:
             logger.error(f"Error in get_simple_list: {e}", exc_info=True)
             return ErrorResponse(
@@ -124,6 +127,9 @@ class OrganizationAdminService:
                 # 우선은 모델의 기본값을 따르는 것으로 진행
             )
             
+            await self.repo.db.commit()
+            # await self.repo.db.refresh(new_org)
+            
             # 3. 생성된 객체를 응답 스키마로 변환
             # 새로 생성되었으므로, categories는 '보도자료' 하나만 존재
             # feed_count는 0입니다.
@@ -151,10 +157,12 @@ class OrganizationAdminService:
                 updated_at=new_org.updated_at,
                 categories=created_categories
             )
+
             
             return OrganizationCreateResponse(success=True, data=create_result)
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in create_organization for name '{name}': {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
         
@@ -175,23 +183,33 @@ class OrganizationAdminService:
                 organization_id=request.organization_id,
                 is_active=request.is_active
             )
+            # 3. DB commit 
+            await self.repo.db.commit()
+
+            # 4. 관계 로드
+            await self.repo.db.refresh(
+                new_category,
+                attribute_names=["organization", "created_at", "updated_at"],
+            )
             
-            # 3. 생성된 객체를 응답 스키마로 변환
+            # 5. 생성된 객체를 응답 스키마로 변환
             create_result = CategoryCreateResult(
                 id=new_category.id,
                 organization_id=new_category.organization_id,
-                organization_name=new_category.organization.name, # 관계 로드를 통해 접근
+                organization_name=new_category.organization.name,
                 name=new_category.name,
                 description=new_category.description,
                 is_active=new_category.is_active,
-                feed_count=0,
+                feed_count=0,  # TODO: 실제 feed count 필요 시 계산
                 created_at=new_category.created_at,
-                updated_at=new_category.updated_at
+                updated_at=new_category.updated_at,
             )
+
             
             return CategoryCreateResponse(success=True, data=create_result)
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in create_category for name '{request.name}': {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
         
@@ -231,9 +249,14 @@ class OrganizationAdminService:
             if not updated_org_data:
                 return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message="수정된 기관 정보를 불러오는 데 실패했습니다."))
             
-            return OrganizationUpdateResponse(success=True, data=OrganizationDetail(**updated_org_data))
+            await self.repo.db.commit()
+
+            return OrganizationUpdateResponse(
+                success=True, 
+                data=OrganizationDetail(**updated_org_data.data.model_dump()))
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in update_organization for org_id {org_id}: {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
         
@@ -274,10 +297,13 @@ class OrganizationAdminService:
             if not success:
                 return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.CATEGORY_NOT_FOUND))
             
+            await self.repo.db.commit()
+
             # 성공 시, 수정된 상세 정보를 다시 조회하여 반환
             return await self.get_category_detail(cat_id)
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in update_category for cat_id {cat_id}: {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
         
@@ -323,9 +349,12 @@ class OrganizationAdminService:
             if not success:
                 return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.ORGANIZATION_NOT_FOUND))
             
+            await self.repo.db.commit()
+
             return OrganizationDeleteResponse()
 
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in delete_organization for org_id {org_id}: {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))
         
@@ -349,8 +378,11 @@ class OrganizationAdminService:
             if not success: # repo에서 False를 반환한 경우 (거의 발생 안 함)
                 return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.CATEGORY_NOT_FOUND))
             
+            await self.repo.db.commit()
+
             return CategoryDeleteResponse()
             
         except Exception as e:
+            await self.repo.db.rollback()
             logger.error(f"Error in delete_category for cat_id {cat_id}: {e}", exc_info=True)
             return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))

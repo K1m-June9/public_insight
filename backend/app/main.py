@@ -6,6 +6,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from starlette.responses import Response
 import logging
 import json
 import sys
@@ -33,6 +35,9 @@ from app.F9_middlewares.exempt_paths import exempt_paths, exempt_regex_paths
 from app.F7_models import (
     bookmarks, categories, feeds, keywords, notices, organizations, rating_history, ratings, refresh_token, search_logs, sliders, static_page_versions, static_pages, token_security_event_logs, user_activities, user_interests, users, word_clouds
     )
+
+# --- 모니터링 metrics ---
+from app.F9_middlewares.metrics_middleware import register_metrics
 
 # 운영 환경의 서버 정보를 담은 딕셔너리
 servers = [
@@ -245,6 +250,12 @@ def create_app() -> FastAPI:
 
     # 라우터 등록
     app.include_router(api_v1_router, prefix="/api/v1")
+
+    # Prometheus metrics 등록
+    # @app.get("/metrics")
+    # async def metrics():
+    #     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    register_metrics(app)
 
     logger.info("FastAPI application created and configured successfully.")
 

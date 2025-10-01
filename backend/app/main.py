@@ -63,7 +63,7 @@ class DevFormatter(logging.Formatter):
         
         # extra에 json_fields가 있으면, 그 내용을 JSON으로 변환하여 추가
         if hasattr(record, 'json_fields') and record.json_fields:
-            extra_data = json.dumps(record.json_fields, indent=2, ensure_ascii=False)
+            extra_data = json.dumps(record.json_fields, indent=2, ensure_ascii=False, default=str)
             formatted_message += f"\n--- EXTRA CONTEXT ---\n{extra_data}\n---------------------"
             
         return formatted_message

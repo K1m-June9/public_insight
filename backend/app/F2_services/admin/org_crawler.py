@@ -248,7 +248,12 @@ class OrgCrawlerTriggerAdminService:
                 headless=True,
                 args=["--no-sandbox", "--disable-setuid-sandbox"]
             )
-            page = await browser.new_page()
+
+            # SSL 오류 무시
+            # 사이트 복구되고 다시 테스트 필요함
+            context = await browser.new_context(ignore_https_errors=True)
+
+            page = await context.new_page()
 
             # --- 4. 이미지/폰트/CSS 요청 차단 -> 속도 개선 ---
             await page.route(
@@ -498,7 +503,11 @@ class OrgCrawlerTriggerAdminService:
                 headless=True, # 브라우저 창 안 띄움
                 args=["--no-sandbox", "--disable-setuid-sandbox"] # 리눅스 환경 안전 옵션
             )
-            page = await browser.new_page()
+            
+            # 사이트 복구되고 다시 테스트 필요함
+            context = await browser.new_context(ignore_https_errors=True)
+
+            page = await context.new_page()
 
             # --- 4. 이미지/폰트/CSS 요청 차단 -> 속도 개선 ---
             await page.route(

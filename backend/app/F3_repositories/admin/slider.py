@@ -56,8 +56,11 @@ class SliderAdminRepository:
         주어진 Slider 객체의 is_active 상태를 업데이트하고 DB에 커밋
         """
         slider.is_active = is_active 
+        
+        await self.db.flush()
 
         await self.db.refresh(slider)
+        
         return slider
     
     async def delete_slider(self, slider:Slider) -> bool:

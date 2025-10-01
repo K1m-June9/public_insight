@@ -183,21 +183,28 @@ class OrganizationAdminService:
                 organization_id=request.organization_id,
                 is_active=request.is_active
             )
+            # 3. DB commit 
+            await self.repo.db.commit()
+
+            # 4. 관계 로드
+            await self.repo.db.refresh(
+                new_category,
+                attribute_names=["organization", "created_at", "updated_at"],
+            )
             
-            # 3. 생성된 객체를 응답 스키마로 변환
+            # 5. 생성된 객체를 응답 스키마로 변환
             create_result = CategoryCreateResult(
                 id=new_category.id,
                 organization_id=new_category.organization_id,
-                organization_name=new_category.organization.name, # 관계 로드를 통해 접근
+                organization_name=new_category.organization.name,
                 name=new_category.name,
                 description=new_category.description,
                 is_active=new_category.is_active,
-                feed_count=0,
+                feed_count=0,  # TODO: 실제 feed count 필요 시 계산
                 created_at=new_category.created_at,
-                updated_at=new_category.updated_at
+                updated_at=new_category.updated_at,
             )
-            await self.repo.db.commit()
-            await self.repo.db.refresh(new_category, attribute_names=['organization']) # 'organization' 관계 로드
+
             
             return CategoryCreateResponse(success=True, data=create_result)
 
@@ -244,7 +251,9 @@ class OrganizationAdminService:
             
             await self.repo.db.commit()
 
-            return OrganizationUpdateResponse(success=True, data=OrganizationDetail(**updated_org_data))
+            return OrganizationUpdateResponse(
+                success=True, 
+                data=OrganizationDetail(**updated_org_data.data.model_dump()))
 
         except Exception as e:
             await self.repo.db.rollback()

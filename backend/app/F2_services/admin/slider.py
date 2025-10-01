@@ -422,7 +422,7 @@ class SliderAdminService:
 
     async def update_slider_status(self, slider_id: int, is_active: bool) -> Union[SliderStatusUpdateResponse, ErrorResponse]:
         """특정 슬라이더의 is_active 상태만 업데이트"""
-        try:
+        try: 
             # --- 1. DB에서 수정할 슬라이더 찾기 ---
             slider_to_update = await self.repo.get_slider_by_id(slider_id)
             
@@ -435,15 +435,21 @@ class SliderAdminService:
                     )
                 )
 
+
             # --- 3. 리포지토리를 통해 상태 업데이트 ---
             updated_slider = await self.repo.update_slider_status(
                 slider=slider_to_update,
                 is_active=is_active
             )
 
+            await self.repo.db.commit()
+
+
             # --- 4. update_at이 None이면 현재 시간으로 채움 ---
             if not getattr(updated_slider, "updated_at", None):
                 updated_slider.updated_at = datetime.utcnow()
+
+
 
             # --- 5. 성공 응답 데이터 생성 ---
             response_data = SliderStatusUpdateResponseData(
@@ -451,8 +457,6 @@ class SliderAdminService:
                 is_active=updated_slider.is_active,
                 updated_at=updated_slider.updated_at
             )
-
-            await self.repo.db.commit()
 
             return SliderStatusUpdateResponse(
                 success=True,

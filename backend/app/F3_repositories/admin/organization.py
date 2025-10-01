@@ -158,8 +158,14 @@ class OrganizationAdminRepository:
 
             # 3. flush 해서 PK 확보
             await self.db.flush()
+            
+            # 4. 관계를 안전하게 로드
+            await self.db.refresh(
+                new_category,
+                attribute_names=["organization", "created_at", "updated_at"]
+            )
 
-            # 4. 반환
+            # 5. 반환
             return new_category
         except Exception as e:
             logger.error(f"Error creating category '{name}' for org_id {organization_id}: {e}", exc_info=True)

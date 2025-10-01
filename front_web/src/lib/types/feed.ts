@@ -145,8 +145,10 @@ export interface FeedDetail {
     title: string;
     organization: OrganizationInfo;
     category: CategoryInfo;
+    summary?: string;
     average_rating: number;
     view_count: number;
+    bookmark_count: number;
     published_date: string;
     source_url: string;
 

@@ -3,14 +3,15 @@ import math
 from typing import Union, Dict, Any, List
 
 from app.F3_repositories.graph import GraphRepository
-# 🔧 [수정] 우리 프로젝트의 스키마들을 임포트
 from app.F6_schemas.graph import (
     ExploreGraphResponse, 
     ExploreGraphData, 
     GraphNode, 
     GraphEdge,
     WordCloudItem,
-    WordCloudResponse
+    WordCloudResponse,
+    RelatedKeywordItem,
+    RelatedKeywordsResponse
 )
 from app.F6_schemas.base import ErrorResponse, ErrorDetail, ErrorCode, Message
 
@@ -96,7 +97,6 @@ class GraphService:
                 type='feed',
                 label=feed_data['title'],
                 metadata={
-                    # 우리가 논의했던 모든 부가 정보를 metadata에 추가
                     'published_date': str(feed_data.get('published_date')),
                     'view_count': feed_data.get('view_count'),
                     'avg_rating': feed_data.get('average_rating'),
@@ -114,9 +114,8 @@ class GraphService:
             ))
             
         # --- 3. 1단계 엣지(관계) 생성 ---
-        # 노트북LM 스타일을 위해, 초기 화면에서는 중심 키워드와 다른 노드들을 잇는 엣지만 생성함.
+        # UX를 위해, 초기 화면에서는 중심 키워드와 다른 노드들을 잇는 엣지만 생성함.
         for node in nodes:
-            # 🔧 [수정] 객체의 속성에 접근할 때는 '.'을 사용
             # 자기 자신이 아니고, 중심 노드(keyword_node)가 아닌 노드들만 연결
             if node.id != keyword_node.id:
                 edges.append(GraphEdge(
@@ -132,7 +131,7 @@ class GraphService:
         exclude_ids_str: str | None = None
     ) -> Union[ExploreGraphResponse, ErrorResponse]:
         """
-        [ML 기반으로 리팩토링됨]
+        [ML 기반으로 리팩토링]
         클릭된 노드를 중심으로 그래프를 확장하고, 비즈니스 규칙에 따라 결과를 필터링함.
         """
         try:
@@ -162,10 +161,8 @@ class GraphService:
             
             final_node_infos = self._filter_and_select_nodes(raw_expansion_data, rules, exclude_ids)
             
-            # [핵심 수정 1] 리포지토리에서 온 'predicted_details'를 변수로 추출합니다.
             predicted_details = raw_expansion_data.get("predicted_details", {})
             
-            # [핵심 수정 2] 추출한 'predicted_details'를 헬퍼 함수에 인자로 전달합니다.
             nodes, edges = self._structure_expansion_for_frontend(
                 node_id, final_node_infos, predicted_details
             )
@@ -185,7 +182,7 @@ class GraphService:
     ) -> List[Dict[str, Any]]:
         """
         (Helper) ML 예측 결과와 비즈니스 규칙에 따라 최종 노드를 선별함.
-        - [수정] 상세 정보가 있는 노드가 예측만 있는 노드를 덮어쓸 수 있도록 로직 변경
+        - 상세 정보가 있는 노드가 예측만 있는 노드를 덮어쓸 수 있도록 함.
         """
         selected_nodes_map: Dict[str, Dict[str, Any]] = {}
         counts = {node_type: 0 for node_type in rules.keys()}
@@ -211,24 +208,17 @@ class GraphService:
                     
                     node_id = f"{node_type_singular}_{node_data['id']}"
                     
-                    # [핵심 수정] 
-                    # 이미 맵에 예측 노드(자리만 있는)가 있더라도, 상세 정보가 있는 현재 노드가
-                    # 그 자리를 덮어쓰도록 'and node_id not in selected_nodes_map' 조건을 제거합니다.
-                    # 단, 할당량(counts)과 제외 목록(exclude_ids) 체크는 여전히 유지합니다.
                     if counts[node_type_singular] < rules[node_type_singular] and node_id not in exclude_ids:
                         
-                        # 만약 이 노드가 예측 목록에 없던 새로운 노드라면, 카운트를 증가시킵니다.
                         if node_id not in selected_nodes_map:
                             counts[node_type_singular] += 1
                         
-                        # 예측만 있던 노드를 상세 정보가 있는 노드로 덮어쓰거나, 새로 추가합니다.
                         selected_nodes_map[node_id] = {'id': node_id, 'type': node_type_singular, 'data': node_data}
 
         return list(selected_nodes_map.values())
 
     def _structure_expansion_for_frontend(
         self, start_node_id: str, final_node_infos: List[Dict[str, Any]],
-        # [핵심 수정 3] 'predicted_details'를 받을 수 있도록 파라미터 추가
         details_map: Dict[str, Any]
     ) -> tuple[List[GraphNode], List[GraphEdge]]:
         """
@@ -240,15 +230,11 @@ class GraphService:
         for item in final_node_infos:
             node_id = item['id']
             generic_type = item['type']
-            
-            # [핵심 수정 4]
-            # 'item' 자체의 'data'가 아닌, 파라미터로 받은 'details_map'에서 상세 정보를 조회합니다.
-            # 이것이 모든 예측된 노드(feed, keyword, organization)의 이름을 찾을 수 있게 해줍니다.
             node_data_from_details = details_map.get(node_id)
             node_data_from_item = item.get('data')
 
-            # 상세 정보가 있으면 사용하고, 없으면 ID에서 라벨을 유추합니다.
-            # details_map에 있는 정보가 더 우선순위가 높습니다.
+            # 상세 정보가 있으면 사용하고, 없으면 ID에서 라벨을 유추.
+            # details_map에 있는 정보가 더 우선순위가 높음.
             node_data = node_data_from_details or node_data_from_item
             label = node_data.get('title', node_data.get('name')) if node_data else node_id.split('_', 1)[-1]
             
@@ -289,6 +275,40 @@ class GraphService:
         except Exception as e:
             # 리포지토리에서 발생한 예외를 포함한 모든 에러를 처리
             logger.error(f"Error in get_wordcloud_data service: {e}", exc_info=True)
+            return ErrorResponse(
+                error=ErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message=Message.INTERNAL_ERROR
+                )
+            )
+        
+    async def get_related_keywords_for_feed(
+        self, feed_id: int, limit: int = 10
+    ) -> Union[RelatedKeywordsResponse, ErrorResponse]:
+        """
+        특정 피드와 연관된 키워드 목록을 ML 모델을 통해 조회하고 구조화함.
+        """
+        try:
+            # 1. 리포지토리를 호출하여 (키워드, 유사도) 튜플 리스트를 가져옴
+            similar_keywords = await self.repo.get_similar_keywords_for_feed(feed_id, limit)
+            
+            # 2. [핵심 비즈니스 로직]
+            #    - 각 키워드의 유사도(0.0 ~ 1.0)를 연관도 점수(0 ~ 100)로 변환
+            #    - Pydantic 스키마(RelatedKeywordItem) 객체 리스트로 재조립
+            response_data = [
+                RelatedKeywordItem(
+                    text=keyword,
+                    score=int(similarity * 100) # 0.98 -> 98점으로 변환(그냥 보기 좋으라고)
+                ) 
+                for keyword, similarity in similar_keywords
+            ]
+            
+            # 3. 최종 성공 응답 객체를 생성하여 반환
+            return RelatedKeywordsResponse(success=True, data=response_data)
+
+        except Exception as e:
+            # 리포지토리에서 발생한 예외를 포함한 모든 에러를 처리
+            logger.error(f"Error getting related keywords for feed '{feed_id}': {e}", exc_info=True)
             return ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INTERNAL_ERROR,

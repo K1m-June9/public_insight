@@ -73,6 +73,7 @@ def kiwi_tokenizer(text: str) -> List[str]:
 
 # PDF_BASE_PATH = os.path.join(project_root_dir, "backend", "static", "feeds_pdf")
 # print(f"계산된 PDF 기본 경로: {PDF_BASE_PATH}")
+
 PDF_BASE_PATH = "/app/static/feeds_pdf"  #뤼얼로 가는거
 
 # --- MySQL 연결 설정 (개발/테스트용) ---
@@ -428,9 +429,9 @@ def _structure_graph_data(
     search_logs: SearchLogData,
     feed_map: Dict[int, Any],
     vectorizer: TfidfVectorizer, 
-    tfidf_matrix, #稀疏矩阵
-    similarity_matrix, #密集矩阵
-    similarity_threshold: float = 0.2 # 유사도 임계값
+    tfidf_matrix,
+    similarity_matrix,
+    similarity_threshold: float = 0.2 # 유사도 임계값, 실제 운영 시 값을 높여서 조절을 해야할듯 함 (검색 로그, PDF 등으로 인해 과해짐을 방지하기 위해서)
 ) -> TransformedData:
     """
     (Helper) 모든 분석 결과를 Neo4j에 적재할 최종 형태로 구조화함.
@@ -731,7 +732,6 @@ async def run_pipeline():
     if graph and graph.number_of_nodes() > 0:
         logger.info("--- Phase 5: Node2Vec 모델 학습 시작 ---")
         
-        # 🔧 [핵심 수정] 도커 컨테이너 내부의 절대 경로를 사용하도록 변경
         #    - /app은 docker-compose.yml에서 마운트한 backend 폴더의 루트임.
         model_dir = "/app/ml_models"
         os.makedirs(model_dir, exist_ok=True)

@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api/client';
-import { WordCloudResponse, GraphResponse } from '@/lib/types/graph';
+import { WordCloudResponse, GraphResponse, RelatedKeywordsResponse } from '@/lib/types/graph';
 // 갑자기 든 생각인데
 // graph도메인 --> 이름이 생각보다 구린것같기도하고
 //작명가데려와
@@ -50,5 +50,21 @@ export const getExpandData = async ({
       node_type: nodeType,
     },
   });
+  return response.data;
+};
+
+/**
+ * 특정 피드와 관련된 키워드 목록을 조회하는 API 서비스 함수
+ * @param feedId - 대상 피드의 ID
+ * @param limit - 가져올 키워드의 최대 개수
+ * @returns RelatedKeywordsResponse
+ */
+export const getRelatedKeywords = async ({ feedId, limit }: { feedId: number; limit: number }): Promise<RelatedKeywordsResponse> => {
+  const response = await apiClient.get<RelatedKeywordsResponse>(
+    `/graph/feeds/${feedId}/related-keywords`, 
+    {
+      params: { limit }, // 쿼리 파라미터로 limit 전달
+    }
+  );
   return response.data;
 };

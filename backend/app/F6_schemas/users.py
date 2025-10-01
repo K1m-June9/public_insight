@@ -150,3 +150,39 @@ class UserPasswordUpdateResponse(BaseResponse):
 #     """관심 기관 수정 응답"""
 #     message: str
 #     data: UserInterestUpdateData
+
+# =================================
+# 6. 사용자 맞춤 추천 관련 스키마 (개인화(진))
+# =================================
+
+class RecommendedFeedItem(BaseSchema):
+    """마이페이지에 추천될 단일 피드 항목"""
+    id: int
+    title: str
+    summary: Optional[str] = None
+    organization_name: str
+    category_name: str
+    published_date: Optional[datetime] = None
+    # ML 모델의 유사도 점수 또는 다른 랭킹 스코어를 담을 필드
+    score: Optional[float] = None
+    view_count: int = 0
+    average_rating: float = 0.0
+    bookmark_count: int = 0
+
+
+class RecommendedKeywordItem(BaseSchema):
+    """마이페이지에 추천될 단일 키워드 항목"""
+    keyword: str
+    # ML 모델의 유사도 점수 또는 다른 랭킹 스코어를 담을 필드
+    score: Optional[float] = None
+
+class UserRecommendationData(BaseModel):
+    """사용자 추천 API의 응답 데이터"""
+    # 사용자의 활동 데이터 유무에 따라 개인화 추천인지 여부를 알려주는 플래그
+    is_personalized: bool
+    recommended_feeds: List[RecommendedFeedItem]
+    recommended_keywords: List[RecommendedKeywordItem]
+
+class UserRecommendationResponse(BaseResponse):
+    """사용자 추천 API의 전체 응답"""
+    data: UserRecommendationData

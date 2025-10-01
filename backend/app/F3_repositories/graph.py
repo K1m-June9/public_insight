@@ -1,5 +1,3 @@
-# F3_repositories/graph.py
-
 import logging
 from typing import Dict, Any, List, Tuple
 
@@ -19,7 +17,7 @@ class GraphRepository:
         self.driver = driver
 
     # --------------------------------------------------------------------
-    # [신규] 예측된 노드의 상세 정보를 조회하기 위한 Private Helper 메소드
+    # 예측된 노드의 상세 정보를 조회하기 위한 Private Helper 메소드
     # --------------------------------------------------------------------
     async def _fetch_details_for_predicted_nodes(
         self, predicted_nodes: List[Tuple[str, float]]
@@ -46,7 +44,6 @@ class GraphRepository:
                 logger.warning(f"잘못된 형식의 노드 ID를 건너뜁니다: {node_id}")
                 continue
         
-        # 쿼리는 이미 organization을 조회할 수 있도록 준비되어 있었으므로 수정할 필요가 없습니다.
         cypher_query = """
         UNWIND $feed_ids AS db_id
         MATCH (n:Feed {id: db_id})
@@ -110,8 +107,7 @@ class GraphRepository:
             if not predicted_feed_db_ids:
                 return None
 
-            # 2. [핵심 수정] 예측된 피드 ID들을 사용하여, 해당 피드들과 관련 기관 정보를 한번에 조회
-            #    이제 쿼리는 '탐색'이 아닌, 예측 결과를 '보강'하는 역할을 함
+            #  쿼리는 '탐색'이 아닌, 예측 결과를 '보강'하는 역할을 함
             cypher_query = """
             // 1. 추천된 피드 ID 리스트를 파라미터로 받음
             UNWIND $feed_ids as feed_id
@@ -133,7 +129,6 @@ class GraphRepository:
             if not record:
                 return None
                 
-            # 3. 조회된 결과를 기존 메서드의 반환 형식과 동일하게 '재조립'
             final_result = {
                 "keyword": {"id": keyword, "name": keyword},
                 "feeds": record.data().get("feeds", []),
@@ -147,7 +142,7 @@ class GraphRepository:
             raise
 
     # --------------------------------------------------------------------
-    # [수정됨] 모든 expand 메소드
+    # 모든 expand 메소드 (확장되는 노드 종류에 따라서 다르게 정의됨[피드, 기관, 키워드])
     # --------------------------------------------------------------------
     async def expand_from_feed(
         self, feed_id: int, exclude_ids: set[str]
@@ -178,13 +173,11 @@ class GraphRepository:
             
             org_data = record.data().get("organization") if record else None
             
-            # 4. [수정] 예측 결과, 상세 정보, 확정 정보를 하나의 딕셔너리로 통합하여 반환
             return {
                 "predicted_nodes": predicted_nodes,
                 "explicit_nodes": {
                     "organization": org_data
                 },
-                # 서비스 레이어가 상세 정보를 사용할 수 있도록 `predicted_details` 추가
                 "predicted_details": predicted_details
             }
         except Exception as e:
@@ -205,7 +198,6 @@ class GraphRepository:
                 start_node_id, top_n=20, exclude_ids=exclude_ids
             )
 
-            # [신규] 예측된 노드들의 상세 정보를 헬퍼 메소드를 통해 조회
             predicted_details = await self._fetch_details_for_predicted_nodes(predicted_nodes)
             
             return {
@@ -231,7 +223,6 @@ class GraphRepository:
             )
             if not predicted_nodes: return None
 
-            # [신규] 예측된 노드들의 상세 정보를 헬퍼 메소드를 통해 조회
             predicted_details = await self._fetch_details_for_predicted_nodes(predicted_nodes)
             
             # 예측된 노드 중 '피드' 타입의 실제 DB ID만 추출
@@ -263,7 +254,6 @@ class GraphRepository:
             logger.error(f"Error expanding from keyword '{keyword}': {e}", exc_info=True)
             raise
 
-    # ... (get_keywords_by_popularity 메소드는 변경 없음) ...
     async def get_keywords_by_popularity(
         self, organization_name: str | None, limit: int
     ) -> List[Dict[str, Any]]:
@@ -301,3 +291,39 @@ class GraphRepository:
         except Exception as e:
             logger.error(f"Error getting keywords by popularity: {e}", exc_info=True)
             raise
+
+    async def get_similar_keywords_for_feed(
+            self, feed_id: int, limit: int = 10
+        ) -> List[Tuple[str, float]]:
+            """
+            [ML] 특정 피드와 문맥적으로 가장 유사한 키워드 목록을 예측하여 반환함.
+
+            :param feed_id: 기준이 되는 피드의 DB ID.
+            :param limit: 반환할 최대 키워드 개수.
+            :return: [('keyword_name', similarity_score), ...] 형태의 튜플 리스트.
+            """
+            try:
+                # 1. ML 모델이 사용하는 형식으로 시작 노드 ID를 생성
+                start_node_id = f"feed_{feed_id}"
+
+                # 2. ML 모델을 호출하여 유사 노드를 넉넉하게 예측 (top_n=50)
+                #    - 나중에 키워드가 아닌 노드들을 필터링해야 하므로, 요청량보다 많이 가져옴
+                predicted_nodes = predict_similar_nodes(start_node_id, top_n=50)
+
+                if not predicted_nodes:
+                    return []
+                
+                # 3. 예측 결과에서 'keyword' 타입의 노드만 필터링
+                similar_keywords = [
+                    # (keyword_이름, 유사도 점수) 형태로 추출
+                    (node_id.split('_', 1)[-1], similarity)
+                    for node_id, similarity in predicted_nodes
+                    if node_id.startswith('keyword_')
+                ]
+                
+                # 4. 최종적으로 limit 개수만큼만 잘라서 반환
+                return similar_keywords[:limit]
+
+            except Exception as e:
+                logger.error(f"Error predicting similar keywords for feed '{feed_id}': {e}", exc_info=True)
+                raise

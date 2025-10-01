@@ -66,3 +66,33 @@ export interface UserRatingListData {
 }
 
 export type UserRatingListResponse = DataResponse<UserRatingListData>;
+
+// =================================
+// 3. 사용자 추천 관련 타입 (신규 추가)
+// =================================
+
+export interface RecommendedFeedItem {
+    id: number;
+    title: string;
+    summary?: string;
+    organization_name: string;
+    category_name: string;
+    published_date?: string;
+    score?: number;
+    view_count: number;
+    average_rating: number;
+    bookmark_count: number;
+}
+
+export interface RecommendedKeywordItem {
+    keyword: string;
+    score?: number;
+}
+
+export interface UserRecommendationData {
+    is_personalized: boolean;
+    recommended_feeds: RecommendedFeedItem[];
+    recommended_keywords: RecommendedKeywordItem[];
+}
+
+export type UserRecommendationResponse = DataResponse<UserRecommendationData>;

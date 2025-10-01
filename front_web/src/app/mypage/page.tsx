@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, Bookmark, Star, Lock } from "lucide-react";
+import { User, Bookmark, Star, Lock, Heart } from "lucide-react";
 
 // shadcn/ui components
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { formatDate } from "@/lib/utils/date";
 import { ScrollToTopButton } from "@/components/ScrollToTop"
+import RecommendationTab from "@/components/mypage/RecommendationTab";
 
 // 마이페이지의 각 탭을 위한 개별 컴포넌트
 function ProfileTab() {
@@ -203,8 +204,9 @@ export default function MyPage() {
           <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">마이페이지</h1>
             <Tabs defaultValue="profile" className="space-y-6">
-              <TabsList className="grid grid-cols-4 w-full">
+              <TabsList className="grid grid-cols-5 w-full">
                 <TabsTrigger value="profile"><User className="h-4 w-4 mr-2" />기본정보</TabsTrigger>
+                <TabsTrigger value="recommendations"><Heart className="h-4 w-4 mr-2" />추천</TabsTrigger>
                 <TabsTrigger value="bookmarks"><Bookmark className="h-4 w-4 mr-2" />북마크</TabsTrigger>
                 <TabsTrigger value="ratings"><Star className="h-4 w-4 mr-2" />별점</TabsTrigger>
                 <TabsTrigger value="password"><Lock className="h-4 w-4 mr-2" />비밀번호</TabsTrigger>
@@ -212,6 +214,7 @@ export default function MyPage() {
                 {/* <TabsTrigger value="interests"><Building className="h-4 w-4 mr-2" />관심기관</TabsTrigger> */}
               </TabsList>
               <TabsContent value="profile"><ProfileTab /></TabsContent>
+              <TabsContent value="recommendations"><RecommendationTab /></TabsContent>
               <TabsContent value="bookmarks"><BookmarksTab /></TabsContent>
               <TabsContent value="ratings"><RatingsTab /></TabsContent>
               <TabsContent value="password"><PasswordTab /></TabsContent>

@@ -190,8 +190,10 @@ class FeedDetail(BaseSchema):
     title: str
     organization: OrganizationInfo
     category: CategoryInfo
+    summary: Optional[str] = None # 요약문 추가해버림(쫄보라서 Optional씀)
     average_rating: float
     view_count: int
+    bookmark_count: int = 0 # 생각해보니까 조회수하고 평균별점은 보여주는데 북마크 수는 안보여주더라고
     published_date: datetime
     # content: str  삭제(히스토리 보려고 만듦)
     source_url: str

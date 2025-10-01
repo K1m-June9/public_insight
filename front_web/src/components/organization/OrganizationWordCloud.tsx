@@ -1,12 +1,10 @@
 "use client";
 
 import { Cloud } from "lucide-react";
-// 🔧 [1. 수정] 새로운 커스텀 훅을 임포트
 import { useWordCloudQuery } from "@/hooks/queries/useGraphQueries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link"; // 👈 [추가] 키워드 클릭 시 페이지 이동을 위해 Link 컴포넌트 임포트
+import Link from "next/link";
 
-// 🔧 [2. 추가] 색상과 굵기를 동적으로 계산하기 위한 헬퍼 상수
 const COLOR_PALETTE = [
   "hsl(var(--primary))",
   "hsl(var(--secondary-foreground))",
@@ -32,7 +30,6 @@ export default function OrganizationWordCloud({ organizationName }: Organization
     }
   );
 
-  // 🔧 [4. 수정] API 응답 구조 변경에 따라 키워드 목록을 가져오는 방식 변경
   const keywords = response?.data || [];
 
   // 로딩 상태 UI (기존과 동일)
@@ -93,6 +90,12 @@ export default function OrganizationWordCloud({ organizationName }: Organization
             <p className="text-muted-foreground">표시할 주요 키워드가 없습니다.</p>
           </div>
         )}
+        <div className="mt-6 pt-4 border-t">
+          <p className="text-xs text-muted-foreground text-center">
+            키워드 선택 시<br />
+          마인드맵 페이지로 이동합니다
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

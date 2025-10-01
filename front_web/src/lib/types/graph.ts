@@ -13,10 +13,6 @@ export interface WordCloudItem {
  */
 export type WordCloudResponse = DataResponse<WordCloudItem[]>;
 
-// --------------------------------------------------------------------
-// [미래 준비] Explore 및 Expand API를 위한 타입도 미리 정의해 둡니다.
-// --------------------------------------------------------------------
-
 /**
  * 마인드맵의 개별 노드를 나타내는 타입
  */
@@ -49,3 +45,16 @@ export interface GraphData {
  * Explore/Expand API의 전체 응답 타입
  */
 export type GraphResponse = DataResponse<GraphData>;
+
+/**
+ * GET /feeds/{feed_id}/related-keywords API가 반환하는 개별 키워드 항목의 타입
+ */
+export interface RelatedKeywordItem {
+  text: string;
+  score: number; // 0-100 사이의 정수 점수
+}
+
+/**
+ * GET /feeds/{feed_id}/related-keywords API의 전체 응답 타입
+ */
+export type RelatedKeywordsResponse = DataResponse<RelatedKeywordItem[]>;

@@ -64,12 +64,18 @@ export default function CategoryChart({ organizationName, selectedCategoryId, on
                 {category.name}
               </span>
               <div className="flex items-center space-x-4">
-                <span className="text-muted-foreground">{Number(category.percentage).toFixed(1)}%</span>
+                {/*<span className="text-muted-foreground">{Number(category.percentage).toFixed(1)}%</span>*/}
                 {/* --- 💡 수정된 부분 5: 고정 너비(w-12)를 제거하여 자연스러운 정렬을 유도합니다. --- */}
                 <span className="text-xs text-muted-foreground text-right">{category.feed_count}건</span>
               </div>
             </button>
           ))}
+        </div>
+        <div className="mt-6 pt-4 border-t">
+          <p className="text-xs text-muted-foreground text-center">
+            선택 시 해당 카테고리의<br />
+          정책 문서만 제공됩니다.
+          </p>
         </div>
       </CardContent>
     </Card>

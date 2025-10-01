@@ -1,15 +1,15 @@
-'use client'; // [수정] 'use client' 지시어 추가
+'use client'; 
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-// [수정] 아이콘과 타입 추가
 import { ChevronRight, ChevronDown, FileText, Building2, Tag } from 'lucide-react';
 import type { FC } from 'react';
 
-// [추가] 카테고리별 아이콘을 렌더링하는 작은 헬퍼 컴포넌트
+// 카테고리별 아이콘을 렌더링하는 작은 헬퍼 컴포넌트
 const CategoryIcon: FC<{ category?: number }> = ({ category }) => {
   if (category === undefined) return null;
 
+  // 나중에 노드 종류 추가할듯
   switch (category) {
     case 0: // Feed (파랑)
       return <FileText className="w-4 h-4 text-blue-500" />;

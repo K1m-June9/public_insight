@@ -25,9 +25,9 @@ export const refreshAccessToken = async () => {
 };
 
 export const apiClient = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL,
+    //baseURL: process.env.NEXT_PUBLIC_API_URL,
     //baseURL: '/api/v1',
-    //baseURL:'http://localhost:8002/api/v1', // ha_frontend 개발전용(으악)
+    baseURL:'http://localhost:8082/api/v1', // ha_frontend 개발전용(으악)
   // 다른 서버로 쿠키를 보내기 위한 설정
     withCredentials: true,
 });

@@ -735,12 +735,22 @@ class FeedRepository:
                 .group_by(Rating.feed_id)
                 .subquery()
             )
+            # 서브쿼리 2: 피드별 북마크 수 계산
+            bookmark_subquery = (
+                select(
+                    Bookmark.feed_id,
+                    func.count(Bookmark.id).label('bookmark_count')
+                )
+                .group_by(Bookmark.feed_id)
+                .subquery()
+            )
         
             # 메인 쿼리: 피드 상세 정보 조회 (select 구문 사용)
             query = (
                 select(
                     Feed.id,
                     Feed.title,
+                    Feed.summary,
                     Feed.source_url,
                     Feed.pdf_file_path,
                     Feed.published_date,
@@ -749,11 +759,13 @@ class FeedRepository:
                     Organization.name.label('organization_name'),
                     Category.id.label('category_id'),
                     Category.name.label('category_name'),
-                    rating_subquery.c.average_rating
+                    rating_subquery.c.average_rating,
+                    func.coalesce(bookmark_subquery.c.bookmark_count, 0).label('bookmark_count')
                 )
                 .join(Organization, Feed.organization_id == Organization.id)
                 .join(Category, Feed.category_id == Category.id)
                 .outerjoin(rating_subquery, Feed.id == rating_subquery.c.feed_id)
+                .outerjoin(bookmark_subquery, Feed.id == bookmark_subquery.c.feed_id)
                 .where(
                     and_(
                         Feed.id == feed_id,
@@ -775,10 +787,12 @@ class FeedRepository:
             return {
                 'id': record.id,
                 'title': record.title,
+                'summary': record.summary,
                 'source_url': record.source_url,
                 'pdf_file_path': record.pdf_file_path,
                 'published_date': record.published_date,
                 'view_count': record.view_count,
+                'bookmark_count': record.bookmark_count,
                 'average_rating': float(record.average_rating) if record.average_rating else 0.0,
                 'organization_id': record.organization_id,
                 'organization_name': record.organization_name,

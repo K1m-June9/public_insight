@@ -1,12 +1,15 @@
 import math
 import logging
-from typing import Union
+from typing import Union, List, Set, Dict, Optional
 
 from app.F2_services.session import SessionService
 from app.F3_repositories.users import UserRepository
 from app.F4_utils.validators import validate_nickname, validate_password
 from app.F5_core.security import auth_handler
 from app.F5_core.redis import RedisCacheService
+from app.F14_knowledge_graph.graph_ml import predict_similar_nodes
+from datetime import datetime
+from neo4j.time import DateTime as Neo4jDateTime
 
 from app.F6_schemas.base import (
     ErrorCode,
@@ -29,6 +32,10 @@ from app.F6_schemas.users import (
     UserBookmarkListQuery, 
     UserBookmarkListResponse, 
     UserBookmarkListData,
+    UserRecommendationResponse, 
+    UserRecommendationData, 
+    RecommendedFeedItem, 
+    RecommendedKeywordItem
 )
 
 logger = logging.getLogger(__name__)
@@ -365,3 +372,110 @@ class UserService:
                     message=Message.INTERNAL_ERROR
                 )
             )
+        
+    async def get_user_recommendations(self, user_pk: int) -> Union[UserRecommendationResponse, ErrorResponse]:
+        """사용자 맞춤 피드(10개)와 키워드(8개)를 추천하는 핵심 서비스 메서드."""
+        try:
+            # user_pk = await self.repo.get_user_pk_by_user_id(user_id)
+            if not user_pk:
+                return ErrorResponse(error=ErrorDetail(code=ErrorCode.NOT_FOUND, message=Message.USER_NOT_FOUND))
+
+            # --- Step 1: 추천의 'Seed'가 될 노드 ID 수집 ---
+            seed_node_ids: List[str] = []
+            is_personalized = True
+
+            # 1순위: 최신 실시간 활동 (북마크/별점)
+            latest_activity_feeds = await self.repo.get_latest_user_activities(user_pk)
+            if latest_activity_feeds:
+                seed_node_ids.extend([f"feed_{fid}" for fid in latest_activity_feeds])
+
+            # 2순위: 누적된 검색 기록 (1순위 데이터가 부족할 경우 보충)
+            if len(seed_node_ids) < 5:
+                searched_keywords = await self.repo.get_user_searched_keywords(user_pk)
+                if searched_keywords:
+                    seed_node_ids.extend([f"keyword_{kw}" for kw in searched_keywords])
+            
+            # 3순위: 폴백 로직 (Seed가 전혀 없는 경우)
+            if not seed_node_ids:
+                is_personalized = False
+                popular_feeds = await self.repo.get_popular_feeds_for_fallback()
+                if not popular_feeds: # 인기 피드조차 없으면 빈 결과를 반환
+                    return UserRecommendationResponse(data=UserRecommendationData(
+                        is_personalized=False, recommended_feeds=[], recommended_keywords=[]
+                    ))
+                seed_node_ids.extend([f"feed_{fid}" for fid in popular_feeds])
+
+            # --- Step 2: ML 모델로 유사 노드 확장 ---
+            all_predictions = []
+            # 여러 개의 Seed에서 나온 예측 결과를 하나로 합침
+            for seed_node in set(seed_node_ids): # 중복된 씨앗 제거
+                predictions = predict_similar_nodes(start_node_id=seed_node, top_n=30)
+                all_predictions.extend(predictions)
+            
+            # 유사도 점수(내림차순) 기준으로 정렬 후 중복 제거
+            all_predictions.sort(key=lambda x: x[1], reverse=True)
+            unique_predictions: Dict[str, float] = {}
+            for node_id, score in all_predictions:
+                if node_id not in unique_predictions:
+                    unique_predictions[node_id] = score
+
+            # --- Step 3: 결과 정제 및 최종 응답 형태로 가공 ---
+            recommended_feeds: List[RecommendedFeedItem] = []
+            recommended_keywords: List[RecommendedKeywordItem] = []
+
+            # ML 모델이 추천한 feed_id와 score를 별도로 추출
+            predicted_feed_info: Dict[int, float] = {
+                int(node_id.split('_')[1]): score
+                for node_id, score in unique_predictions.items()
+                if node_id.startswith('feed_')
+            }
+            
+            if predicted_feed_info:
+                feed_details_map = await self.repo.get_rich_feed_details_by_ids(list(predicted_feed_info.keys()))
+            else:
+                feed_details_map = {}
+
+            # 예측된 키워드 목록 채우기 (최대 8개)
+            predicted_keywords = [
+                (node_id.split('_')[1], score)
+                for node_id, score in unique_predictions.items()
+                if node_id.startswith('keyword_')
+            ]
+            for keyword, score in predicted_keywords[:8]:
+                recommended_keywords.append(RecommendedKeywordItem(keyword=keyword, score=round(score, 4)))
+
+            # 상세 정보가 보강된 피드 추천 목록 채우기 (최대 10개)
+            # ML 예측 점수 순으로 정렬된 ID를 기준으로 순회
+            sorted_predicted_feeds = sorted(predicted_feed_info.items(), key=lambda item: item[1], reverse=True)
+
+            for feed_id, score in sorted_predicted_feeds:
+                if len(recommended_feeds) >= 10:
+                    break
+                
+                details = feed_details_map.get(feed_id)
+                if not details: continue # MySQL에서 상세 정보를 찾지 못하면 건너뜀
+
+                recommended_feeds.append(RecommendedFeedItem(
+                    id=details['id'],
+                    title=details.get('title', ''),
+                    summary=details.get('summary'),
+                    organization_name=details.get('organization_name', '정보 없음'),
+                    category_name=details.get('category_name', '정보 없음'),
+                    published_date=details.get('published_date'),
+                    score=round(score, 4),
+                    view_count=details.get('view_count', 0),
+                    average_rating=float(details.get('average_rating', 0.0)),
+                    bookmark_count=details.get('bookmark_count', 0)
+                ))
+            
+            response_data = UserRecommendationData(
+                is_personalized=is_personalized,
+                recommended_feeds=recommended_feeds,
+                recommended_keywords=recommended_keywords
+            )
+            
+            return UserRecommendationResponse(success=True, data=response_data)
+
+        except Exception as e:
+            logger.error(f"사용자 추천 생성 중 오류 발생 (user_pk: {user_pk}): {e}", exc_info=True)
+            return ErrorResponse(error=ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=Message.INTERNAL_ERROR))

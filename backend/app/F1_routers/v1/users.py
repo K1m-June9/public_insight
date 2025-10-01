@@ -22,7 +22,8 @@ from app.F6_schemas.users import (
     UserRatingListResponse, 
     UserRatingListQuery, 
     UserBookmarkListResponse, 
-    UserBookmarkListQuery
+    UserBookmarkListQuery,
+    UserRecommendationResponse
 )
 
 
@@ -85,6 +86,31 @@ async def update_nickname(
     
     # 3. nickname 변경 성공 시, 사용자 캐시 무효화
     await RedisCacheService.invalidate_user_cache(current_user.user_id)
+
+    return result
+
+# =================================
+# 사용자 맞춤 추천 (@log_event_detailed()는 일단 생략해둠. 나중에 추가해야함)
+# =================================
+@router.get("/me/recommendations", response_model=UserRecommendationResponse)#@log_event_detailed(action="LIST", category=["USER", "RECOMMENDATION"])
+async def get_my_recommendations(
+    current_user: User = Depends(verify_active_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    현재 로그인한 사용자를 위한 맞춤 피드 및 키워드를 추천함.
+    - 사용자의 활동(북마크, 별점, 검색)이 있으면 개인화 추천을 제공.
+    - 활동이 없으면 인기 피드 기반의 일반 추천을 제공.
+    """
+    # 2단계에서 구현할 서비스 로직을 호출함 
+    result = await user_service.get_user_recommendations(current_user.id)
+    
+    # 2단계에서 구현할 에러 처리 로직 (현재는 기본 구조만 작성)
+    if isinstance(result, ErrorResponse):
+        status_code = 500 # 기본값
+        if result.error.code == ErrorCode.NOT_FOUND:
+            status_code = 404
+        return JSONResponse(status_code=status_code, content=result.model_dump())
 
     return result
 

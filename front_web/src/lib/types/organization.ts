@@ -7,12 +7,11 @@ import { DataResponse } from './base';
 export interface OrganizationListItem {
     id: number;
     name: string;
-    percentage: number;
+    feed_count: number;
 }
 
 export interface OrganizationListData {
     organizations: OrganizationListItem[];
-    total_percentage: number;
 }
 
 export type OrganizationListResponse = DataResponse<OrganizationListData>;

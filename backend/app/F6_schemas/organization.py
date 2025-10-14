@@ -12,12 +12,11 @@ class OrganizationListItem(BaseSchema):
     """기관 목록 항목"""
     id: int
     name: str
-    percentage: float
+    feed_count: int
 
 class OrganizationListData(BaseModel):
     """기관 목록 데이터"""
     organizations: List[OrganizationListItem]
-    total_percentage: float
 
 class OrganizationListResponse(BaseResponse):
     """기관 목록 응답"""

@@ -13,7 +13,7 @@ interface CategoryChartProps {
 
 export default function CategoryChart({ organizationName, selectedCategoryId, onCategorySelect }: CategoryChartProps) {
   const { data: categoryData, isLoading, isError } = useOrganizationCategoriesForChartQuery(organizationName);
-
+  const categoriesToRender = categoryData?.data.categories.filter((category) => category.feed_count > 0) || [];
   const categories = categoryData?.data.categories || [];
 
   if (isLoading) {
@@ -25,7 +25,7 @@ export default function CategoryChart({ organizationName, selectedCategoryId, on
         <CardHeader>
           <div className="flex items-center space-x-2">
             <BarChart3 className="w-5 h-5 text-destructive" />
-            <CardTitle className="text-base font-semibold text-destructive">분야별 문서 현황</CardTitle>
+            <CardTitle className="text-base font-semibold text-destructive">분야별 정책 문서 현황</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -36,27 +36,25 @@ export default function CategoryChart({ organizationName, selectedCategoryId, on
   }
 
   return (
-    // --- 💡 수정된 부분 1: Card의 기본 패딩을 p-6으로 늘립니다. ---
     <Card className="shadow-sm hover:shadow-md transition-shadow p-6">
-      {/* --- 💡 수정된 부분 2: CardHeader의 패딩을 없애고 제목 아래 마진을 추가합니다. --- */}
       <CardHeader className="p-0 mb-0">
         <div className="flex items-center space-x-2">
           <BarChart3 className="w-5 h-5 text-primary" />
-          {/* --- 💡 수정된 부분 3: CardTitle의 스타일을 다른 컴포넌트와 통일합니다. --- */}
-          <CardTitle className="text-primary text-lg font-medium">분야별 문서 현황</CardTitle>
+          <CardTitle className="text-primary text-lg font-medium">분야별 정책 문서 현황</CardTitle>
         </div>
       </CardHeader>
-      {/* --- 💡 수정된 부분 4: CardContent의 패딩을 제거하여 이중 여백을 방지합니다. --- */}
       <CardContent className="p-0">
         <div className="space-y-3">
-          {categories.map((category) => (
+          {/* --- ▼ [수정] 원본 categories 배열 대신, 필터링된 categoriesToRender 배열을 사용합니다. ▼ --- */}
+          {categoriesToRender.map((category) => (
             <button
               key={category.id}
               onClick={() => onCategorySelect(category.id)}
+              // 이제 '기타' 항목이 없으므로 disabled 로직은 제거해도 되지만, 안전을 위해 유지합니다.
               disabled={category.name === "기타"}
               className={cn(
                 "w-full flex items-center justify-between text-sm p-3 rounded-lg transition-colors text-left",
-                category.name !== "기타" && "hover:bg-accent cursor-pointer",
+                "hover:bg-accent cursor-pointer", // '기타'가 없으므로 항상 hover 효과 적용
                 selectedCategoryId === category.id && "bg-accent"
               )}
             >
@@ -64,8 +62,6 @@ export default function CategoryChart({ organizationName, selectedCategoryId, on
                 {category.name}
               </span>
               <div className="flex items-center space-x-4">
-                {/*<span className="text-muted-foreground">{Number(category.percentage).toFixed(1)}%</span>*/}
-                {/* --- 💡 수정된 부분 5: 고정 너비(w-12)를 제거하여 자연스러운 정렬을 유도합니다. --- */}
                 <span className="text-xs text-muted-foreground text-right">{category.feed_count}건</span>
               </div>
             </button>

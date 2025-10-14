@@ -7,7 +7,7 @@ from app.F6_schemas.search import (
     SearchQuery,
     SearchResponse,
 )
-
+from app.F5_core.dependencies import get_current_user
 from app.F5_core.logging_decorator import log_event_detailed
 from app.F11_search.ES8_search_service import search_contents
 
@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 @log_event_detailed(action="SEARCH", category=["PUBLIC", "GLOBAL_SEARCH"])
 async def get_search_results(
     query_params: SearchQuery = Depends(),
-    request: Request = None
+    request: Request = None,
+    user: None = Depends(get_current_user)
 ):
     """
     Elasticsearch를 통해 콘텐츠를 검색하고 결과를 반환합니다.

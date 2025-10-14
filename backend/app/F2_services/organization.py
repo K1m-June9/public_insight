@@ -82,23 +82,20 @@ class OrganizationService:
                         message=Message.ORGANIZATION_NOT_FOUND
                     )
                 )
-            # 피드 개수를 기반으로 하여 95% 스케일링 -> 5%=기타
-            processed_orgs = self._calculate_scaled_percentages(orgs_with_counts, 'feed_count')
-            if not processed_orgs: # 모든 기관의 피드 개수가 0인 경우
-                return ErrorResponse(
-                    error=ErrorDetail(
-                        code=ErrorCode.NOT_FOUND,
-                        message=Message.ORGANIZATION_FEED_NOT_FOUND
-                    )
-                )
+            
+            organization_items = [
+                OrganizationListItem(
+                    id=org["organization_id"], 
+                    name=org["organization_name"], 
+                    feed_count=org["feed_count"]
+                ) 
+                for org in orgs_with_counts
+            ]
+            
+            response_data = OrganizationListData(organizations=organization_items)
 
-            organization_items = [OrganizationListItem(id=org["organization_id"], name=org["organization_name"], percentage=org["percentage"]) for org in processed_orgs]
-            organization_items.append(OrganizationListItem(id=999, name="기타", percentage=5.0))
-            
-            total_percentage = sum(item.percentage for item in organization_items)
-            response_data = OrganizationListData(organizations=organization_items, total_percentage=round(total_percentage, 1))
-            
             return OrganizationListResponse(success=True, data=response_data)
+        
         except Exception as e:
             logger.error(f"Error in get_organizations_for_chart: {e}", exc_info=True)
             return ErrorResponse(

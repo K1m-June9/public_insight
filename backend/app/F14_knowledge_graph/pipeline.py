@@ -431,7 +431,7 @@ def _structure_graph_data(
     vectorizer: TfidfVectorizer, 
     tfidf_matrix,
     similarity_matrix,
-    similarity_threshold: float = 0.2 # 유사도 임계값, 실제 운영 시 값을 높여서 조절을 해야할듯 함 (검색 로그, PDF 등으로 인해 과해짐을 방지하기 위해서)
+    similarity_threshold: float = 0.45 # 유사도 임계값, 실제 운영 시 값을 높여서 조절을 해야할듯 함 (검색 로그, PDF 등으로 인해 과해짐을 방지하기 위해서)
 ) -> TransformedData:
     """
     (Helper) 모든 분석 결과를 Neo4j에 적재할 최종 형태로 구조화함.

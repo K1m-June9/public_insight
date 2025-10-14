@@ -358,3 +358,19 @@ async def verify_active_user_optional(
         # 검증 과정에서 어떤 예외가 발생하더라도 None을 반환
         return None
     
+
+
+# =========================
+# 의존성: 로그인 사용자
+# =========================
+async def get_current_user(request: Request):
+    """
+    예시: 실제 구현에서는 JWT, 세션 등에서 user_id 추출
+    """
+    token = request.headers.get("Authorization")
+    if token == "Bearer admin-token":
+        request.state.user_id = "admin_user"
+    elif token == "Bearer user-token":
+        request.state.user_id = "regular_user"
+    else:
+        request.state.user_id = "anonymous"

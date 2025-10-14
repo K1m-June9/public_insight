@@ -36,3 +36,5 @@ debug_screenshot.png
 # 데이터 넣는 스크립트
 scripts/
 F8_database/init_data.py
+
+app/main.py

@@ -27,3 +27,5 @@ ml_models/
 crawler/
 db_init/
 mysql_conf/
+logstash/
+

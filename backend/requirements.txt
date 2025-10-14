@@ -115,6 +115,7 @@ playwright-stealth==1.0.6
 pluggy==1.6.0
 propcache==0.3.2
 prov==2.1.1
+prometheus_client==0.18.0 
 ptyprocess==0.7.0
 puremagic==1.30
 pyasn1==0.4.8

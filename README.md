@@ -1,6 +1,6 @@
 # PublicInsight
   ### 지식그래프로 연결하고 탐색하는 정책 데이터 플랫폼
-  ### www.public-insight.co.kr
+  ### https://public-insight.co.kr
 
 ## Overview
 공공 정책 데이터는 양적으로 풍부하지만, 여러 기관에 분산된 파편화 문제와 데이터 간의 맥락 부재로 인해 시민들이 심층적인 내용을 파악하기 어렵습니다.
@@ -128,4 +128,4 @@ UIUX 구현
 
 ## Contact
 - 공용 이메일: pumpkinbee2001@gmail.com
-- 개인 이메일: hth1690@naver.com
+- 개인 이메일: zipup.navy@gmail.com

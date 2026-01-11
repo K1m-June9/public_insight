@@ -5,7 +5,7 @@
 ## Overview
 공공 정책 데이터는 양적으로 풍부하지만, 여러 기관에 분산된 파편화 문제와 데이터 간의 맥락 부재로 인해 시민들이 심층적인 내용을 파악하기 어렵습니다.
 
-PublicInsight는 이러한 문제를 해결하기 위해, 흩어져 있는 이기종 데이터(정형, 비정형, 로그)를 '관계' 중심의 **지식 그래프**로 재구성합니다. 
+PublicInsight는 이러한 문제를 해결하기 위해, 흩어져 있는 이기종 데이터(정형, 비정형, 로그)를 '관계' 중심의 지식 그래프로 재구성합니다. 
 사용자는 이 지식 네트워크를 시각적으로 탐색하며 숨겨진 연결고리를 발견하고, 단순한 정보 소비를 넘어 스스로 인사이트를 얻는 새로운 데이터 탐색 경험을 할 수 있습니다.
 
 ## Key Features
@@ -16,11 +16,11 @@ PublicInsight는 이러한 문제를 해결하기 위해, 흩어져 있는 이�
 - AI 기반 정책 문서 자동 요약: KoBART 모델을 활용하여 긴 원문을 핵심 내용 중심으로 요약, 정보 접근성 향상
 
 ## Architecture
-### 주요 시스템 아키텍처
-<img width="1391" height="798" alt="스크린샷 2025-10-23 17 29 44" src="https://github.com/user-attachments/assets/c1ded3fa-e229-4662-a3ba-08261974b0a0" />
-
 ### 전체 시스템 아키텍처
-<img width="1195" height="799" alt="스크린샷 2025-10-23 17 30 14" src="https://github.com/user-attachments/assets/1f27747f-00e8-4eec-ab0a-c2528f434000" />
+<img width="1195" height="799" alt="스크린샷 2025-10-23 17 30 14" src="https://github.com/user-attachments/assets/1f27747f-00e8-4eec-ab0a-c2528f434000" />
+
+### 주요 데이터 처리 파이프라인
+<img width="1391" height="798" alt="스크린샷 2025-10-23 17 29 44" src="https://github.com/user-attachments/assets/c1ded3fa-e229-4662-a3ba-08261974b0a0" />
 
 ## Stack
 #### Backend
@@ -125,7 +125,3 @@ UIUX 구현
 #### 코드 품질 및 유지보수성 향상
 - 코드 리팩토링: 지속적인 코드 리뷰 및 리팩토링을 통해 코드의 가독성, 효율성 및 테스트 커버리지 개선
 - 레거시 코드 관리: 기능 변경에 따라 더 이상 사용되지 않는 코드 및 주석을 주기적으로 제거하여 코드베이스의 청결성 유지
-
-## Contact
-- 공용 이메일: pumpkinbee2001@gmail.com
-- 개인 이메일: zipup.navy@gmail.com
